@@ -31,6 +31,10 @@ warn() { printf "  ${YEL}!${NC} %s\n" "$*"; }
 err()  { printf "  ${RED}✗${NC} %s\n" "$*" >&2; }
 die()  { err "$*"; exit 3; }
 
+# Drift counter — only incremented inside MODE=check branches
+DRIFT=0
+drift() { DRIFT=$((DRIFT+1)); warn "$@"; }
+
 # --- Parse args ---
 MODE=""
 FORCE=0
@@ -131,7 +135,7 @@ copy_file() {
 
     if [ -f "$dst" ] && [ "$FORCE" != "1" ]; then
         if [ "$MODE" = "check" ]; then
-            warn "$name (exists, differs — use --force to overwrite)"
+            drift "$name (exists, differs — use --force to overwrite)"
             diff -u "$dst" "$src" 2>/dev/null | head -20 | sed 's/^/    /'
         else
             warn "$name (exists, not overwriting; use --force)"
@@ -141,9 +145,9 @@ copy_file() {
 
     if [ "$MODE" = "check" ]; then
         if [ -f "$dst" ]; then
-            warn "$name (would overwrite with --force)"
+            drift "$name (would overwrite with --force)"
         else
-            ok "$name (would create)"
+            drift "$name (would create)"
         fi
     else
         cp "$src" "$dst"
@@ -233,11 +237,16 @@ if [ -f "$CLAUDE_SETTINGS" ]; then
         ok "governance hook already in settings.json"
     else
         if [ "$MODE" = "check" ]; then
-            warn "governance hook NOT in settings.json (would be added)"
+            drift "governance hook NOT in settings.json (would be added)"
             echo "    Would add to PreToolUse[matcher=Bash]: $HOOK_PATH"
         else
             # Patch: добавить hook к существующему PreToolUse Bash matcher,
             # или создать matcher если нет. Используем jq с тонкой логикой.
+            if ! jq -e 'type == "object"' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
+                err "Pre-verify: settings.json is not valid JSON — refusing to patch"
+                exit 3
+            fi
+            before_cmds=$(jq -r '.hooks.PreToolUse[]? | select(.matcher=="Bash") | .hooks[]?.command' "$CLAUDE_SETTINGS" 2>/dev/null | sort -u)
             tmp=$(mktemp)
             jq \
                 --arg cmd "$HOOK_PATH" \
@@ -262,12 +271,36 @@ if [ -f "$CLAUDE_SETTINGS" ]; then
                 )
                 ' \
                 "$CLAUDE_SETTINGS" > "$tmp"
-            if [ -s "$tmp" ]; then
+            # Post-verify: shape + all pre-existing commands preserved + governance present + no collateral damage
+            post_ok=1
+            if ! jq -e 'type == "object" and (.hooks.PreToolUse | type == "array")' "$tmp" >/dev/null 2>&1; then
+                err "Post-verify: output is not a valid settings object"
+                post_ok=0
+            fi
+            while IFS= read -r cmd; do
+                [ -z "$cmd" ] && continue
+                if ! jq -e --arg c "$cmd" '.hooks.PreToolUse[]? | select(.matcher=="Bash") | .hooks[]?.command | select(. == $c)' "$tmp" >/dev/null 2>&1; then
+                    err "Post-verify: pre-existing command missing from output: $cmd"
+                    post_ok=0
+                fi
+            done <<< "$before_cmds"
+            if ! jq -e --arg h "$HOOK_PATH" '.hooks.PreToolUse[]? | select(.matcher=="Bash") | .hooks[]?.command | select(. == $h)' "$tmp" >/dev/null 2>&1; then
+                err "Post-verify: governance hook missing from output"
+                post_ok=0
+            fi
+            # Non-hooks keys must be unchanged (guards against filter accidentally dropping .mcpServers etc.)
+            if ! diff <(jq -S 'del(.hooks)' "$CLAUDE_SETTINGS") <(jq -S 'del(.hooks)' "$tmp") >/dev/null 2>&1; then
+                err "Post-verify: non-hooks settings were altered — settings.json не изменён"
+                post_ok=0
+            fi
+            if [ "$post_ok" = "1" ]; then
+                cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak.$(date +%s).$$"
                 mv "$tmp" "$CLAUDE_SETTINGS"
                 ok "governance hook added to PreToolUse[Bash]"
             else
-                err "jq patch failed — settings.json не изменён"
+                err "jq patch failed post-verification — settings.json не изменён"
                 rm -f "$tmp"
+                exit 3
             fi
         fi
     fi
@@ -288,7 +321,7 @@ for line in "${ENV_LINES[@]}"; do
         ok "$key already in ~/.zshrc"
     else
         if [ "$MODE" = "check" ]; then
-            warn "$key missing (would append to ~/.zshrc)"
+            drift "$key missing (would append to ~/.zshrc)"
         else
             echo "$line" >> "$ZSHRC"
             ok "$key appended to ~/.zshrc"
@@ -326,7 +359,7 @@ for pair in "${SCRIPT_LINKS[@]}"; do
     fi
 
     if [ "$MODE" = "check" ]; then
-        ok "~/bin/$name (would create symlink → $src)"
+        drift "~/bin/$name (would create symlink → $src)"
     else
         ln -sf "$src" "$dst"
         ok "~/bin/$name → $src"
@@ -344,7 +377,12 @@ fi
 echo ""
 log "Done ($MODE mode)"
 if [ "$MODE" = "check" ]; then
-    echo "  Запусти снова с --install чтобы применить."
+    if [ "$DRIFT" -eq 0 ]; then
+        ok "no drift — idempotent ✓"
+    else
+        warn "drift: $DRIFT item(s) need attention — запусти с --install чтобы применить."
+        exit 1
+    fi
 else
     echo "  Перезапусти shell или выполни: source ~/.zshrc"
     echo "  Проверь статус: mini-health"
