@@ -7,7 +7,7 @@ model: claude-sonnet-4-6
 
 # /feature
 
-Issue: !`gh issue view $1 --json number,title,body,labels,milestone`
+Issue: !`gh issue view $ARGUMENTS --json number,title,body,labels,milestone`
 
 ## Your task
 
@@ -16,8 +16,8 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 ### Step 1: Create TodoWrite checklist
 
 \`\`\`
-[ ] 1. Read issue #$1 acceptance criteria
-[ ] 2. Run /plan $1
+[ ] 1. Read issue #$ARGUMENTS acceptance criteria
+[ ] 2. Run /plan $ARGUMENTS
 [ ] 3. Call advisor() to critique plan
 [ ] 4. Determine if ADR needed (principle: architecturally significant?)
 [ ]    4a. If yes: Invoke @agent-solutions-architect → /adr → merge ADR PR
@@ -27,7 +27,7 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 [ ] 8. Run /codex-review
 [ ] 9. Resolve findings; decide on disagreements
 [ ] 10. git commit (governance hook checks)
-[ ] 11. gh pr create with "Closes #$1"
+[ ] 11. gh pr create with "Closes #$ARGUMENTS"
 [ ] 12. PR ready for human review
 \`\`\`
 
@@ -41,7 +41,7 @@ After each stage:
 ### Step 3: Finish
 
 When all 12 items checked, report:
-> PR #<N> opened for issue #$1. DoD status: {X}/{Y} criteria met. Outstanding: {list}.
+> PR #<N> opened for issue #$ARGUMENTS. DoD status: {X}/{Y} criteria met. Outstanding: {list}.
 
 ## Hard rules
 

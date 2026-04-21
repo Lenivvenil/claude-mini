@@ -12,7 +12,7 @@ Label check: !`gh label list --search "needs-triage" --json name`
 
 Create a GitHub issue from the current in-memory task:
 
-1. Title: `$1` (operator-provided) or ask if empty.
+1. Title: `$ARGUMENTS` (operator-provided) or ask if empty.
 2. Body: include
    - Problem statement (from current context)
    - Acceptance criteria (explicit, testable)
@@ -23,7 +23,7 @@ Command:
 
 \`\`\`bash
 gh issue create \
-  --title "$1" \
+  --title "$ARGUMENTS" \
   --body "<formatted body>" \
   --label "needs-triage"
 \`\`\`

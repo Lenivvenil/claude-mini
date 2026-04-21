@@ -14,20 +14,20 @@ Principles: @docs/principles.md
 ## Your task
 
 1. Invoke the `adr-author` skill to conduct MADR 4.0 interview.
-2. Skill writes `docs/decisions/NNNN-$1.md` (where NNNN is from `next_adr_number.sh`).
+2. Skill writes `docs/decisions/NNNN-$ARGUMENTS.md` (where NNNN is from `next_adr_number.sh`).
 3. After draft complete, create branch, commit, open PR:
 
 \`\`\`bash
-git checkout -b adr/NNNN-$1
-git add docs/decisions/NNNN-$1.md
-git commit -m "adr: NNNN $1 (#<issue-if-any>)"
+git checkout -b adr/NNNN-$ARGUMENTS
+git add docs/decisions/NNNN-$ARGUMENTS.md
+git commit -m "adr: NNNN $ARGUMENTS (#<issue-if-any>)"
 gh pr create \
-  --title "adr: NNNN $1" \
+  --title "adr: NNNN $ARGUMENTS" \
   --body "Opens architectural decision for review. Related issue: #<N>" \
   --label "type:adr"
 \`\`\`
 
-4. Remind operator: "Invoke `@agent-adr-reviewer docs/decisions/NNNN-$1.md` before approving PR."
+4. Remind operator: "Invoke `@agent-adr-reviewer docs/decisions/NNNN-$ARGUMENTS.md` before approving PR."
 
 ## Hard rules
 

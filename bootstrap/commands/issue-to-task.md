@@ -7,13 +7,13 @@ model: claude-sonnet-4-6
 
 # /issue-to-task
 
-Issue: !`gh issue view $1 --json number,title,body,labels,milestone,acceptanceCriteria`
+Issue: !`gh issue view $ARGUMENTS --json number,title,body,labels,milestone,acceptanceCriteria`
 
 ## Your task
 
 1. Read issue completely.
 2. Create TodoWrite checklist with stages of the canonical pipeline:
-   - [ ] Read issue and plan (`/plan $1`)
+   - [ ] Read issue and plan (`/plan $ARGUMENTS`)
    - [ ] Advisor call #1 (critique plan)
    - [ ] Determine if ADR needed
    - [ ] Implement (`/implement`)
@@ -21,8 +21,8 @@ Issue: !`gh issue view $1 --json number,title,body,labels,milestone,acceptanceCr
    - [ ] `/review`
    - [ ] `/codex-review`
    - [ ] Commit with governance
-   - [ ] Open PR with `Closes #$1`
-3. Remind operator: "Commit messages and PR body must reference `#$1` or governance hook will block."
+   - [ ] Open PR with `Closes #$ARGUMENTS`
+3. Remind operator: "Commit messages and PR body must reference `#$ARGUMENTS` or governance hook will block."
 
 ## Hard rules
 
