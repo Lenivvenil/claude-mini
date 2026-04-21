@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './bootstrap'
+
+  setup-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Bash syntax check all scripts
+        run: |
+          find bootstrap -name "*.sh" -print0 | xargs -0 -I{} bash -n {}
+      - name: Validate JSON/YAML
+        run: |
+          for f in bootstrap/templates/*.yml; do
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+          done
+      - name: Validate ADR numbering
+        run: |
+          expected=1
+          for f in docs/decisions/[0-9]*.md; do
+            n=$(basename "$f" | cut -c1-4 | sed 's/^0*//')
+            if [ "$n" != "$expected" ]; then
+              echo "ADR numbering gap: expected $expected, got $n at $f"
+              exit 1
+            fi
+            expected=$((expected + 1))
+          done
+
+  markdown-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/markdown-link-check.json'
+          folder-path: 'docs, bootstrap'

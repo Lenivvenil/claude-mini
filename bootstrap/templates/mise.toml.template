@@ -1,0 +1,11 @@
+# Per-project runtime pin. Копируй и адаптируй под stack.
+
+[tools]
+# python = "3.13"
+# uv = "latest"
+# go = "1.24"
+# node = "22"
+
+[env]
+# PROJECT_ROOT = "{{config_root}}"
+# SOPS_AGE_KEY_FILE = "{{env.HOME}}/.config/sops/age/keys.txt"

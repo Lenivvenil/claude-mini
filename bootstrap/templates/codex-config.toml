@@ -1,0 +1,13 @@
+# ~/.codex/config.toml
+#
+# Pinning `gpt-5.2` намеренно — stable через ChatGPT Plus sign-in.
+# `gpt-5.3-codex` периодически отдаёт "model not supported" (openai/codex#14181, #14735).
+# Revisit pin когда Plus OAuth стабилизируется на newest Codex модели.
+
+model = "gpt-5.2"
+
+[auth]
+preferred = "chatgpt"  # sign-in-with-ChatGPT, not API billing
+
+# [telemetry]
+# enabled = false

@@ -1,0 +1,53 @@
+# Project conventions — <PROJECT_NAME>
+
+Наследует соглашения `claude-mini`: pipeline `/plan → /adr? → /implement → /review → /codex-review`, read-only critic agents, governance hook на commits, Definition of Done из `docs/principles.md`.
+
+## Source of truth
+
+- **Backlog, milestones, sprints:** GitHub Issues + Projects v2 этого репо
+- **Architecture decisions:** `docs/decisions/` (MADR 4.0). Новые — через `/adr`
+- **Domain model:** `docs/domain/`
+- **Principles:** `docs/principles.md` (ссылается на claude-mini master)
+- **Runbooks:** `docs/runbooks/`
+
+## Hard rules
+
+1. **ADR-PR** обязателен для архитектурно-значимых решений
+2. **Issue-first** для задач длиннее одной сессии
+3. **Cross-ref в PR:** `Closes #NNN` + `Implements docs/decisions/NNNN-*.md` если был ADR
+4. **Conventional Commits.** `pre-commit-governance.sh` hook проверяет
+5. **DoD** блокирует merge
+6. **Advisor policy:** `advisor()` × 2 на нетривиальной задаче
+
+## Orchestration
+
+Главный цикл: `claude --model sonnet` с `/advisor` (Opus 4.7).
+
+Канонический pipeline:
+```
+/task-to-issue → /plan <N> → /adr (если нужно) → /implement 
+  → /review → /codex-review → git commit → gh pr create
+```
+
+Мастер-оркестратор: `/feature <issue>`.
+
+## Agents (read-only critics)
+
+| Agent | Когда |
+|---|---|
+| `adr-reviewer` | После черновика ADR |
+| `domain-reviewer` | После правки domain docs |
+| `domain-researcher` | Greenfield BC |
+| `solutions-architect` | Значимый технический выбор |
+| `backlog-groomer` | Раз в неделю |
+| `security-reviewer` | Перед merge в main |
+
+## Project-specific conventions
+
+<!-- Unique for <PROJECT_NAME>. Опиши что отличается от мастер-соглашений claude-mini. -->
+
+<!-- Примеры:
+  - Этот проект использует Django вместо FastAPI, см. ADR-0002
+  - Коммиты в ветку `staging` разрешены без PR (низкий риск)
+  - Codex review не применяется (python-only, покрывается uv pip audit)
+-->
