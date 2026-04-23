@@ -13,13 +13,14 @@
 # Флаги:
 #   --check    dry-run: показать diff без применения
 #   --install  применить
-#   --force    перезаписать существующие файлы
+#   --force    overwrite files that differ from the repo source (required on drift)
 #
 # Exit codes:
-#   0  ok (включая "no-op — уже установлено")
-#   1  hardware layer не пройден, не могу продолжать
-#   2  отсутствуют обязательные зависимости (jq, gh, claude)
-#   3  ошибка при установке
+#   0  ok (including "no-op — already installed")
+#   1  hardware layer not complete
+#   2  missing required dependencies (jq, gh, claude)
+#   3  install error / jq post-verify failure
+#   4  drift detected in --install mode; re-run with --force to overwrite
 
 set -uo pipefail
 
@@ -31,7 +32,8 @@ warn() { printf "  ${YEL}!${NC} %s\n" "$*"; }
 err()  { printf "  ${RED}✗${NC} %s\n" "$*" >&2; }
 die()  { err "$*"; exit 3; }
 
-# Drift counter — only incremented inside MODE=check branches
+# Drift counter — incremented by copy_file() in both --check and --install modes;
+# elsewhere (env vars, symlinks) only in --check mode.
 DRIFT=0
 drift() { DRIFT=$((DRIFT+1)); warn "$@"; }
 
@@ -47,9 +49,9 @@ while [ $# -gt 0 ]; do
             cat <<HELP
 Usage: $0 [--check|--install] [--force]
 
-  --check     dry-run: показать что произойдёт
-  --install   применить изменения
-  --force     перезаписать существующие файлы (опасно)
+  --check     dry-run: show what would happen (exits 0; drift reported in stdout)
+  --install   apply changes (exits 4 if drift detected; re-run with --force to overwrite)
+  --force     overwrite files that differ from the repo source (required on drift)
 HELP
             exit 0
             ;;
@@ -134,12 +136,8 @@ copy_file() {
     fi
 
     if [ -f "$dst" ] && [ "$FORCE" != "1" ]; then
-        if [ "$MODE" = "check" ]; then
-            drift "$name (exists, differs — use --force to overwrite)"
-            diff -u "$dst" "$src" 2>/dev/null | head -20 | sed 's/^/    /'
-        else
-            warn "$name (exists, not overwriting; use --force)"
-        fi
+        drift "$name (exists, differs — use --force to overwrite)"
+        diff -u "$dst" "$src" 2>/dev/null | head -20 | sed 's/^/    /'
         return
     fi
 
@@ -376,12 +374,15 @@ fi
 # --- Final summary ---
 echo ""
 log "Done ($MODE mode)"
+if [ "$DRIFT" -gt 0 ] && [ "$MODE" = "install" ]; then
+    warn "drift: $DRIFT file(s) differ from repo source — re-run with --force to overwrite."
+    exit 4
+fi
 if [ "$MODE" = "check" ]; then
     if [ "$DRIFT" -eq 0 ]; then
         ok "no drift — idempotent ✓"
     else
-        warn "drift: $DRIFT item(s) need attention — запусти с --install чтобы применить."
-        exit 1
+        warn "drift: $DRIFT item(s) differ — run '--install' to see diffs, '--install --force' to overwrite."
     fi
 else
     echo "  Перезапусти shell или выполни: source ~/.zshrc"
