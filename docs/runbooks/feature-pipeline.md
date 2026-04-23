@@ -66,6 +66,15 @@ advisor("Review this plan against codebase. Missing edge cases? ADR violations?"
 
 ### 5. Implementation
 
+Before running `/implement`, create the feature branch if you haven't already:
+
+```bash
+git checkout -b feat/<short-slug>-<issue-number>
+# Example: git checkout -b feat/retry-logic-42
+```
+
+The governance hook (ADR-0009) blocks direct commits to `main`; creating the branch here avoids a stash/rebase recovery later.
+
 ```
 /implement
 ```
@@ -120,6 +129,19 @@ PR body должен включать:
 - `Closes #<issue>`
 - `Implements docs/decisions/NNNN-*.md` если был ADR
 - DoD checklist из `.github/pull_request_template.md`
+
+### 11. Forge lock-in surface
+
+The following GitHub-specific commands and files are used in this pipeline. This inventory exists so a future forge migration has known, enumerated scope rather than surprise discovery. **Update this section when adding new `gh` commands.**
+
+| Artifact | Location | Notes |
+|---|---|---|
+| `gh pr create` | Step 10 above; `bootstrap/commands/feature.md` step 11 | Creates PR from feature branch |
+| `gh pr merge` | Operator post-review; `docs/decisions/0009-feature-branch-pr-flow.md` | Merges PR to main |
+| `gh pr view` | `/review` skill, `/codex-review` skill | Reads PR metadata and diff |
+| `gh issue view` | `bootstrap/commands/feature.md` line 11 | Loads issue JSON for `/feature` |
+| `.github/pull_request_template.md` | `.github/pull_request_template.md` | PR body DoD checklist |
+| `.github/workflows/ci.yml` | `.github/workflows/ci.yml` | CI gate for required checks |
 
 ## Master orchestrator
 
