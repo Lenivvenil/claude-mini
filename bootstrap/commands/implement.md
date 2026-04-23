@@ -16,6 +16,21 @@ Implement the plan. You are the single author. No subagent delegation.
 
 ### Phase 1 — Orient
 
+**Branch guard (ADR-0009):** Before reading any files, check the current branch:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+
+- If result is `main`: **STOP.** Create a feature branch first:
+  ```bash
+  git checkout -b feat/<short-slug>-<issue-number>
+  ```
+  Use the issue number from `plan.md` footer (`Closes #NNN`). Slug: 2–4 lowercase words from the issue title. Example: `feat/branch-strategy-adr-14`.
+- If result is already a feature branch: proceed.
+
+Note: `bootstrap/commands/implement.md` is installed to `~/.claude/commands/` via `./bootstrap/universal-setup.sh --install`. Changes here require re-install to take effect.
+
 1. Read `plan.md` completely. Read every file referenced in it.
 2. Read 3–5 related files for context (neighbouring modules, existing patterns).
 3. Check relevant ADRs (`docs/decisions/`) for constraints.

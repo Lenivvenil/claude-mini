@@ -5,7 +5,8 @@
 # Получает на stdin JSON: {"tool_input":{"command": "..."}, "cwd": "..."}
 # Возвращает exit 0 для пропуска, exit 2 с JSON для блокировки.
 #
-# Правила:
+# Правила (в порядке выполнения):
+#   4. (first) Запрет direct commit на main (ADR-0009); carve-out: chore:/build: bootstrap/initial
 #   1. Conventional Commits prefix в message
 #   2. Ссылка на issue (#NNN или Closes #NNN) в message или branch name
 #   3. Ссылка на ADR (docs/decisions/NNNN-*.md) для decision-type changes
@@ -53,6 +54,28 @@ cd "$cwd" 2>/dev/null || {
     exit 0
 }
 
+# --- Extract branch (needed by Rule 4, which runs before message-dependent rules) ---
+
+# fail-open on detached HEAD (returns "HEAD", not "main") / fresh clone (error → "")
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+# --- Rule 4: No direct commits to main (ADR-0009) ---
+# Placed before amend-skip and message rules so it fires first.
+# This means `git commit --amend` on main is also blocked — intentional.
+# ADR commits land on main via `gh pr merge` (API call, hook not triggered) — no carve-out needed.
+# Carve-out: bootstrap/initial meta-commits scoped to chore:/build: prefix with word-boundary
+# to prevent "feat: add initial thing (#N)" from bypassing.
+
+if [ "$branch" = "main" ]; then
+    msg_for_rule4=$(echo "$command" | grep -oE '\-m\s+"[^"]*"' | head -1 | sed -E 's/^-m[ ]+"(.*)"$/\1/')
+    if [ -z "$msg_for_rule4" ]; then
+        msg_for_rule4=$(echo "$command" | grep -oE "\-m\s+'[^']*'" | head -1 | sed -E "s/^-m[ ]+'(.*)'$/\1/")
+    fi
+    if ! echo "$msg_for_rule4" | grep -qE '^(chore|build)(\([a-z0-9_.-]+\))?!?:\s+.*\b(bootstrap|initial)\b'; then
+        json_deny "Direct commits to 'main' are not allowed (ADR-0009). Create a feature branch first: git checkout -b feat/<slug>-<issue-number>. Carve-out: chore:/build: bootstrap/initial commits only."
+    fi
+fi
+
 # --- Extract commit message ---
 
 # Case 1: git commit -m "..."
@@ -65,10 +88,10 @@ if echo "$command" | grep -qE '\-\-amend'; then
     exit 0
 fi
 
-msg=$(echo "$command" | grep -oE '\-m\s+"[^"]*"' | head -1 | sed -E 's/^-m\s+"(.*)"$/\1/')
+msg=$(echo "$command" | grep -oE '\-m\s+"[^"]*"' | head -1 | sed -E 's/^-m[ ]+"(.*)"$/\1/')
 
 if [ -z "$msg" ]; then
-    msg=$(echo "$command" | grep -oE "\-m\s+'[^']*'" | head -1 | sed -E "s/^-m\s+'(.*)'$/\1/")
+    msg=$(echo "$command" | grep -oE "\-m\s+'[^']*'" | head -1 | sed -E "s/^-m[ ]+'(.*)'$/\1/")
 fi
 
 if [ -z "$msg" ]; then
@@ -84,8 +107,6 @@ if ! echo "$msg" | grep -qE "$cc_regex"; then
 fi
 
 # --- Rule 2: Issue reference ---
-
-branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
 has_issue_ref=false
 if echo "$msg" | grep -qE '#[0-9]+'; then
