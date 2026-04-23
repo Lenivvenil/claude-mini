@@ -6,7 +6,7 @@
 .vscode/
 .idea/
 *.swp
-plan.md
+/plan.md
 *.bak
 deploy-to-github.sh
 create-backlog.sh
