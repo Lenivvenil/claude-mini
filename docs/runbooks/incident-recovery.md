@@ -40,6 +40,9 @@ git commit -m "..."
 
 # восстановить
 cd ~/projects/claude-mini && ./bootstrap/universal-setup.sh --install
+# Если exit 4: diff выше покажет что отличается.
+# Запусти с --force чтобы перезаписать, или восстанови файлы вручную перед re-run.
+#   ./bootstrap/universal-setup.sh --install --force
 ```
 
 ### MCP server не отвечает
