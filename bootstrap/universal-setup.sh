@@ -26,6 +26,11 @@
 
 set -uo pipefail
 
+# Augment PATH for subshell invocations (e.g. Claude Code slash commands) where
+# ~/.zshrc has not been sourced. Covers mise/uv user installs, Intel Homebrew,
+# and Apple Silicon Homebrew. Idempotent if dirs are already present.
+export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+
 # --- Colors & helpers ---
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; CYN='\033[0;36m'; NC='\033[0m'
 log()  { printf "${CYN}[setup]${NC} %s\n" "$*"; }
