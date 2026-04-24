@@ -284,7 +284,42 @@ jq --version
 rg --version
 ```
 
-### 19. Создать platform.done flag
+### 19. SSH connection stability (keepalive)
+
+SSH connections drop during long advisor calls (30–90s silent) when the client has no keepalive configured. Apply on both sides.
+
+**На mini (server-side) — `/etc/ssh/sshd_config`:**
+
+Add or update (do not append a duplicate) the following lines:
+```
+ClientAliveInterval 60
+ClientAliveCountMax 3
+```
+
+Restart sshd:
+```bash
+sudo launchctl kickstart -k system/com.openssh.sshd
+```
+
+Verify effective config (first-match wins; checks include files):
+```bash
+sudo sshd -T | grep -i clientalive
+# Expected: clientaliveinterval 60 / clientalivecountmax 3
+# Total detection window: 3 minutes
+```
+
+**На MacBook (client-side) — `~/.ssh/config`:**
+
+Add or update the `Host mini` block (do not append a duplicate block):
+```
+Host mini
+  ServerAliveInterval 60
+  ServerAliveCountMax 3
+```
+
+**Проверка через preflight:** `mini-preflight.sh` проверяет наличие `ClientAliveInterval` в sshd config и покажет `✓` если всё верно.
+
+### 20. Создать platform.done flag
 
 После успешного прохождения всех предыдущих шагов:
 
