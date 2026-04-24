@@ -1,6 +1,6 @@
 # 0010. Abort installer on drift unless --force is passed
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-23
 * Deciders: venil
 * Tags: installer, contract, idempotency, safety
@@ -168,6 +168,8 @@ Option C отвергается как расширение публичного
 Интеграционный тест добавляется в тот же `baseline-verification` CI job.
 Перед merge'ем проверить, что CI job трактует любой non-zero exit как failure
 (иначе exit 4 проигнорируется и smoke-тест драйверит ложный green).
+
+**Note (2026-04-24):** `baseline-verification` CI job does not yet exist in `.github/workflows/`. Confirmation items 1–4 above are verified locally only. Creating the CI job is tracked separately.
 
 ## Re-visit Trigger
 
