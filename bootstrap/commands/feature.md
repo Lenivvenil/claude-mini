@@ -17,13 +17,23 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 
 \`\`\`
 [ ] 1. Read issue #$ARGUMENTS acceptance criteria
+[ ]    1b. Only if docs/domain/ is empty, or the issue scope obviously diverges
+[ ]        from docs/domain/vocabulary.md: invoke @agent-domain-researcher
+[ ]        (run after reading the issue so you know whether the domain is in scope)
 [ ] 2. Run /plan $ARGUMENTS
 [ ] 3. Call advisor() to critique plan
 [ ] 4. Determine if ADR needed (principle: architecturally significant?)
-[ ]    4a. If yes: Invoke @agent-solutions-architect → /adr → merge ADR PR
+[ ]    4a. If yes: invoke @agent-solutions-architect → /adr
+[ ]    4b. After ADR draft: invoke @agent-adr-reviewer; wait for APPROVE verdict
+[ ]    4c. Merge ADR PR before /implement
 [ ] 5. Run /implement
 [ ] 6. Call advisor() before declaring done (inside /implement)
+[ ]    6a. Only if docs/domain/ was modified during /implement:
+[ ]        invoke @agent-domain-reviewer; wait for APPROVE verdict
 [ ] 7. Run /review
+[ ]    7a. Only if PR touches prod-bound paths (bootstrap/, .github/workflows/,
+[ ]        .git/hooks/) or is labelled prod-bound:
+[ ]        invoke @agent-security-reviewer inside this review phase
 [ ] 8. Run /codex-review
 [ ] 9. Resolve findings; decide on disagreements
 [ ] 10. git commit (governance hook checks)
