@@ -4,10 +4,10 @@
 
 set -uo pipefail
 
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+RED=$'\033[0;31m'
+YELLOW=$'\033[0;33m'
+GREEN=$'\033[0;32m'
+NC=$'\033[0m'
 
 ok()   { printf "  ${GREEN}✓${NC} %s\n" "$1"; }
 warn() { printf "  ${YELLOW}!${NC} %s\n" "$1"; }
@@ -98,9 +98,9 @@ fi
 
 echo ""
 if [ $failed -eq 0 ]; then
-    printf "${GREEN}Готов к сессии.${NC}\n"
+    printf '%sГотов к сессии.%s\n' "$GREEN" "$NC"
     exit 0
 else
-    printf "${RED}$failed блокирующих проблем.${NC} Исправь перед началом работы.\n"
+    printf '%s%d блокирующих проблем.%s Исправь перед началом работы.\n' "$RED" "$failed" "$NC"
     exit 1
 fi

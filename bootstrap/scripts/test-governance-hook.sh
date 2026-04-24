@@ -14,7 +14,7 @@ set -uo pipefail
 
 HOOK="${1:-$HOME/.claude/hooks/pre-commit-governance.sh}"
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; NC=$'\033[0m'
 pass() { printf "  ${GREEN}✓${NC} %s\n" "$1"; }
 fail() { printf "  ${RED}✗${NC} %s\n" "$1"; FAILURES=$((FAILURES+1)); }
 
@@ -29,7 +29,7 @@ if [ ! -x "$HOOK" ]; then
 fi
 
 if ! command -v jq >/dev/null 2>&1; then
-    printf "${RED}FATAL:${NC} jq is required but not installed\n" >&2
+    printf '%sFATAL:%s jq is required but not installed\n' "$RED" "$NC" >&2
     exit 1
 fi
 
@@ -173,7 +173,7 @@ assert_allowed \
 echo ""
 echo "=== Summary ==="
 if [ "$FAILURES" -eq 0 ]; then
-    printf "${GREEN}All tests passed.${NC} Governance hook is working correctly.\n"
+    printf '%sAll tests passed.%s Governance hook is working correctly.\n' "$GREEN" "$NC"
     exit 0
 else
     printf "${RED}%d test(s) failed.${NC} See output above.\n" "$FAILURES"

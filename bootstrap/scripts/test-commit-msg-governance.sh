@@ -18,7 +18,7 @@ if [ ! -f "$HOOK" ]; then
     HOOK="$HOME/.claude/git-hooks/commit-msg"
 fi
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; NC=$'\033[0m'
 pass() { printf "  ${GREEN}✓${NC} %s\n" "$1"; }
 fail() { printf "  ${RED}✗${NC} %s\n" "$1"; FAILURES=$((FAILURES+1)); }
 
@@ -298,9 +298,9 @@ echo ""
 # ===== SUMMARY =====
 echo "=== Summary ==="
 if [ "$FAILURES" -eq 0 ]; then
-    printf "  ${GREEN}All tests passed${NC}\n"
+    printf '  %sAll tests passed%s\n' "$GREEN" "$NC"
     exit 0
 else
-    printf "  ${RED}%d test(s) failed${NC}\n" "$FAILURES"
+    printf '  %s%d test(s) failed%s\n' "$RED" "$FAILURES" "$NC"
     exit 1
 fi
