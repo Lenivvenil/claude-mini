@@ -27,9 +27,19 @@
 **Feature pipeline (канонический путь):**
 
 ```
-/task-to-issue (опц.) → /plan <issue> → /adr (если нужно) → /implement 
+/task-to-issue (опц.) → /plan <issue> → /adr (если нужно) → /implement
   → /review → /codex-review → git commit (governance) → gh pr create
 ```
+
+**Conditional agent gates** (вызываются в рамках соответствующей стадии):
+
+| Стадия | Агент | Условие |
+|---|---|---|
+| step 1b (после чтения issue, до /plan) | `domain-researcher` | `docs/domain/` пуст или scope выходит за его границы |
+| после `/adr` | `adr-reviewer` | всегда после черновика |
+| после `/implement` | `domain-reviewer` | если `docs/domain/` изменялся |
+| внутри `/review` | `security-reviewer` | prod-bound: `bootstrap/`, `.github/workflows/`, `.git/hooks/`, или label `prod-bound` |
+| еженедельно | `backlog-groomer` | **out-of-band**, не входит в pipeline |
 
 **Оркестратор одной кнопкой:** `/feature <issue-number>` — ведёт по всем стадиям через TodoWrite.
 
@@ -43,10 +53,10 @@ Read-only критики. Вызов: `@agent-<name>`.
 |---|---|
 | `adr-reviewer` | После черновика ADR — проверит полноту секций MADR 4.0 |
 | `domain-reviewer` | После правки `docs/domain/` — ловит vocabulary drift, нарушения BC |
-| `domain-researcher` | Greenfield BC / новый домен — перед первой строчкой кода |
+| `domain-researcher` | Когда `docs/domain/` пуст или устарел — перед `/plan` (триггер: missing-or-stale, не только greenfield) |
 | `solutions-architect` | Значимый технический выбор — library, integration contract, данные |
-| `backlog-groomer` | Раз в неделю — предлагает triage, сам не мутирует |
-| `security-reviewer` | Перед prod-значимым PR — OWASP, leaked secrets, auth/authz |
+| `backlog-groomer` | **Out-of-band by design.** Раз в неделю — предлагает triage, сам не мутирует. Не входит в feature pipeline. |
+| `security-reviewer` | Перед prod-значимым PR — затрагивает `bootstrap/`, `.github/workflows/`, `.git/hooks/`, или label `prod-bound` |
 
 ## MCP tooling
 

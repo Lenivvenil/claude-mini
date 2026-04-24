@@ -1,6 +1,6 @@
 # 0013. Wire agent invocations into /feature as gating steps
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-24
 * Deciders: venil
 * Tags: pipeline, orchestration, agents

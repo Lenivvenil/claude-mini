@@ -16,6 +16,20 @@
 
 ## Шаги
 
+### 0. Domain check (после чтения issue, до /plan)
+
+После того как прочитал issue — убедись что `docs/domain/` актуален:
+```bash
+ls docs/domain/  # должен содержать overview.md + vocabulary.md
+```
+
+Если пуст или данные явно устарели — сначала:
+```
+@agent-domain-researcher
+```
+
+Подробнее: `docs/decisions/0014-feature-checklist-after-agent-wiring.md`.
+
 ### 1. Issue first
 
 Если задачи ещё нет в GitHub:
@@ -87,6 +101,15 @@ Claude:
 
 Если plan дрейфует в процессе — Claude должен STOP и обновить plan.md. Если ты видишь дрейф без обновления — красный флаг, скажи.
 
+### 5b. Domain review (если docs/domain/ изменялся)
+
+Только если `/implement` трогал файлы в `docs/domain/`:
+```
+@agent-domain-reviewer
+```
+
+Дождись APPROVE перед `/review`.
+
 ### 6. Review
 
 ```
@@ -94,6 +117,13 @@ Claude:
 ```
 
 Claude сам критикует свой diff по severity.
+
+Если PR затрагивает prod-bound пути (`bootstrap/`, `.github/workflows/`, `.git/hooks/`) или имеет label `prod-bound` — **в рамках той же фазы /review, до перехода к /codex-review**:
+```
+@agent-security-reviewer
+```
+
+`security-reviewer` — дополнение к `/review`, не замена и не отдельный шаг после него.
 
 ### 7. Codex review (two-voice)
 
