@@ -1,6 +1,6 @@
 # 0012. Keep shellcheck full-repo scan and eliminate pre-existing debt atomically
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-24
 * Deciders: venil
 * Tags: ci, tooling, quality, governance
