@@ -70,18 +70,19 @@ fi
 
 # --- Governance hook smoke-test ---
 echo ""
-echo "Governance hook smoke-test (должен отвергнуть bad commit):"
+echo "Governance hook (все 6 паттернов из ADR-0004):"
+test_script="$HOME/.claude/scripts/test-governance-hook.sh"
 hook_path="$HOME/.claude/hooks/pre-commit-governance.sh"
-if [ -x "$hook_path" ]; then
-    test_input='{"tool_input":{"command":"git commit -m \"bad msg\""},"cwd":"'"$PWD"'"}'
-    result=$(echo "$test_input" | "$hook_path" 2>/dev/null; echo "exit=$?")
-    if echo "$result" | grep -q "exit=2"; then
-        ok "Hook корректно отвергает bad commit"
-    else
-        fail "Hook должен был exit 2, но вернул: $result"
-    fi
+if [ ! -x "$hook_path" ]; then
+    warn "Governance hook не установлен: $hook_path"
+elif [ ! -x "$test_script" ]; then
+    warn "Hook test script не установлен: $test_script"
 else
-    warn "Governance hook не установлен или неисполняем"
+    if bash "$test_script" >/dev/null 2>&1; then
+        ok "Hook smoke-test: все 6 паттернов прошли"
+    else
+        fail "Hook smoke-test упал — запусти: bash $test_script"
+    fi
 fi
 
 # --- gh & codex auth ---

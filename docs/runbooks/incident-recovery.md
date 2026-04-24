@@ -45,6 +45,59 @@ cd ~/projects/claude-mini && ./bootstrap/universal-setup.sh --install
 #   ./bootstrap/universal-setup.sh --install --force
 ```
 
+### Governance hook молчит (пропускает всё)
+
+**Симптомы:** плохие коммиты (без CC prefix, без issue-ref) проходят без ошибки — Claude коммитит что угодно.
+
+**Отличие от "hook blocks everything":** там hook активен, но слишком строгий. Здесь hook вообще не вызывается.
+
+**Быстрая диагностика:**
+```bash
+# Проверяет hook binary напрямую — минуя settings.json и Claude Code
+bash ~/.claude/scripts/test-governance-hook.sh
+# Ожидание: All tests passed.
+# Если failed → hook binary сломан (см. ниже).
+# Если passed → hook binary рабочий, но Claude Code его не вызывает (см. tilde path).
+```
+
+**Причина 1: Tilde path в settings.json (самая частая)**
+```bash
+jq '.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[] | select(.type == "command") | .command' \
+    ~/.claude/settings.json
+# Если видишь "~/.claude/hooks/..." вместо "/Users/venil/.claude/hooks/..."
+# → Claude Code передаёт command в exec без shell expansion, тильда остаётся literal
+```
+
+Исправление:
+```bash
+# Пересмотри hook path в settings.json — должен быть абсолютным
+# Или переустанови:
+cd ~/projects/claude-mini && ./bootstrap/universal-setup.sh --install
+```
+
+**Причина 2: Hook не выставлен исполняемым**
+```bash
+ls -la ~/.claude/hooks/pre-commit-governance.sh
+# Должен быть -rwxr-xr-x
+chmod +x ~/.claude/hooks/pre-commit-governance.sh
+```
+
+**Причина 3: jq не установлен**
+```bash
+which jq || echo "NOT FOUND"
+# Без jq hook падает молча: input не парсится, command пуст, hook пропускает всё
+brew install jq   # macOS
+```
+
+**Причина 4: PreToolUse hook не прописан в settings.json вообще**
+```bash
+jq '.hooks.PreToolUse' ~/.claude/settings.json
+# Должен быть непустым массивом с matcher: "Bash"
+# Если null → переустанови: ./bootstrap/universal-setup.sh --install
+```
+
+**Важно:** `test-governance-hook.sh` тестирует hook binary напрямую. Он не может обнаружить tilde-path проблему (hook вызывается, значит binary рабочий). Если тест прошёл, но плохие коммиты всё равно проходят через Claude — проблема в settings.json, не в hook.
+
 ### MCP server не отвечает
 
 **Симптомы:** `@mcp__github__...` fails, Serena не индексирует.
