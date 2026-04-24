@@ -81,6 +81,14 @@ else
 fi
 
 echo ""
+echo "SSH keepalive:"
+if grep -rq '^[[:space:]]*ClientAliveInterval[[:space:]]' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/ 2>/dev/null; then
+    ok "sshd ClientAliveInterval configured (SSH drops during advisor calls prevented)"
+else
+    warn "sshd ClientAliveInterval не задан — SSH может обрываться на длинных advisor-вызовах; проверь шаг 19 в mac-mini-2018.md (и ClientAliveCountMax)"
+fi
+
+echo ""
 echo "Claude Code:"
 if command -v claude >/dev/null 2>&1; then
     ok "claude: $(claude --version 2>/dev/null | head -1)"
