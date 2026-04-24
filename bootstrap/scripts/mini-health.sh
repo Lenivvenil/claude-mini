@@ -85,6 +85,26 @@ else
     fi
 fi
 
+# --- Commit-msg governance hook (ADR-0011, per-project) ---
+echo ""
+echo "Commit-msg governance hook:"
+staged_hook="$HOME/.claude/git-hooks/commit-msg"
+if [ ! -x "$staged_hook" ]; then
+    warn "Staged hook not found: $staged_hook (run universal-setup.sh --install)"
+else
+    ok "Staged hook present: $staged_hook"
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        repo_hook="$(git rev-parse --git-dir)/hooks/commit-msg"
+        if [ ! -f "$repo_hook" ]; then
+            warn "commit-msg hook not installed in this repo (run: ./bootstrap/universal-setup.sh --hook-this-repo)"
+        elif cmp -s "$staged_hook" "$repo_hook"; then
+            ok "Repo hook up-to-date: $repo_hook"
+        else
+            warn "Repo hook differs from staged version (run: ./bootstrap/universal-setup.sh --hook-this-repo --force)"
+        fi
+    fi
+fi
+
 # --- gh & codex auth ---
 echo ""
 echo "Auth:"

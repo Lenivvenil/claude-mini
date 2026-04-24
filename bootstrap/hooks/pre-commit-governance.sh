@@ -100,7 +100,7 @@ fi
 
 # --- Rule 1: Conventional Commits prefix ---
 
-cc_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:\s+.+'
+cc_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]].+'
 
 if ! echo "$msg" | grep -qE "$cc_regex"; then
     json_deny "Commit message does not follow Conventional Commits. Expected: type(scope?)!?: subject. Allowed types: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr. Got: '$msg'"

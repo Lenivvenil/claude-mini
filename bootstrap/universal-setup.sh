@@ -9,11 +9,13 @@
 #   4. Добавляет env vars в ~/.zshrc (idempotent)
 #   5. Создаёт symlinks ~/bin/mini-* на session-scripts
 #   6. Копирует templates в ~/.claude/templates/claude-mini/
+#   7. Stages commit-msg governance hook в ~/.claude/git-hooks/commit-msg
 #
 # Флаги:
-#   --check    dry-run: показать diff без применения
-#   --install  применить
-#   --force    overwrite files that differ from the repo source (required on drift)
+#   --check         dry-run: показать diff без применения
+#   --install       применить
+#   --force         overwrite files that differ from the repo source (required on drift)
+#   --hook-this-repo  install commit-msg hook into .git/hooks/ of current directory
 #
 # Exit codes:
 #   0  ok (including "no-op — already installed")
@@ -45,13 +47,16 @@ while [ $# -gt 0 ]; do
         --check) MODE="check"; shift ;;
         --install) MODE="install"; shift ;;
         --force) FORCE=1; shift ;;
+        --hook-this-repo) MODE="hook-this-repo"; shift ;;
         -h|--help)
             cat <<HELP
-Usage: $0 [--check|--install] [--force]
+Usage: $0 [--check|--install|--hook-this-repo] [--force]
 
-  --check     dry-run: show what would happen (exits 0; drift reported in stdout)
-  --install   apply changes (exits 4 if drift detected; re-run with --force to overwrite)
-  --force     overwrite files that differ from the repo source (required on drift)
+  --check           dry-run: show what would happen (exits 0; drift reported in stdout)
+  --install         apply changes (exits 4 if drift detected; re-run with --force to overwrite)
+  --force           overwrite files that differ from the repo source (required on drift)
+  --hook-this-repo  install commit-msg governance hook into .git/hooks/ of the current repo
+                    (ADR-0011: per-project opt-in, requires --install to have been run first)
 HELP
             exit 0
             ;;
@@ -60,7 +65,48 @@ HELP
 done
 
 if [ -z "$MODE" ]; then
-    die "Specify --check or --install. See $0 --help"
+    die "Specify --check, --install, or --hook-this-repo. See $0 --help"
+fi
+
+# --- Early exit: --hook-this-repo mode ---
+# Handled separately before prerequisite checks to keep it lightweight.
+if [ "$MODE" = "hook-this-repo" ]; then
+    STAGED_HOOK="$HOME/.claude/git-hooks/commit-msg"
+
+    if [ ! -f "$STAGED_HOOK" ]; then
+        err "Staged hook not found: $STAGED_HOOK"
+        echo "  Run './bootstrap/universal-setup.sh --install' first to stage the hook." >&2
+        exit 2
+    fi
+
+    GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || {
+        err "Not a git repository (current directory: $PWD)"
+        exit 3
+    }
+    DEST_HOOK="$GIT_DIR/hooks/commit-msg"
+
+    mkdir -p "$GIT_DIR/hooks"
+
+    if [ -f "$DEST_HOOK" ] && ! cmp -s "$STAGED_HOOK" "$DEST_HOOK"; then
+        if [ "$FORCE" != "1" ]; then
+            warn "A different commit-msg hook already exists at $DEST_HOOK"
+            echo "  Use --force to overwrite, or inspect with: diff $DEST_HOOK $STAGED_HOOK" >&2
+            exit 4
+        fi
+        warn "Overwriting existing commit-msg hook (--force)"
+    fi
+
+    if [ -f "$DEST_HOOK" ] && cmp -s "$STAGED_HOOK" "$DEST_HOOK"; then
+        ok "commit-msg hook already installed and up-to-date"
+        exit 0
+    fi
+
+    cp "$STAGED_HOOK" "$DEST_HOOK"
+    chmod +x "$DEST_HOOK"
+    ok "commit-msg governance hook installed → $DEST_HOOK"
+    echo "  To verify: git commit -m 'bad message' (should be blocked)"
+    echo "  To remove: rm $DEST_HOOK"
+    exit 0
 fi
 
 # --- Paths ---
@@ -112,7 +158,7 @@ fi
 
 # --- Ensure ~/.claude dirs exist ---
 log "Ensuring ~/.claude/ directories..."
-for d in agents skills commands hooks scripts templates/claude-mini; do
+for d in agents skills commands hooks git-hooks scripts templates/claude-mini; do
     if [ "$MODE" = "install" ]; then
         mkdir -p "$CLAUDE_HOME/$d"
     fi
@@ -198,6 +244,21 @@ for f in "$REPO_ROOT"/bootstrap/hooks/*.sh; do
     [ -f "$f" ] || continue
     copy_file "$f" "$CLAUDE_HOME/hooks/$(basename "$f")"
 done
+
+# --- Stage commit-msg governance hook for per-project install (ADR-0011) ---
+# Copies commit-msg-governance.sh → ~/.claude/git-hooks/commit-msg (no extension — git convention).
+# The hook is NOT installed into any repo here. Use --hook-this-repo inside a target repo.
+log "Staging commit-msg governance hook..."
+COMMIT_MSG_SRC="$REPO_ROOT/bootstrap/hooks/commit-msg-governance.sh"
+COMMIT_MSG_DST="$CLAUDE_HOME/git-hooks/commit-msg"
+if [ -f "$COMMIT_MSG_SRC" ]; then
+    copy_file "$COMMIT_MSG_SRC" "$COMMIT_MSG_DST"
+    if [ "$MODE" = "install" ] && [ -f "$COMMIT_MSG_DST" ]; then
+        chmod +x "$COMMIT_MSG_DST"
+    fi
+else
+    warn "commit-msg-governance.sh not found in bootstrap/hooks/ — skipping"
+fi
 
 # --- Copy scripts ---
 log "Copying scripts..."
