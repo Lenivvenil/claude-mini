@@ -1,7 +1,7 @@
 # Bounded Context: claude-mini-pipeline
 
 **Version:** 2026-04-24
-**Status:** draft — pending domain-reviewer approval
+**Status:** draft — approved by domain-reviewer; pending PR merge
 
 ## Purpose
 

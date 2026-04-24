@@ -1,7 +1,7 @@
 # Ubiquitous Language — claude-mini-pipeline
 
 **Version:** 2026-04-24
-**Status:** draft — pending domain-reviewer approval
+**Status:** draft — approved by domain-reviewer; pending PR merge
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
