@@ -19,7 +19,7 @@ set -uo pipefail
 # --- Helpers ---
 
 json_deny() {
-    local reason="$1"
+    local reason="${1//\"/\\\"}"
     cat <<JSON
 {
   "hookSpecificOutput": {
