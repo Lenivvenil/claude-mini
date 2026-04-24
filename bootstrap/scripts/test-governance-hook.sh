@@ -116,6 +116,13 @@ assert_allowed() {
 
 echo "Bad commits (must be blocked with exit 2):"
 
+# No -m flag — exercises quoted-reason JSON path (issue #20 regression guard)
+# Before fix: json_deny emits malformed JSON → jq parse fails → reason="" → test fails
+assert_blocked \
+    "no -m flag — deny reason is valid JSON" \
+    'git commit' \
+    "without -m"
+
 # Rule 1: no Conventional Commits prefix
 assert_blocked \
     "no CC prefix" \
