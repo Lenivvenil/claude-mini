@@ -436,14 +436,14 @@ fi
 echo ""
 log "Done ($MODE mode)"
 if [ "$DRIFT" -gt 0 ] && [ "$MODE" = "install" ]; then
-    warn "drift: $DRIFT file(s) differ from repo source — re-run with --force to overwrite."
+    warn "drift: $DRIFT file(s) differ from repo source — re-run with --force to apply: ./bootstrap/universal-setup.sh --install --force"
     exit 4
 fi
 if [ "$MODE" = "check" ]; then
     if [ "$DRIFT" -eq 0 ]; then
         ok "no drift — idempotent ✓"
     else
-        warn "drift: $DRIFT item(s) differ — run '--install' to see diffs, '--install --force' to overwrite."
+        warn "drift: $DRIFT item(s) differ — run '--install' to see diffs, '--install --force' to apply."
     fi
 else
     echo "  Перезапусти shell или выполни: source ~/.zshrc"
