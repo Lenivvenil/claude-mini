@@ -108,10 +108,20 @@ fi
 # --- gh & codex auth ---
 echo ""
 echo "Auth:"
-gh auth status >/dev/null 2>&1 && ok "gh auth" || warn "gh auth inactive"
-command -v codex >/dev/null 2>&1 && \
-    (codex login status 2>/dev/null | grep -qi "ok\|logged" && ok "codex auth" || warn "codex auth uncertain") || \
+if gh auth status >/dev/null 2>&1; then
+    ok "gh auth"
+else
+    warn "gh auth inactive"
+fi
+if command -v codex >/dev/null 2>&1; then
+    if codex login status 2>/dev/null | grep -qi "ok\|logged"; then
+        ok "codex auth"
+    else
+        warn "codex auth uncertain"
+    fi
+else
     warn "codex not installed"
+fi
 
 # --- Summary ---
 echo ""

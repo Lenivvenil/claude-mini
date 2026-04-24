@@ -169,7 +169,7 @@ done
 copy_file() {
     local src="$1"
     local dst="$2"
-    local name="${dst#$HOME/}"
+    local name="${dst#"$HOME"/}"
 
     if [ ! -f "$src" ]; then
         warn "source missing: $src"
@@ -371,7 +371,7 @@ declare -a ENV_LINES=(
     'export CLAUDE_CODE_ENABLE_EXPERIMENTAL_ADVISOR_TOOL=1'
     'export ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-6'
     'export ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-7'
-    'export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"'
+    "export SOPS_AGE_KEY_FILE=\"\$HOME/.config/sops/age/keys.txt\""
 )
 
 for line in "${ENV_LINES[@]}"; do
@@ -408,20 +408,20 @@ for pair in "${SCRIPT_LINKS[@]}"; do
     dst="$BIN_DIR/$name"
 
     if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
-        ok "~/bin/$name (symlink OK)"
+        ok "$HOME/bin/$name (symlink OK)"
         continue
     fi
 
     if [ -e "$dst" ] && [ "$FORCE" != "1" ]; then
-        warn "~/bin/$name exists (not a symlink or points elsewhere; --force to replace)"
+        warn "$HOME/bin/$name exists (not a symlink or points elsewhere; --force to replace)"
         continue
     fi
 
     if [ "$MODE" = "check" ]; then
-        drift "~/bin/$name (would create symlink → $src)"
+        drift "$HOME/bin/$name (would create symlink → $src)"
     else
         ln -sf "$src" "$dst"
-        ok "~/bin/$name → $src"
+        ok "$HOME/bin/$name → $src"
     fi
 done
 

@@ -10,10 +10,14 @@ if [ ! -d "$ADR_DIR" ]; then
     exit 0
 fi
 
-latest=$(ls -1 "$ADR_DIR" 2>/dev/null \
-    | grep -oE '^[0-9]{4}' \
-    | sort -n \
-    | tail -1 || true)
+latest=""
+for _f in "$ADR_DIR"/[0-9][0-9][0-9][0-9]-*.md; do
+    [ -f "$_f" ] || continue
+    _num=$(basename "$_f" | cut -c1-4)
+    if [ -z "$latest" ] || [ "$((10#$_num))" -gt "$((10#$latest))" ]; then
+        latest="$_num"
+    fi
+done
 
 if [ -z "$latest" ]; then
     echo "0001"
