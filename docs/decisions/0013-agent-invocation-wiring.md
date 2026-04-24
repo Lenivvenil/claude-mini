@@ -38,6 +38,7 @@ Chosen option: **Option B** (`/feature` as central orchestrator), because it is 
 * `/feature` skill grows more complex: conditional logic for 5 agents increases maintenance surface.
 * Risk of false-positive invocations: `solutions-architect` may fire on trivial plan items if conditions are underspecified.
 * Initial implementation effort: wiring requires a follow-up PR after this ADR merges; pipeline is still manual until that PR ships.
+* Reversal is low-friction: undoing Option B means editing one block in the `/feature` skill's TodoWrite checklist. It does not require migrating logic across 6 skill files. If the Re-visit Trigger fires, rollback cost is a single PR.
 
 ## Pros and Cons of the Options
 
