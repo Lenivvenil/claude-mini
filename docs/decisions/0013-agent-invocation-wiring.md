@@ -26,6 +26,22 @@ Pipeline in `CLAUDE.md:27-34` declares 6 agents in an agents table but does not 
 
 Chosen option: **Option B** (`/feature` as central orchestrator), because it is the only option that satisfies Principle 4 (knowledge in tools) without fragmenting orchestration logic. Principle 3 authorizes automation of read-only operations — agents qualify. `/feature` already owns the canonical pipeline; adding agent gates extends that ownership consistently. Conditional logic (`adr-needed`, `docs/domain/` change, prod-bound PR) is naturally available at the `/feature` level, not inside individual skills.
 
+### Canonical stage → agent map
+
+| Pipeline stage | Agent | Condition |
+|---|---|---|
+| pre-`/plan` | `domain-researcher` | greenfield BC only — no current pipeline stage; must be added |
+| `/plan` | `solutions-architect` | significant tech choice (`adr-needed` label or decider judgement) |
+| `/adr` | `adr-reviewer` | after draft is written |
+| any `docs/domain/` edit | `domain-reviewer` | any stage — trigger is file path, not pipeline step |
+| `/review` phase | `security-reviewer` | prod-bound change only |
+| out-of-band (weekly) | `backlog-groomer` | intentionally outside the feature pipeline |
+
+Notes:
+- `security-reviewer` belongs inside the `/review` phase (alongside `/review` and `/codex-review`), not as a separate pre-PR step. The review phase = `/review` + `/codex-review` + conditional specialized critics.
+- `domain-reviewer` is not tied to `/implement` — it fires whenever `docs/domain/` is modified, regardless of which stage caused it.
+- `domain-researcher` has no current pipeline stage; the map above exposes this as a gap to address in the implementation PR.
+
 ### Positive Consequences
 
 * Pipeline becomes self-documenting — Principle 4 satisfied.
