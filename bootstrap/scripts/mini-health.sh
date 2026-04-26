@@ -89,16 +89,28 @@ fi
 echo ""
 echo "Commit-msg governance hook:"
 staged_hook="$HOME/.claude/git-hooks/commit-msg"
+commit_msg_test="$HOME/.claude/scripts/test-commit-msg-governance.sh"
 if [ ! -x "$staged_hook" ]; then
     warn "Staged hook not found: $staged_hook (run universal-setup.sh --install)"
 else
     ok "Staged hook present: $staged_hook"
     if git rev-parse --git-dir >/dev/null 2>&1; then
-        repo_hook="$(git rev-parse --git-dir)/hooks/commit-msg"
+        _git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null) || _git_dir=$(cd "$(git rev-parse --git-dir)" && pwd)
+        repo_hook="$_git_dir/hooks/commit-msg"
         if [ ! -f "$repo_hook" ]; then
             warn "commit-msg hook not installed in this repo (run: ./bootstrap/universal-setup.sh --hook-this-repo)"
         elif cmp -s "$staged_hook" "$repo_hook"; then
             ok "Repo hook up-to-date: $repo_hook"
+            # Content matches — also verify behaviour (guards against silent logic regression)
+            if [ -x "$commit_msg_test" ]; then
+                if bash "$commit_msg_test" "$repo_hook" >/dev/null 2>&1; then
+                    ok "Commit-msg smoke-test passed"
+                else
+                    fail "Commit-msg smoke-test failed — run: bash \"$commit_msg_test\" \"$repo_hook\""
+                fi
+            else
+                warn "Commit-msg smoke-test script not found: $commit_msg_test (run universal-setup.sh --install)"
+            fi
         else
             warn "Repo hook differs from staged version (run: ./bootstrap/universal-setup.sh --hook-this-repo --force)"
         fi
