@@ -114,10 +114,10 @@ else
     warn "gh auth inactive"
 fi
 if command -v codex >/dev/null 2>&1; then
-    if codex login status 2>/dev/null | grep -qi "ok\|logged"; then
+    if timeout 10 codex login status 2>/dev/null | grep -qi "ok\|logged"; then
         ok "codex auth"
     else
-        warn "codex auth uncertain"
+        warn "codex auth uncertain or startup slow — fix: rm ~/.codex/auth.json && codex login --device-auth"
     fi
 else
     warn "codex not installed"

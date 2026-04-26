@@ -45,10 +45,10 @@ else
 fi
 
 if command -v codex >/dev/null 2>&1; then
-    if codex login status 2>/dev/null | grep -qi "logged in\|authenticated\|ok"; then
+    if timeout 10 codex login status 2>/dev/null | grep -qi "logged in\|authenticated\|ok"; then
         ok "codex login активен"
     else
-        warn "codex login статус неясен — проверь: codex login status"
+        warn "codex login статус неясен или startup завис — fix: rm ~/.codex/auth.json && codex login --device-auth"
     fi
 else
     warn "codex CLI не установлен (opt-in; нужен для /codex-review)"
