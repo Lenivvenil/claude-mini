@@ -78,6 +78,8 @@ advisor("Review this plan against codebase. Missing edge cases? ADR violations?"
 
 Дождись merge ADR PR до `/implement`.
 
+If an ADR was authored: after the ADR PR merges, re-read `plan.md §4` — does the Chosen approach match the ADR's Decision Outcome? Update `plan.md` if not, before running `/implement`. The ADR interview can change the mechanism relative to what `plan.md` described before the interview. (Evidence: `docs/runbooks/first-feature-session-log.md` Gap 1.)
+
 ### 5. Implementation
 
 Before running `/implement`, create the feature branch if you haven't already:
