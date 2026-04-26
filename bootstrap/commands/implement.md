@@ -63,9 +63,10 @@ Report to operator:
 
 > Implementation complete. Diff summary: {stats}. Advisor was called {N} times. Next steps:
 >
-> 1. `/review` for Claude review.
-> 2. `/codex-review` for second-voice review.
-> 3. Resolve findings, then commit.
+> 1. `/qa` for test coverage + docs currency check.
+> 2. `/review` for Claude review.
+> 3. `/codex-review` for second-voice review.
+> 4. Resolve findings, then commit.
 
 ## Hard rules
 

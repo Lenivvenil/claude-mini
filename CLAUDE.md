@@ -28,7 +28,7 @@
 
 ```
 /task-to-issue (опц.) → /plan <issue> → /adr (если нужно) → /implement
-  → /review → /codex-review → git commit (governance) → gh pr create
+  → /qa → /review → /codex-review → git commit (governance) → gh pr create
 ```
 
 **Conditional agent gates** (вызываются в рамках соответствующей стадии):
