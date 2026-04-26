@@ -24,16 +24,17 @@ if ! command -v codex >/dev/null 2>&1; then
     exit 0
 fi
 
-if ! command -v timeout >/dev/null 2>&1; then
+TIMEOUT_BIN=$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
+if [ -z "$TIMEOUT_BIN" ]; then
     echo "# /codex-review"
     echo ""
-    echo "SKIPPED: 'timeout' command not found. macOS: brew install coreutils"
+    echo "SKIPPED: 'timeout'/'gtimeout' not found. macOS: brew install coreutils (add \$(brew --prefix)/opt/coreutils/libexec/gnubin to PATH)"
     exit 0
 fi
 
 # Fast startup check — codex hangs on startup when Plus OAuth token is stale.
 # Fail in 10s instead of waiting CODEX_TIMEOUT seconds.
-timeout 10 codex --version >/dev/null 2>&1
+"$TIMEOUT_BIN" 10 codex --version >/dev/null 2>&1
 startup_exit=$?
 if [ "$startup_exit" -ne 0 ]; then
     if [ "$startup_exit" -eq 124 ]; then
@@ -133,7 +134,7 @@ tmp_out=$(mktemp)
 tmp_err=$(mktemp)
 trap 'rm -f "$tmp_out" "$tmp_err"' EXIT
 
-timeout "$CODEX_TIMEOUT" codex --model "$CODEX_MODEL" exec "$prompt" \
+"$TIMEOUT_BIN" "$CODEX_TIMEOUT" codex --model "$CODEX_MODEL" exec "$prompt" \
     > "$tmp_out" 2> "$tmp_err"
 exit_code=$?
 

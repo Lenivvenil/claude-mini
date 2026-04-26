@@ -45,7 +45,10 @@ else
 fi
 
 if command -v codex >/dev/null 2>&1; then
-    if timeout 10 codex login status 2>/dev/null | grep -qi "logged in\|authenticated\|ok"; then
+    _tc=$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
+    if [ -n "$_tc" ] && "$_tc" 10 codex login status 2>/dev/null | grep -qi "logged in\|authenticated\|ok"; then
+        ok "codex login активен"
+    elif [ -z "$_tc" ] && codex login status 2>/dev/null | grep -qi "logged in\|authenticated\|ok"; then
         ok "codex login активен"
     else
         warn "codex login статус неясен или startup завис — fix: rm ~/.codex/auth.json && codex login --device-auth"

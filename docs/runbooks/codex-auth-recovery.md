@@ -10,7 +10,7 @@
 
 ```bash
 # 1. Проверить auth.json — когда последний refresh?
-cat ~/.codex/auth.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('auth_mode'), d.get('last_refresh'))"
+python3 -c "import json; d=json.load(open('$HOME/.codex/auth.json')); print(d.get('auth_mode'), d.get('last_refresh'))"
 
 # 2. Подтвердить, что startup зависает
 timeout 5 codex --version 2>&1; echo "exit=$?"
