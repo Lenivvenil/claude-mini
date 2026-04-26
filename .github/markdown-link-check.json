@@ -1,5 +1,6 @@
 {
   "ignorePatterns": [
-    { "pattern": "\\*" }
+    { "pattern": "\\*" },
+    { "pattern": "^https://github\\.com/Lenivvenil/claude-mini/milestones" }
   ]
 }
