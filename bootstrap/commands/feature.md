@@ -27,9 +27,12 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 [ ]    4b. After ADR draft: invoke @agent-adr-reviewer; wait for APPROVE verdict
 [ ]    4c. Merge ADR PR before /implement
 [ ] 5. Run /implement
-[ ] 6. Call advisor() before declaring done (inside /implement)
-[ ]    6a. Only if docs/domain/ was modified during /implement:
+[ ]    5a. (inside /implement) Call advisor() before declaring done — MANDATORY for non-trivial
+[ ]    5b. Only if docs/domain/ was modified during /implement:
 [ ]        invoke @agent-domain-reviewer; wait for APPROVE verdict
+[ ] 6. Run /qa
+[ ]    6a. Review qa-report.md; resolve test gaps or confirm escape hatch accepted
+[ ]    6b. Copy ## QA section from qa-report.md — paste into PR body at step 11
 [ ] 7. Run /review
 [ ]    7a. Only if PR touches prod-bound paths (bootstrap/, .github/workflows/,
 [ ]        .git/hooks/) or is labelled prod-bound:
@@ -37,7 +40,7 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 [ ] 8. Run /codex-review
 [ ] 9. Resolve findings; decide on disagreements
 [ ] 10. git commit (governance hook checks)
-[ ] 11. gh pr create with "Closes #$ARGUMENTS"
+[ ] 11. gh pr create with "Closes #$ARGUMENTS" — include ## QA section in PR body
 [ ] 12. PR ready for human review
 \`\`\`
 
