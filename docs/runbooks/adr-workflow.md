@@ -68,6 +68,14 @@ Governance hook не требует issue-ref для `adr:`-коммитов, н
 
 После review другими участниками (если есть) — merge. Пометь issue closed.
 
+### 6. After merge: sync plan.md
+
+After the ADR PR merges, re-read the feature's `plan.md §4` (the gitignored per-feature plan from `/plan`) and update the Chosen approach to match the ADR's Decision Outcome. Make sure your feature branch includes the merged ADR first — run `git rebase main` or `git pull` so the Decision Outcome is readable from disk. Do this before running `/implement`. The plan is written before the ADR interview; the interview can change the mechanism. If `/implement` starts from a stale plan, the discrepancy will likely surface as a `/review` BLOCK or an `advisor()` finding — catching it here is cheaper.
+
+If the pre-implement `advisor()` call reveals a remaining mismatch, fix `plan.md` before writing code.
+
+Evidence of why this step is load-bearing: `docs/runbooks/first-feature-session-log.md` Gap 1.
+
 ## Если ADR не удаётся
 
 Иногда выходит, что принимать решение рано — нет данных, нет примеров реализации. Честный выход: **ADR со статусом "proposed"** и явной секцией "Open questions". Не заставляй себя решать без оснований.
