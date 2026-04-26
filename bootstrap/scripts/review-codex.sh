@@ -7,8 +7,8 @@
 #   3. git show HEAD (last commit)
 #   4. Against base branch (main/master) — для review уже коммитнутой ветки
 #
-# На exit 4 (quota) или 124 (timeout) создаёт `type:deferred-review` issue
-# и выходит с маркером SKIPPED — не блокирует pipeline.
+# На startup hang (10s timeout), exit 4 (quota) или 124 (timeout) создаёт
+# `type:deferred-review` issue и выходит с маркером SKIPPED — не блокирует pipeline.
 
 set -uo pipefail
 
@@ -21,6 +21,51 @@ if ! command -v codex >/dev/null 2>&1; then
     echo "# /codex-review"
     echo ""
     echo "SKIPPED: codex CLI не установлен. Install: npm i -g @openai/codex"
+    exit 0
+fi
+
+TIMEOUT_BIN=$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
+if [ -z "$TIMEOUT_BIN" ]; then
+    echo "# /codex-review"
+    echo ""
+    echo "SKIPPED: 'timeout'/'gtimeout' not found. macOS: brew install coreutils (add \$(brew --prefix)/opt/coreutils/libexec/gnubin to PATH)"
+    exit 0
+fi
+
+# Fast startup check — codex hangs on startup when Plus OAuth token is stale.
+# Fail in 10s instead of waiting CODEX_TIMEOUT seconds.
+"$TIMEOUT_BIN" 10 codex --version >/dev/null 2>&1
+startup_exit=$?
+if [ "$startup_exit" -ne 0 ]; then
+    if [ "$startup_exit" -eq 124 ]; then
+        startup_reason="startup hung (10s timeout) — likely stale Plus OAuth token"
+        startup_fix="rm ~/.codex/auth.json && codex login --device-auth"
+    else
+        startup_reason="codex --version failed (exit=$startup_exit) — broken install or bad config"
+        startup_fix="check codex installation: codex --version"
+    fi
+    startup_title="Deferred codex review: $(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+    startup_body=$(cat <<STARTBODY
+Codex CLI не прошёл startup check: $startup_reason
+
+**Fix:** \`$startup_fix\`
+**See:** issue #42 (docs/runbooks/codex-auth-recovery.md)
+
+**Branch:** $(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+**Commit:** $(git rev-parse HEAD 2>/dev/null)
+STARTBODY
+    )
+    echo "# /codex-review" >&2
+    echo "" >&2
+    echo "SKIPPED: codex CLI startup failed — $startup_reason. Fix: $startup_fix" >&2
+    if command -v gh >/dev/null 2>&1; then
+        gh issue create \
+            --title "$startup_title" \
+            --body "$startup_body" \
+            --label "type:deferred-review" >/dev/null 2>&1 || true
+        echo "Opened deferred-review issue." >&2
+    fi
+    echo "SKIPPED"
     exit 0
 fi
 
@@ -89,7 +134,7 @@ tmp_out=$(mktemp)
 tmp_err=$(mktemp)
 trap 'rm -f "$tmp_out" "$tmp_err"' EXIT
 
-timeout "$CODEX_TIMEOUT" codex --model "$CODEX_MODEL" exec "$prompt" \
+"$TIMEOUT_BIN" "$CODEX_TIMEOUT" codex --model "$CODEX_MODEL" exec "$prompt" \
     > "$tmp_out" 2> "$tmp_err"
 exit_code=$?
 
