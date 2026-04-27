@@ -12,3 +12,4 @@
 deploy-to-github.sh
 create-backlog.sh
 *.bak*
+.sweep/
