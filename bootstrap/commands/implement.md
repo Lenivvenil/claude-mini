@@ -31,6 +31,8 @@ git rev-parse --abbrev-ref HEAD
 
 Note: `bootstrap/commands/implement.md` is installed to `~/.claude/commands/` via `./bootstrap/universal-setup.sh --install`. Changes here require re-install to take effect.
 
+**Banned-terms check:** Read `docs/runbooks/banned-terms.md`. Scan `plan.md` for each scannable pattern (case-insensitive). Occurrences inside quoted spans (surrounded by `"`, `'`, or backtick characters) are exempt — they reference the term, not use it. If an unquoted match is found: **STOP.** Fix `plan.md` before continuing. (If `plan.md` is missing, the Hard Rules existence guard below applies — skip this check.)
+
 1. Read `plan.md` completely. Read every file referenced in it.
 2. Read 3–5 related files for context (neighbouring modules, existing patterns).
 3. Check relevant ADRs (`docs/decisions/`) for constraints.

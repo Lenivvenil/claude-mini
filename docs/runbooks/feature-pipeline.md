@@ -50,6 +50,8 @@ ls docs/domain/  # должен содержать overview.md + vocabulary.md
 
 Создаётся `plan.md` в корне репо. Содержит 6 секций (см. команду). Прочитай плана — если что-то не так, скажи Claude "rewrite section N".
 
+Before running advisor or `/implement`: scan `plan.md` for banned terms (list: `docs/runbooks/banned-terms.md`). Fix any matches before continuing. (Evidence: `docs/runbooks/first-feature-session-log.md` Gap 4.)
+
 ### 3. Advisor critique (MANDATORY для нетривиальной)
 
 ```
