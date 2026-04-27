@@ -1,13 +1,35 @@
 ---
 description: Master orchestrator for feature work. Ведёт по всем стадиям pipeline через TodoWrite.
 argument-hint: <issue-number>
-allowed-tools: Bash(gh issue view:*), Read, TodoWrite
+allowed-tools: Bash(gh issue view:*), Bash(gh project item-list:*), Bash(gh project item-edit:*), Read, TodoWrite
 model: claude-sonnet-4-6
 ---
 
 # /feature
 
 Issue: !`gh issue view $ARGUMENTS --json number,title,body,labels,milestone`
+
+<!-- Project: claude-mini (PVT_kwHOAD4W5M4BVPoL, #5) | Field: Status (PVTSSF_lAHOAD4W5M4BVPoLzhQsxg4) | Options: In Progress=47fc9ee4  In review=b5178a00 -->
+
+**On startup — move issue to In Progress.** Run immediately before creating the checklist. Graceful: warn and continue on any failure.
+
+```bash
+if [ -z "$ARGUMENTS" ]; then
+  echo "⚠ No issue number — skipping status transition"
+else
+  ITEM_ID=$(gh project item-list 5 --owner Lenivvenil --format json \
+    --jq ".items[] | select(.content.number == ($ARGUMENTS | tonumber)) | .id" 2>/dev/null)
+  if [ -n "$ITEM_ID" ]; then
+    gh project item-edit --project-id PVT_kwHOAD4W5M4BVPoL \
+      --id "$ITEM_ID" --field-id PVTSSF_lAHOAD4W5M4BVPoLzhQsxg4 \
+      --single-select-option-id 47fc9ee4 \
+    && echo "✓ Issue #$ARGUMENTS → In Progress" \
+    || echo "⚠ Status transition failed — continuing"
+  else
+    echo "⚠ Issue #$ARGUMENTS not found in claude-mini project — status not updated"
+  fi
+fi
+```
 
 ## Your task
 
@@ -51,6 +73,28 @@ After each stage:
 - **Confirm completion** — ask "Did /plan produce plan.md? Did you call advisor?"
 - **Block bad transitions** — "You're about to /implement but plan.md doesn't exist. Run /plan first."
 - **Recognize ADR branches** — if plan discusses library choice or BC boundary, push hard: "This is ADR territory. Don't skip step 4a."
+
+### Step 2b: Step 11 completion — In Review transition
+
+Immediately after `gh pr create` succeeds (step 11) and before marking step 11 complete, run:
+
+```bash
+if [ -z "$ARGUMENTS" ]; then
+  echo "⚠ No issue number — skipping status transition"
+else
+  ITEM_ID=$(gh project item-list 5 --owner Lenivvenil --format json \
+    --jq ".items[] | select(.content.number == ($ARGUMENTS | tonumber)) | .id" 2>/dev/null)
+  if [ -n "$ITEM_ID" ]; then
+    gh project item-edit --project-id PVT_kwHOAD4W5M4BVPoL \
+      --id "$ITEM_ID" --field-id PVTSSF_lAHOAD4W5M4BVPoLzhQsxg4 \
+      --single-select-option-id b5178a00 \
+    && echo "✓ Issue #$ARGUMENTS → In Review" \
+    || echo "⚠ Status transition failed — continuing"
+  else
+    echo "⚠ Issue #$ARGUMENTS not found in claude-mini project — status not updated"
+  fi
+fi
+```
 
 ### Step 3: Finish
 
