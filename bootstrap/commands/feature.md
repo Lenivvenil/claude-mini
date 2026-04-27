@@ -26,6 +26,7 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 [ ]    4a. If yes: invoke @agent-solutions-architect → /adr
 [ ]    4b. After ADR draft: invoke @agent-adr-reviewer; wait for APPROVE verdict
 [ ]    4c. Merge ADR PR before /implement
+[ ]    4d. If ADR was authored: re-sync `plan.md §4` with merged ADR per `docs/runbooks/adr-workflow.md` step 6
 [ ] 5. Run /implement
 [ ]    5a. (inside /implement) Call advisor() before declaring done — MANDATORY for non-trivial
 [ ]    5b. Only if docs/domain/ was modified during /implement:
