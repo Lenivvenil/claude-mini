@@ -1,6 +1,6 @@
 # 0017. Sweep per-ticket worktree isolation and abandoned-work contract
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-27
 * Deciders: Lenivvenil
 * Tags: pipeline, sweep, git, tooling
