@@ -1,7 +1,7 @@
 # Ubiquitous Language — claude-mini-pipeline
 
 **Version:** 2026-04-28
-**Status:** current as of PR #102; updated in PR #103
+**Status:** current as of PR #111; updated in PR #103 and issues #104-#110
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
@@ -184,7 +184,7 @@ A domain entity capturing the rule "when trigger X, then action Y." Distinct fro
 
 ## ReviewArtifact
 
-A domain entity representing the output of a review step: `/review` (Claude), `/codex-review` (Codex), or `advisor()` critique. Key attributes: `type`, `content` (markdown), `verdict`. For `advisor_critique` type, `verdict` is null — the advisor returns critique only, never approves or blocks. Tracked in issue #104 for model refinement.
+A domain entity representing the output of a review step: `/review` (Claude), `/codex-review` (Codex), or `advisor()` critique. Key attributes: `type`, `content` (markdown), `verdict` (enum | null). For `advisor_critique` type, `verdict` is null — the advisor returns critique only, never approves or blocks.
 
 *Discriminating note:* a ReviewArtifact is not the same as the act of reviewing. It is the *persisted output* of a review step.
 

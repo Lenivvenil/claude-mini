@@ -1,7 +1,7 @@
 # Bounded Context: claude-mini-pipeline
 
 **Version:** 2026-04-28
-**Status:** current as of PR #102; approved by domain-reviewer (pass 3)
+**Status:** current as of PR #111; pending domain-reviewer approval (model gap fixes #104-#110)
 
 ## Table of Contents
 
@@ -60,7 +60,7 @@ Commands are what mutate the `FeatureRun` aggregate. Each command emits one or m
 | `ModifyDomainDocs` | `DomainDocsChanged` |
 | `RequestReview` | `ReviewRequested` |
 | `RequestCodexReview` | `CodexReviewRequested` \| `CodexReviewSkipped` |
-| `RecordTwoVoiceResult(agreed\|disagreed)` | `TwoVoiceDisagreed` \| `TwoVoiceReconciled` \| `DeferredReviewIssueCreated` |
+| `RecordTwoVoiceResult(agreed\|disagreed)` | `TwoVoiceAgreed` \| `TwoVoiceDisagreed` \| `TwoVoiceReconciled` \| `DeferredReviewIssueCreated` |
 | `RequestSecurityReview` | `SecurityReviewRequested` |
 | `RequestReliabilityReview` | `ReliabilityReviewRequested` |
 | `AttemptCommit` | `CommitAttempted` → `GovernanceBlocked` \| `GovernanceApproved` |
@@ -74,7 +74,8 @@ Commands are what mutate the `FeatureRun` aggregate. Each command emits one or m
 | Command | Emits | Notes |
 |---|---|---|
 | `PromoteTaskToIssue` | `TaskPromotedToIssue` | Pre-pipeline; no FeatureRun yet |
-| `RunBacklogGroomer` | `BacklogGroomed` | Weekly cron; independent aggregate |
+
+**Cross-reference:** `RunBacklogGroomer` / `BacklogGroomed` belong to a separate weekly aggregate (`BacklogGroomRun`), not to `FeatureRun`. They are not listed here to avoid boundary confusion. The ADR formalising this split is tracked in issue #107.
 
 ---
 
@@ -91,6 +92,7 @@ Commands are what mutate the `FeatureRun` aggregate. Each command emits one or m
 - Two-voice review protocol
 - Fan-out rules (what is and isn't parallelizable)
 - Issue-first discipline
+- Per-ticket git worktree isolation for sweep operations (ADR-0017; `bootstrap/scripts/sweep-worktree*.sh`)
 
 **Out of scope:**
 - Source code of downstream projects where claude-mini is installed
@@ -271,7 +273,7 @@ No storage schema. Attributes reflect domain invariants only.
 |---|---|---|
 | **FeatureRun** | `issue_ref` (string, `#NNN`, exactly one per run); `dod_state` (enum); `two_voice_state` (enum); `advisor_call_count` (int ≥ 0); `adr_required` (bool) | `in_progress → review_pending → done` (monotonic; no reversal within a run) |
 | **DomainEvent** | `name` (string, PastTense); `emitted_by` (Command); `timestamp` | No state; append-only log |
-| **ReviewArtifact** | `type` (enum: `claude_review \| codex_review \| advisor_critique`); `content` (markdown); `verdict` (enum, null for `advisor_critique` — see issue #104) | `pending → approved \| blocked \| deferred` (advisor_critique: verdict always null) |
+| **ReviewArtifact** | `type` (enum: `claude_review \| codex_review \| advisor_critique`); `content` (markdown); `verdict` (enum \| null) | `claude_review`, `codex_review`: `pending → approved \| blocked \| deferred`; `advisor_critique`: verdict always null (advisor returns critique only, never approves or blocks) |
 | **Policy** | `trigger` (DomainEvent or condition); `action` (agent invocation or governance rule); `active` (bool) | `active \| waived` (waiver requires explicit justification) |
 
 ### FeatureRun invariant enforcement
@@ -279,7 +281,7 @@ No storage schema. Attributes reflect domain invariants only.
 | Invariant | Enforcement |
 |---|---|
 | Exactly one `issue_ref` per run | Governance hook Rule 2; `/feature` reads single issue number |
-| `dod_state` monotonic (false→true only, never reversed) | Honor system — no artifact |
+| `dod_state` monotonic: `in_progress → review_pending → done`; driven by `DoDSatisfied` (→ done) and stage-completion events; never reversed | Honor system — no artifact enforces the transition sequence |
 | `two_voice_state` machine: see Aggregate Root invariant (canonical definition) | `review-codex.sh` drives `pending → deferred` path; reconciliation is operator judgment |
 | `advisor_call_count ≥ 2` on nontrivial tasks | Honor system — no artifact; see Internal Compliance table |
 
@@ -363,12 +365,12 @@ Authoritative sources — no duplication here:
 Unresolved questions left explicit — not papered over:
 
 1. **`domain-researcher` has no pipeline stage trigger.** ADR 0013 names this gap. Correct trigger is "docs/domain/ missing or stale", not "greenfield only". Resolution requires ADR 0014. Tracked in issue #60.
-2. **25 events may indicate God BC.** `BacklogGroomed` and the governance sub-flow (`CommitAttempted` / `GovernanceBlocked` / `GovernanceApproved`) are candidates for a separate BC. Not split here — decision deferred until the aggregate proves unwieldy in practice.
+2. **25 events may indicate God BC.** The governance sub-flow (`CommitAttempted` / `GovernanceBlocked` / `GovernanceApproved`) is a candidate for a separate aggregate. `BacklogGroomed` has been moved to `BacklogGroomRun` aggregate (separate from `FeatureRun`); ADR formalising this is in issue #107. The God Aggregate question (splitting `Governance` and `TwoVoiceReview` as sub-aggregates) is tracked in issue #108.
 3. **Fan-out boundary is human judgement.** "Embarrassingly parallel" (ADR 0002) is defined by examples, not a mechanical rule. No automation path identified.
 4. **Codex skip ≠ Codex disapproval.** DoD requires a `deferred-review` issue on skip, but the gate between skip and fail is operator judgement. Not modelled formally.
 5. **Nontrivial-task criterion for advisor-×-2** is enumerated in `docs/principles.md` but requires judgement at the margin.
 6. **Skill vs agent distinction can drift.** ADR 0007 is normative but subtle; new contributors may conflate them.
 7. **ADR 0013 cited in domain policies is `proposed`, not `accepted`.** Policy `DomainDocsChanged → domain-reviewer` is contingent on ADR 0013 being accepted. This doc should be updated once ADR 0013 status changes.
 8. **Governance hook fails open on malformed input.** If `jq` is not installed or stdin is not valid JSON, `pre-commit-governance.sh` exits 0 (fail-open), bypassing all commit policy rules. Documented in `docs/runbooks/incident-recovery.md` but not mechanically mitigated. Tracked in issue #109.
-9. **`BacklogGroomed` placement in Commands and Domain Events is unresolved.** It appears in the table with an "out-of-band" label, implying it does not belong there. The organisational question is whether it should be in this table at all or replaced with a one-line cross-reference to a separate aggregate. Both "out-of-band" and "separate aggregate" mean the same thing; the tension is structural, not logical. Tracked in issue #107 for ADR resolution.
-10. **Worktree isolation (ADR-0017) not modelled.** `bootstrap/scripts/sweep-worktree*.sh` implements per-ticket git worktree isolation (merged). It appears in neither Boundary nor Commands/Events. If sweep is in scope for this BC, add it. If out of scope, say so explicitly. Tracked in issue #110.
+9. ~~`BacklogGroomed` placement in Commands and Domain Events is unresolved~~ — resolved in issue #107: removed from Commands table; cross-reference note points to `BacklogGroomRun` separate aggregate. ADR to formalise the split still pending.
+10. ~~Worktree isolation (ADR-0017) not modelled~~ — resolved in issue #110: added to Boundary "In scope".
