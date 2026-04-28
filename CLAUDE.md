@@ -39,6 +39,7 @@
 | после `/adr` | `adr-reviewer` | всегда после черновика |
 | после `/implement` | `domain-reviewer` | если `docs/domain/` изменялся |
 | внутри `/review` | `security-reviewer` | prod-bound: `bootstrap/`, `.github/workflows/`, `.git/hooks/`, или label `prod-bound` |
+| внутри `/review` | `docs-reviewer` | PR затрагивает `docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md` — и НЕ только `docs/decisions/` или `docs/domain/` |
 | еженедельно | `backlog-groomer` | **out-of-band**, не входит в pipeline |
 
 **Оркестратор одной кнопкой:** `/feature <issue-number>` — ведёт по всем стадиям через TodoWrite.
@@ -57,6 +58,7 @@ Read-only критики. Вызов: `@agent-<name>`.
 | `solutions-architect` | Значимый технический выбор — library, integration contract, данные |
 | `backlog-groomer` | **Out-of-band by design.** Раз в неделю — предлагает triage, сам не мутирует. Не входит в feature pipeline. |
 | `security-reviewer` | Перед prod-значимым PR — затрагивает `bootstrap/`, `.github/workflows/`, `.git/hooks/`, или label `prod-bound` |
+| `docs-reviewer` | Внутри `/review`, если PR меняет human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) — проверяет читаемость для новичка, исполняемость примеров, отсутствие orphaned sections |
 
 ## MCP tooling
 

@@ -41,6 +41,7 @@
 | `solutions-architect` | Значимый технический выбор |
 | `backlog-groomer` | Раз в неделю |
 | `security-reviewer` | Перед merge в main |
+| `docs-reviewer` | Если изменились human-facing docs |
 
 ## Project-specific conventions
 

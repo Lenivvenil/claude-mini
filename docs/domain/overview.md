@@ -16,7 +16,7 @@ This BC owns the workflow choreography for AI-assisted software development: pip
 | **Operator** | Human running Claude Code; sole final decision-maker and author of production code | Full write, merge, approve |
 | **Main Loop** (Sonnet) | Orchestrates all pipeline actions under operator direction | Write authority within repo |
 | **Advisor** (Opus) | Consulted via `advisor()` before substantive work and before declaring done; two calls minimum on nontrivial tasks | Read-only; returns critique, not edits |
-| **Read-only Critic** (subagent) | `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `backlog-groomer` — evaluate artifacts, return markdown reports | Read-only; never writes to filesystem or mutates GitHub |
+| **Read-only Critic** (subagent) | `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `backlog-groomer`, `docs-reviewer` — evaluate artifacts, return markdown reports | Read-only; never writes to filesystem or mutates GitHub |
 | **Author-gateway** (subagent) | `domain-researcher`, `solutions-architect` — invoke write-capable skills for docs artifacts only | Limited write via skill (docs only, not production code) |
 | **Skill** | Slash-command (`/plan`, `/adr`, `/implement`, `/review`, `/feature`, etc.) executing under main-loop authority | Main-loop authority |
 | **GitHub MCP** | MCP server invocable from inside the pipeline; ACL layer over GitHub platform | Pipeline-scoped GitHub API calls |
@@ -112,6 +112,7 @@ Invariants:
 | `DomainDocsChanged` | Invoke `domain-reviewer` |
 | `ADRDrafted` | Invoke `adr-reviewer` |
 | PR contains prod-bound change | Invoke `security-reviewer` inside `/review` phase |
+| PR touches human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) | Invoke `docs-reviewer` inside `/review` phase |
 | `TwoVoiceDisagreed` and unresolved at PR time | Create deferred-review issue (`type:deferred-review`) |
 | `CommitAttempted` without issue-ref | `GovernanceBlocked` |
 | `CommitAttempted` on ADR-significant change without ADR-link | `GovernanceBlocked` |

@@ -26,7 +26,7 @@ The Opus model instance invoked via `advisor()` to critique plans and review com
 ## Agent
 
 A Claude Code subagent with a defined role and constrained toolset. Two subtypes per ADR 0007:
-- **Read-only critic** — reads and evaluates, returns markdown report, never writes: `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `backlog-groomer`.
+- **Read-only critic** — reads and evaluates, returns markdown report, never writes: `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `backlog-groomer`, `docs-reviewer`.
 - **Author-gateway** — invokes a write-capable skill for docs artifacts only: `domain-researcher`, `solutions-architect`.
 
 *Discriminating note:* "agent" in generic AI parlance means any AI agent. Inside this BC it means specifically a Claude Code subagent with the constraints above. See `docs/decisions/0007-read-only-critic-agents.md`.
@@ -119,7 +119,7 @@ A named step within the Feature Pipeline: `/plan`, `/adr`, `/implement`, `/revie
 
 ## Read-only Critic
 
-An agent subtype that reads artifacts and returns a markdown report. Never writes to the filesystem. Never mutates GitHub. Examples: `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `backlog-groomer`. See ADR 0007.
+An agent subtype that reads artifacts and returns a markdown report. Never writes to the filesystem. Never mutates GitHub. Examples: `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `backlog-groomer`, `docs-reviewer`. See ADR 0007.
 
 ---
 

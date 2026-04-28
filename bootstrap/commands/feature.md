@@ -60,6 +60,9 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 [ ]    7a. Only if PR touches prod-bound paths (bootstrap/, .github/workflows/,
 [ ]        .git/hooks/) or is labelled prod-bound:
 [ ]        invoke @agent-security-reviewer inside this review phase
+[ ]    7b. Only if PR touches human-facing docs (docs/runbooks/, docs/architecture/,
+[ ]        docs/principles.md, README.md) — and not exclusively docs/decisions/ or docs/domain/:
+[ ]        invoke @agent-docs-reviewer inside this review phase
 [ ] 8. Run /codex-review
 [ ] 9. Resolve findings; decide on disagreements
 [ ] 10. git commit (governance hook checks)

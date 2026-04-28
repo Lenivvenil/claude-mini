@@ -50,6 +50,7 @@ Chosen option: **Option A для agents, но skills — authors**. Это ра�
 - `domain-reviewer`
 - `backlog-groomer`
 - `security-reviewer`
+- `docs-reviewer`
 
 Эти имеют tools только из read-only набора (Read, Glob, Grep, read-only MCP calls, `git diff`-like Bash). Никогда не пишут в файловую систему и не мутируют GitHub.
 
@@ -67,7 +68,7 @@ Chosen option: **Option A для agents, но skills — authors**. Это ра�
 
 Автоматическая проверка в CI:
 
-- Pure critics (4 файла) — не имеют `Edit`, `Write`, `mcp__github__create*`, `mcp__github__update*` в frontmatter.
+- Pure critics (5 файлов) — не имеют `Edit`, `Write`, `mcp__github__create*`, `mcp__github__update*` в frontmatter.
 - Author-gateways (2 файла) — имеют `Write`, но не имеют `Edit` или мутирующих MCP-tools (они пишут новые файлы через skills, не редактируют существующие).
 - Ни один агент не имеет `Bash` без whitelist-паттерна.
 
@@ -78,5 +79,5 @@ Chosen option: **Option A для agents, но skills — authors**. Это ра�
 
 ## Links
 
-* `bootstrap/agents/` — все шесть агентов с read-only frontmatter
+* `bootstrap/agents/` — все семь агентов с tool-constrained frontmatter (pure critics — read-only tools; author-gateways — Write для docs-skills только)
 * `../principles.md#2`

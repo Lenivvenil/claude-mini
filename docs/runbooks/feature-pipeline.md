@@ -129,6 +129,13 @@ Claude сам критикует свой diff по severity.
 
 `security-reviewer` — дополнение к `/review`, не замена и не отдельный шаг после него.
 
+Если PR затрагивает human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) — **в рамках той же фазы /review**:
+```
+@agent-docs-reviewer
+```
+
+`docs-reviewer` проверяет читаемость для новичка, исполняемость примеров, корректность диаграмм, отсутствие orphaned sections.
+
 ### 7. Codex review (two-voice)
 
 ```
