@@ -11,6 +11,30 @@ Issue: !`gh issue view $ARGUMENTS --json number,title,body,labels,milestone`
 
 <!-- Project: claude-mini (PVT_kwHOAD4W5M4BVPoL, #5) | Field: Status (PVTSSF_lAHOAD4W5M4BVPoLzhQsxg4) | Options: In Progress=47fc9ee4  In review=b5178a00 -->
 
+**On startup — check pipeline version drift.** Run as first startup step. Warn and continue regardless of result.
+
+```bash
+_pv_baked="@@PIPELINE_VERSION@@"
+# If _pv_baked still contains @@ the file was loaded without --target baking; skip check.
+if ! echo "$_pv_baked" | grep -qF '@@'; then
+  _pv_file="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/pipeline-version"
+  if [ ! -f "$_pv_file" ]; then
+    echo "⚠ Pipeline not installed per-project (.claude/pipeline-version missing)."
+    echo "  Run from claude-mini bootstrap repo: ./bootstrap/universal-setup.sh --target $(git rev-parse --show-toplevel 2>/dev/null)"
+  else
+    _installed="$(cat "$_pv_file")"
+    if [ "$_installed" = "$_pv_baked" ]; then
+      : # current — silent
+    elif [ "$(printf '%s\n%s\n' "$_installed" "$_pv_baked" | sort -V | head -1)" = "$_installed" ] && [ "$_installed" != "$_pv_baked" ]; then
+      echo "⚠ Pipeline drift: project at $_installed, this command is $_pv_baked."
+      echo "  Run from claude-mini bootstrap repo: ./bootstrap/universal-setup.sh --target $(git rev-parse --show-toplevel 2>/dev/null)"
+    fi
+    # future state (_installed > _pv_baked): treated as current — silent
+  fi
+fi
+unset _pv_baked _pv_file _installed
+```
+
 **On startup — move issue to In Progress.** Run immediately before creating the checklist. Graceful: warn and continue on any failure.
 
 ```bash
