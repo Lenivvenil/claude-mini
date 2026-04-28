@@ -35,11 +35,24 @@ log() {
     echo "[pre-commit-governance] $*" >&2
 }
 
+# --- jq prerequisite check (fail-closed, not fail-open) ---
+
+if ! command -v jq >/dev/null 2>&1; then
+    # Use printf (bash builtin) — cat is not available without jq in minimal PATH
+    printf '{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":"pre-commit-governance: jq not found. Install jq to enable commit governance (brew install jq)."}}\n'
+    exit 2
+fi
+
 # --- Read input ---
 
 input=$(cat)
-command=$(echo "$input" | jq -r '.tool_input.command // empty')
-cwd=$(echo "$input" | jq -r '.cwd // empty')
+command=$(echo "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
+cwd=$(echo "$input" | jq -r '.cwd // empty' 2>/dev/null || true)
+
+# Fail-closed on unparseable stdin — empty command on non-empty input means malformed JSON
+if [ -n "$input" ] && [ -z "$command" ] && [ -z "$cwd" ]; then
+    json_deny "pre-commit-governance: could not parse stdin as JSON (input non-empty but both fields empty). Check hook invocation."
+fi
 
 # --- Early exit: not a git commit ---
 
