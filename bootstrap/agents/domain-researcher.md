@@ -19,7 +19,7 @@ When invoked on a new bounded context:
    - **Boundary** — what's in scope, what's out, what term changes meaning across the edge?
    - **Ubiquitous Language** — define ≥ 5 core terms in business-speak.
    - **Context map edges** — how does this BC relate to others? Type each edge with a DDD pattern.
-3. Write `docs/domain/<bc-name>/overview.md` with all five sections filled.
+3. Write `docs/domain/<bc-name>/overview.md` per the full output schema in `bootstrap/skills/domain-discovery/SKILL.md`. Discovery-phase sections (Actors, Events, Commands, Aggregates, Policies, Boundary, UL, Context map) come from the interview; post-interview sections (Use Cases, Domain Data Model, Interface Contracts, NFR, Internal Compliance) require reading existing code and ADRs and are authored after the interview.
 4. Hand off to `domain-reviewer` for review.
 
 ## Event Storming colors (legend for interview)

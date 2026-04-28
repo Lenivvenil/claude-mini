@@ -1,7 +1,26 @@
 # Bounded Context: claude-mini-pipeline
 
 **Version:** 2026-04-28
-**Status:** draft — approved by domain-reviewer; pending PR merge
+**Status:** draft — pending domain-reviewer approval (new sections added in #100)
+
+## Table of Contents
+
+- [Purpose](#purpose)
+- [Actors](#actors)
+- [Commands and Domain Events](#commands-and-domain-events)
+- [Boundary](#boundary)
+- [Aggregate Root](#aggregate-root)
+- [Policies](#policies)
+- [Context Map](#context-map)
+- [Use Cases](#use-cases)
+- [Domain Data Model](#domain-data-model)
+- [Interface Contracts](#interface-contracts)
+- [NFR](#nfr)
+- [Internal Compliance](#internal-compliance)
+- [Security](#security)
+- [Red Hotspots](#red-hotspots)
+
+---
 
 ## Purpose
 
@@ -99,7 +118,7 @@ Commands are what mutate the `FeatureRun` aggregate. Each command emits one or m
 Invariants:
 - Exactly one issue reference (`Closes #NNN`) per run
 - DoD checklist is monotonic: checkboxes flip false → true only, never reversed within a run
-- Two-voice state machine: `{pending → agreed | disagreed → reconciled | disagreed → deferred}`
+- Two-voice state machine: `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}` — `disagreed` entered via `RecordTwoVoiceResult(disagreed)`; `deferred` reachable from `pending` (Codex skip) and from `disagreed` (skip after unresolved conflict)
 - `advisor()` called ≥ 2 times when task is nontrivial (per `docs/principles.md`)
 
 **Note:** `BacklogGroomed` belongs to a separate out-of-band aggregate (weekly backlog run). It is not part of `FeatureRun`.
@@ -128,6 +147,211 @@ Invariants:
 | **ChatGPT Plus / Codex CLI** | Conformist | Pipeline takes device-auth OAuth output as-is; no translation layer. Corporate repo restriction is an operator access-gate, not a DDD pattern. |
 | **Git hook system** | Customer/Supplier | `.git/hooks/` is the physical installation boundary per Principle 5. Pipeline supplies the hook; git is the consumer. |
 | **Anthropic API** | Separate Ways | Claude Code abstracts it; this BC never integrates with Anthropic API directly. Both systems operate independently from the domain's perspective. |
+
+---
+
+## Use Cases
+
+### UC-01: Happy Path — Feature Delivered to Main
+
+**Actor:** Operator
+**Preconditions:** GitHub issue exists with acceptance criteria; no feature branch for this issue; main is current with remote.
+**Main scenario:**
+1. Operator runs `/feature <N>` → issue moved to In Progress.
+2. `/plan` reads issue and referenced files; produces `plan.md`.
+3. `advisor()` called (pre-check): plan validated.
+4. `/implement` executes plan; `advisor()` called again (pre-done).
+5. `/qa` runs test coverage and docs currency checks; produces `qa-report.md`.
+6. `/review` (Claude) scans diff against plan, principles, domain contracts.
+7. `/codex-review` (Codex CLI) produces second-voice review.
+8. Operator resolves findings; commits via governance hook.
+9. `gh pr create` with `Closes #N`; issue moved to In Review.
+10. Human self-review; PR merged to main.
+
+**Alternatives:**
+- (a) ADR needed: STOP after `/plan`; invoke `@agent-solutions-architect`, merge ADR, re-sync `plan.md §4`, then resume `/implement`.
+- (b) `advisor()` returns STOP finding: update `plan.md` before continuing.
+- (c) Two-voice disagrees: disagreement documented in PR thread; reconciled before merge.
+
+**Postconditions:** PR merged; issue closed; `FeatureRun.dod_state = done`; all DoD boxes checked.
+
+---
+
+### UC-02: Codex Skip — Deferred Two-Voice Review
+
+**Actor:** Operator (Codex CLI unavailable or quota-exhausted)
+**Preconditions:** PR at `/codex-review` stage; Codex CLI is installed but unreachable (Plus OAuth stale or quota at limit).
+**Main scenario:**
+1. `/codex-review` invokes `bootstrap/scripts/review-codex.sh`.
+2. Startup check: `timeout 10 codex --version` times out (exit 124) → SKIPPED marker.
+3. `gh issue create --label type:deferred-review` opened automatically.
+4. Script outputs `SKIPPED` to stdout; exits 0 (does not block pipeline).
+5. Operator records skip in PR body; DoD grace clause satisfied.
+
+**Alternatives:**
+- (a) Quota exhausted (exit 4): same path as timeout.
+- (b) `gh` CLI unavailable: issue creation silently skipped; SKIPPED marker still output.
+- (c) Codex not installed: SKIPPED with install instruction; no issue created.
+
+**Postconditions:** `FeatureRun.two_voice_state = deferred`; `type:deferred-review` issue exists; PR body documents the gap.
+
+---
+
+### UC-03: Governance Block — Commit Rejected
+
+**Actor:** Main Loop (issuing `git commit` via Bash tool)
+**Preconditions:** `/implement` complete; operator triggers commit via Claude Code.
+**Main scenario:**
+1. Claude Code PreToolUse hook fires; `pre-commit-governance.sh` receives JSON on stdin.
+2. Rule 4: branch is not main → proceed.
+3. Rule 1: commit message checked against Conventional Commits regex.
+4. Rule 2: issue-ref `#NNN` checked in message or branch name.
+5. Rule 3: staged files checked for decision markers; ADR-ref required if found.
+6. Any rule fails → `json_deny` with reason; exit 2; commit blocked.
+
+**Alternatives:**
+- (a) Commit directly on main: Rule 4 fires first with "create a feature branch" message.
+- (b) `--amend`: strict check skipped; exit 0.
+- (c) `adr:` prefix: issue-ref and ADR-ref rules waived.
+- (d) All rules pass: exit 0; commit proceeds (`GovernanceApproved`).
+- (e) `jq` not installed / stdin not valid JSON: hook may fail-open (see `docs/runbooks/incident-recovery.md`).
+
+**Postconditions:** `GovernanceBlocked` event; commit not created; operator fixes message and retries.
+
+---
+
+### UC-04: ADR-Significant Detection — Architecture Gate
+
+**Actor:** Main Loop (running `/plan`)
+**Preconditions:** Issue describes a change meeting at least one trigger in `docs/principles.md` (section "Что значит «архитектурно-значимо»").
+**Main scenario:**
+1. `/plan` reads issue and existing code.
+2. Plan evaluation: at least one architectural trigger matches (new integration, BC boundary change, storage choice, etc.).
+3. STOP emitted: `plan.md` includes "ADR required" notice.
+4. `@agent-solutions-architect` invoked → ADR draft written to `docs/decisions/NNNN-*.md`.
+5. `@agent-adr-reviewer` invoked → returns APPROVE or BLOCK findings.
+6. Operator resolves findings; ADR PR merged.
+7. `plan.md §4` re-synced with merged ADR; `/implement` proceeds.
+
+**Alternatives:**
+- (a) `adr-reviewer` returns BLOCK: revisions made before ADR PR merge.
+- (b) Operator judges not architectural despite trigger: justification recorded in `plan.md`; no ADR authored.
+
+**Postconditions:** `ADRMerged` event; `plan.md §4` references the ADR number; `/implement` may proceed.
+
+---
+
+### UC-05: Prod-Bound PR — Security and Reliability Gates
+
+**Actor:** Operator (PR touches prod-bound paths)
+**Preconditions:** PR diff touches `bootstrap/`, `.github/workflows/`, or `.git/hooks/`; or issue labeled `prod-bound`.
+**Main scenario:**
+1. `/review` reads diff and detects prod-bound paths.
+2. `@agent-security-reviewer` invoked inside `/review` phase.
+3. `@agent-reliability-reviewer` invoked inside `/review` phase.
+4. Both return markdown reports (BLOCK / SUGGEST / NIT findings).
+5. Operator resolves all BLOCK items before commit.
+
+**Alternatives:**
+- (a) `security-reviewer` returns BLOCK: fix required; merge blocked until resolved.
+- (b) `reliability-reviewer` returns SUGGEST only: operator decides whether to address.
+- (c) Both agents return no findings: review passes with no action required.
+
+**Postconditions:** `SecurityReviewRequested` + `ReliabilityReviewRequested` events; all BLOCK items resolved; findings documented in PR description. Note: resolving BLOCK items before merge is enforced by honor — the governance hook does not mechanically block on reviewer findings (see Internal Compliance table).
+
+---
+
+## Domain Data Model
+
+No storage schema. Attributes reflect domain invariants only.
+
+### Entities
+
+| Entity | Key Attributes | Valid States |
+|---|---|---|
+| **FeatureRun** | `issue_ref` (string, `#NNN`, exactly one per run); `dod_state` (enum); `two_voice_state` (enum); `advisor_call_count` (int ≥ 0); `adr_required` (bool) | `in_progress → review_pending → done` (monotonic; no reversal within a run) |
+| **DomainEvent** | `name` (string, PastTense); `emitted_by` (Command); `timestamp` | No state; append-only log |
+| **ReviewArtifact** | `type` (enum: `claude_review \| codex_review \| advisor_critique`); `content` (markdown); `verdict` (enum) | `pending → approved \| blocked \| deferred` |
+| **Policy** | `trigger` (DomainEvent or condition); `action` (agent invocation or governance rule); `active` (bool) | `active \| waived` (waiver requires explicit justification) |
+
+### FeatureRun invariant enforcement
+
+| Invariant | Enforcement |
+|---|---|
+| Exactly one `issue_ref` per run | Governance hook Rule 2; `/feature` reads single issue number |
+| `dod_state` monotonic (false→true only, never reversed) | Honor system — no artifact |
+| `two_voice_state` machine: see Aggregate Root invariant (canonical definition) | `review-codex.sh` drives `pending → deferred` path; reconciliation is operator judgment |
+| `advisor_call_count ≥ 2` on nontrivial tasks | Honor system — no artifact; see Internal Compliance table |
+
+---
+
+## Interface Contracts
+
+Sourced empirically from `bootstrap/scripts/review-codex.sh`, `bootstrap/hooks/pre-commit-governance.sh`, `bootstrap/commands/feature.md`, `bootstrap/universal-setup.sh`.
+
+### External dependencies
+
+| Interface | Operations used | Handled failures | Unhandled failures |
+|---|---|---|---|
+| **GitHub MCP** | Issue read (`issue_read`), issue write (`issue_write`), PR read/review write, project item list/edit — loaded and available; actual pipeline scripts primarily route ops through `gh` CLI | Item not found in project → warn and continue (graceful, per `feature.md` startup block) | GitHub API rate limit; auth token expiry; MCP server unavailable — no retry in any case |
+| **gh CLI** | `gh issue view/create`, `gh project item-list/edit`, `gh pr create` | Project item not found → warn and continue; `gh` absent → SKIPPED with install instruction | Token expired → non-zero exit propagates to caller; rate limit → no retry; network failure → non-zero exit |
+| **Codex CLI** | `codex --version` (startup check, 10s timeout); `codex --model gpt-5.2 exec <prompt>` (default 120s timeout) | Startup timeout (exit 124) → SKIPPED + `type:deferred-review` issue; quota (exit 4) → SKIPPED + issue; any other non-zero → SKIPPED + issue; `codex` not installed → SKIPPED; `timeout` binary absent → SKIPPED | Successful run with malformed output → not validated; device-auth token rotation needed → falls through to startup check failure |
+
+### Internal integration points (owned by this BC)
+
+| Mechanism | Operations | Handled failure modes | Unhandled failure modes |
+|---|---|---|---|
+| **pre-commit governance hook** | Invoked as Claude Code PreToolUse on `git commit`; reads stdin JSON (`tool_input.command`, `cwd`); enforces Conventional Commits (Rule 1), issue-ref (Rule 2), ADR-ref for decision-type staged files (Rule 3), no-commit-to-main (Rule 4). Also installed at `.git/hooks/commit-msg` for terminal commits via `--hook-this-repo` (ADR-0011). | `--amend` → skip strict check; `adr:` prefix → waive issue-ref/ADR-ref; detached HEAD → fail-open; `cd $cwd` fails → fail-open | stdin not valid JSON → `jq` returns empty strings; malformed command string → message extraction may fail; hook file removed or corrupted → no enforcement at either level |
+
+---
+
+## NFR
+
+**Decision tree applied per entry:** (a) mechanical check exists in ADR/principles → include with citation; (b) no mechanical check → row moved to Internal Compliance as honor-system; (c) speculative / intent-only → dropped.
+
+| Requirement | Measure | Enforcement artifact | Source |
+|---|---|---|---|
+| Every commit carries issue-ref (`#NNN`) and passes Conventional Commits | Commit rejected (exit 2) if any rule fails | `pre-commit-governance.sh` (PreToolUse hook + `.git/hooks/commit-msg`) | ADR-0004, ADR-0011 |
+| All shell scripts in `bootstrap/` pass ShellCheck with no warnings | CI job exits non-zero on any ShellCheck warning | `.github/workflows/` ShellCheck step | ADR-0012 |
+| Installer exit 0 is an honest success signal — no silent partial failures | Test harness `test-install-verification.sh` — 13 assertions; all must pass | `bootstrap/scripts/test-install-verification.sh` | ADR-0019 |
+| No direct commits to main | Pre-commit-governance.sh Rule 4 blocks `git commit` when branch is `main` | `pre-commit-governance.sh` | ADR-0009 |
+
+Constraints lacking a mechanical check (two-voice review completion, human self-review, `advisor ×2` on nontrivial) appear in the Internal Compliance table with honor-system designation.
+
+---
+
+## Internal Compliance
+
+Every norm from `docs/principles.md` Definition of Done. **Enforcement type:** `automated` = script/CI always runs without human action; `agent-triggered` = agent invoked when condition met; `honor` = human commitment, no artifact enforces it.
+
+| Norm | Enforcement type | Artifact | Honor-system gap? |
+|---|---|---|---|
+| ADR merged before implementation, if architecturally significant | Automated (partial) | `pre-commit-governance.sh` Rule 3 blocks commit without ADR-ref when decision-type files staged | Partial — Rule 3 fires only when ADR files are staged; whether an ADR was needed is human judgment |
+| Domain docs updated if BC boundary or term changed | Agent-triggered | `domain-reviewer` invoked when `docs/domain/` changes | Yes — detecting *when* an update is needed is human judgment |
+| Unit tests written; coverage ≥ 80% | Honor | None | Yes — no CI coverage gate in this repo |
+| `/review` (Claude) approved | Honor | `/review` skill output (markdown, no merge gate) | Yes |
+| `/codex-review` approved OR `type:deferred-review` issue created | Automated (partial) | `review-codex.sh` creates deferred issue on skip/quota | Partial — "approved" is human judgment; deferred-issue creation is automated |
+| Disagreements between Claude and Codex resolved in PR thread | Honor | PR body convention | Yes |
+| Human self-review performed | Honor | None | Yes |
+| Security scans clean | Honor | None — no language-specific audit (pure shell/markdown repo) | Yes |
+| Docs updated (README, runbook, CHANGELOG) | Agent-triggered (conditional) | `docs-reviewer` invoked when human-facing docs change | Partial — trigger detection is human judgment |
+| Human-facing docs reviewed by `docs-reviewer` | Agent-triggered (conditional) | `docs-reviewer` invoked inside `/review` | Partial — trigger is honor; review itself is automated once triggered |
+| Reliability reviewed by `reliability-reviewer` on prod-bound PRs | Agent-triggered (conditional) | `reliability-reviewer` invoked inside `/review` | Partial — prod-bound detection is honor; review itself is automated once triggered |
+| CI green on all required jobs | Automated | `.github/workflows/` (ShellCheck, lint-prompts, etc.) | No |
+| Conventional Commits; governance hook passed | Automated | `pre-commit-governance.sh` (PreToolUse + commit-msg) | No |
+| PR body cross-references issue (`Closes #NNN`) | Honor | PR body convention | Yes |
+| PR body cross-references ADR if one was authored | Automated (partial) | `pre-commit-governance.sh` Rule 3 requires ADR-ref in commit message | Partial — commit is enforced; PR body is honor |
+| **`advisor()` called ≥ 2× on nontrivial tasks** (per advisor policy, `docs/principles.md` §6 — beyond DoD checklist but included here for completeness) | **Honor** | **None** | **Yes — no mechanical enforcement; tracked in issue #101** |
+
+---
+
+## Security
+
+Security model is distributed across three authoritative sources — no duplication here:
+
+- **ADR-0008** (`docs/decisions/0008-hardware-universal-split.md`) — hardware layer vs. universal layer split; rationale for why GUI-dependent steps and system-secret-store operations are excluded from automation.
+- **ADR-0011** (`docs/decisions/0011-git-level-governance-phase2.md`) — per-repository commit-msg hook installation; isolation principle (scope limited to explicit installation); rationale for no global git config.
+- **Governance hook docs** — source: `bootstrap/hooks/pre-commit-governance.sh`; recovery: `docs/runbooks/incident-recovery.md` (hook failures and bypasses).
 
 ---
 
