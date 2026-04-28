@@ -198,7 +198,7 @@ fi
 echo ""
 echo "=== Summary ==="
 if [ "$FAILURES" -eq 0 ]; then
-    printf "${GREEN}All tests passed.${NC}\n"
+    printf '%sAll tests passed.%s\n' "$GREEN" "$NC"
     exit 0
 else
     printf "${RED}%d test(s) failed.${NC}\n" "$FAILURES"
