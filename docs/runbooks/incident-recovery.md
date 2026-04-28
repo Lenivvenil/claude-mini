@@ -189,6 +189,12 @@ git checkout <commit-before-incident>
 ./bootstrap/universal-setup.sh --install --force
 ```
 
+**Примечание (ADR-0018):** `--install` не устанавливает slash-команды в `~/.claude/commands/`. Если команды недоступны в проекте, запусти из claude-mini:
+```bash
+./bootstrap/universal-setup.sh --target <path-to-repo>
+# Команды будут установлены в <path-to-repo>/.claude/commands/
+```
+
 ## Эскалация
 
 Если проблема воспроизводима и блокирующая:

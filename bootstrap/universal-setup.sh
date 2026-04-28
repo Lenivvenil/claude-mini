@@ -16,6 +16,7 @@
 #   --install       применить
 #   --force         overwrite files that differ from the repo source (required on drift)
 #   --hook-this-repo  install commit-msg hook into .git/hooks/ of current directory
+#   --target <dir>  install pipeline commands into <dir>/.claude/commands/ (per-project, ADR-0018)
 #
 # Exit codes:
 #   0  ok (including "no-op — already installed")
@@ -47,21 +48,29 @@ drift() { DRIFT=$((DRIFT+1)); warn "$@"; }
 # --- Parse args ---
 MODE=""
 FORCE=0
+TARGET_PATH=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --check) MODE="check"; shift ;;
         --install) MODE="install"; shift ;;
         --force) FORCE=1; shift ;;
         --hook-this-repo) MODE="hook-this-repo"; shift ;;
+        --target)
+            [ $# -gt 1 ] || die "--target requires a path argument"
+            TARGET_PATH="$2"
+            shift 2
+            ;;
         -h|--help)
             cat <<HELP
-Usage: $0 [--check|--install|--hook-this-repo] [--force]
+Usage: $0 [--check|--install|--hook-this-repo|--target <dir>] [--force]
 
   --check           dry-run: show what would happen (exits 0; drift reported in stdout)
   --install         apply changes (exits 4 if drift detected; re-run with --force to overwrite)
   --force           overwrite files that differ from the repo source (required on drift)
   --hook-this-repo  install commit-msg governance hook into .git/hooks/ of the current repo
                     (ADR-0011: per-project opt-in, requires --install to have been run first)
+  --target <dir>    install pipeline commands into <dir>/.claude/commands/ (ADR-0018)
+                    can be combined with --check (dry-run) or --force (overwrite)
 HELP
             exit 0
             ;;
@@ -69,8 +78,13 @@ HELP
     esac
 done
 
+# --target defaults to install mode if no explicit mode given
+if [ -n "$TARGET_PATH" ] && [ -z "$MODE" ]; then
+    MODE="install"
+fi
+
 if [ -z "$MODE" ]; then
-    die "Specify --check, --install, or --hook-this-repo. See $0 --help"
+    die "Specify --check, --install, --hook-this-repo, or --target <dir>. See $0 --help"
 fi
 
 # --- Early exit: --hook-this-repo mode ---
@@ -111,6 +125,90 @@ if [ "$MODE" = "hook-this-repo" ]; then
     ok "commit-msg governance hook installed → $DEST_HOOK"
     echo "  To verify: git commit -m 'bad message' (should be blocked)"
     echo "  To remove: rm $DEST_HOOK"
+    exit 0
+fi
+
+# --- Early exit: --target mode (ADR-0018) ---
+# Installs pipeline commands per-project; does NOT require platform.done.
+if [ -n "$TARGET_PATH" ]; then
+    SCRIPT_DIR_T="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_ROOT_T="$(cd "$SCRIPT_DIR_T/.." && pwd)"
+    VERSION_FILE="$REPO_ROOT_T/bootstrap/VERSION"
+
+    [ -f "$VERSION_FILE" ] || die "bootstrap/VERSION not found — run from the claude-mini repo root"
+    PIPELINE_VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
+    [ -z "$PIPELINE_VERSION" ] && die "bootstrap/VERSION is empty"
+    echo "$PIPELINE_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' \
+        || die "bootstrap/VERSION must be X.Y.Z semver, got: $PIPELINE_VERSION"
+
+    TARGET_DIR=$(cd "$TARGET_PATH" 2>/dev/null && pwd) \
+        || die "Target directory not found: $TARGET_PATH"
+
+    COMMANDS_DST="$TARGET_DIR/.claude/commands"
+    VERSION_DST="$TARGET_DIR/.claude/pipeline-version"
+
+    log "Target: $TARGET_DIR (pipeline v$PIPELINE_VERSION)"
+
+    [ "$MODE" = "install" ] && mkdir -p "$COMMANDS_DST"
+
+    # Temp dir for baked copies — cleaned on any exit
+    BAKE_TMP=$(mktemp -d)
+    trap 'rm -rf "$BAKE_TMP"' EXIT
+
+    for f in "$REPO_ROOT_T"/bootstrap/commands/*.md; do
+        [ -f "$f" ] || continue
+        fname=$(basename "$f")
+        dst="$COMMANDS_DST/$fname"
+        baked="$BAKE_TMP/$fname"
+
+        # Bake @@PIPELINE_VERSION@@ → actual version (| delimiter avoids issues with . in version)
+        sed "s|@@PIPELINE_VERSION@@|$PIPELINE_VERSION|g" "$f" > "$baked"
+
+        if [ -f "$dst" ] && cmp -s "$baked" "$dst"; then
+            ok "$fname (identical, skip)"
+        elif [ "$MODE" = "check" ]; then
+            if [ -f "$dst" ]; then
+                drift "$fname (would overwrite with --force)"
+            else
+                drift "$fname (would create)"
+            fi
+        elif [ -f "$dst" ] && [ "$FORCE" != "1" ]; then
+            drift "$fname (exists, differs — use --force)"
+            diff -u "$dst" "$baked" 2>/dev/null | head -10 | sed 's/^/    /'
+        else
+            cp "$baked" "$dst"
+            ok "$fname → $COMMANDS_DST/"
+        fi
+    done
+
+    # pipeline-version file
+    if [ -f "$VERSION_DST" ] && [ "$(cat "$VERSION_DST")" = "$PIPELINE_VERSION" ]; then
+        ok "pipeline-version $PIPELINE_VERSION (identical, skip)"
+    elif [ "$MODE" = "check" ]; then
+        if [ -f "$VERSION_DST" ]; then
+            drift "pipeline-version (would update $(cat "$VERSION_DST") → $PIPELINE_VERSION)"
+        else
+            drift "pipeline-version (would create: $PIPELINE_VERSION)"
+        fi
+    elif [ -f "$VERSION_DST" ] && [ "$FORCE" != "1" ]; then
+        drift "pipeline-version (installed: $(cat "$VERSION_DST"), source: $PIPELINE_VERSION — use --force)"
+    else
+        echo "$PIPELINE_VERSION" > "$VERSION_DST"
+        ok "pipeline-version $PIPELINE_VERSION → $VERSION_DST"
+    fi
+
+    echo ""
+    log "Done (target mode, pipeline v$PIPELINE_VERSION)"
+    if [ "$DRIFT" -gt 0 ]; then
+        if [ "$MODE" = "check" ]; then
+            warn "drift: $DRIFT item(s) differ — run: ./bootstrap/universal-setup.sh --target $TARGET_DIR [--force]"
+        else
+            warn "drift: $DRIFT file(s) not updated — re-run with --force: ./bootstrap/universal-setup.sh --target $TARGET_DIR --force"
+            exit 4
+        fi
+    else
+        ok "no drift — idempotent ✓"
+    fi
     exit 0
 fi
 
@@ -236,12 +334,9 @@ for dir in "$REPO_ROOT"/bootstrap/skills/*/; do
     fi
 done
 
-# --- Copy commands ---
-log "Copying slash commands..."
-for f in "$REPO_ROOT"/bootstrap/commands/*.md; do
-    [ -f "$f" ] || continue
-    copy_file "$f" "$CLAUDE_HOME/commands/$(basename "$f")"
-done
+# --- Slash commands are per-project (ADR-0018) ---
+log "Slash commands: per-project install only."
+log "  Run: ./bootstrap/universal-setup.sh --target <repo> to install commands into a project."
 
 # --- Copy hooks ---
 log "Copying hooks..."

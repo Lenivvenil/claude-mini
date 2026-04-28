@@ -72,6 +72,6 @@ Read-only критики. Вызов: `@agent-<name>`.
 
 ## Что не делать
 
-- **Не редактировать `bootstrap/` напрямую в production `~/.claude/`.** Источник правды — этот репо. Изменения применяются через `./bootstrap/universal-setup.sh --install`.
+- **Не редактировать `bootstrap/` напрямую в production `~/.claude/`.** Источник правды — этот репо. Глобальные артефакты (agents, skills, hooks): `./bootstrap/universal-setup.sh --install`. Slash-команды — per-project: `./bootstrap/universal-setup.sh --target <repo>`. Порядок миграции важен: сначала `--target <repo>`, затем `rm ~/.claude/commands/*.md` (не наоборот — иначе останешься без команд). (ADR-0018)
 - **Не коммитить напрямую через терминал минуя `/review` и governance.** Для защиты от себя можно включить git-level commit-msg hook (см. `docs/runbooks/enforcement-extras.md` — TODO).
 - **Не вызывать advisor на тривиальное.** Форматирование, переименование, мусорный refactor — без advisor. Он для содержательных решений.

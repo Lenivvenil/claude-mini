@@ -18,6 +18,12 @@ gh repo clone <owner>/<repo>
 cd <repo>
 ```
 
+После clone — установи pipeline-команды в этот репо (ADR-0018):
+```bash
+cd ~/projects/claude-mini
+./bootstrap/universal-setup.sh --target ~/projects/<repo>
+```
+
 Проверь:
 - [ ] Есть ли `CLAUDE.md`?
 - [ ] Есть ли `docs/decisions/`?
