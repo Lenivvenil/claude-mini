@@ -29,7 +29,7 @@ git rev-parse --abbrev-ref HEAD
   Use the issue number from `plan.md` footer (`Closes #NNN`). Slug: 2–4 lowercase words from the issue title. Example: `feat/branch-strategy-adr-14`.
 - If result is already a feature branch: proceed.
 
-Note: `bootstrap/commands/implement.md` is installed to `~/.claude/commands/` via `./bootstrap/universal-setup.sh --install`. Changes here require re-install to take effect.
+Note: `bootstrap/commands/implement.md` is installed per-project via `./bootstrap/universal-setup.sh --target <repo>` (ADR-0018). Changes here require re-install to take effect.
 
 **Banned-terms check:** Read `docs/runbooks/banned-terms.md`. Scan `plan.md` for each scannable pattern (case-insensitive). Occurrences inside quoted spans (surrounded by `"`, `'`, or backtick characters) are exempt — they reference the term, not use it. If an unquoted match is found: **STOP.** Fix `plan.md` before continuing. (If `plan.md` is missing, the Hard Rules existence guard below applies — skip this check.)
 
@@ -50,6 +50,7 @@ Integrate advisor feedback before writing code.
 1. Write code. Run tests after every non-trivial change.
 2. If tests fail, fix before continuing.
 3. If you discover the plan was wrong, STOP and update `plan.md` before continuing. Plan drift without update is a red flag.
+4. **Script side-effects (ADR-0019):** After invoking `universal-setup.sh --install`, `--hook-this-repo`, or `--target <dir>`, exit 0 from the script is the authoritative success signal — the inline fixes in each path make it honest. Declare the step done if and only if the script exits 0. (Note: `--check` always exits 0 even when drift exists; use its stdout for diagnostics only, not as a pass/fail gate.)
 
 ### Phase 4 — Advisor pre-done (MANDATORY)
 

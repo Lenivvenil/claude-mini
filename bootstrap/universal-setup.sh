@@ -120,8 +120,9 @@ if [ "$MODE" = "hook-this-repo" ]; then
         exit 0
     fi
 
-    cp "$STAGED_HOOK" "$DEST_HOOK"
-    chmod +x "$DEST_HOOK"
+    cp "$STAGED_HOOK" "$DEST_HOOK" || die "cp failed: $DEST_HOOK"
+    chmod +x "$DEST_HOOK" || die "chmod failed: $DEST_HOOK"
+    cmp -s "$STAGED_HOOK" "$DEST_HOOK" || die "post-copy verification failed: $DEST_HOOK"
     ok "commit-msg governance hook installed → $DEST_HOOK"
     echo "  To verify: git commit -m 'bad message' (should be blocked)"
     echo "  To remove: rm $DEST_HOOK"
@@ -176,7 +177,7 @@ if [ -n "$TARGET_PATH" ]; then
             drift "$fname (exists, differs — use --force)"
             diff -u "$dst" "$baked" 2>/dev/null | head -10 | sed 's/^/    /'
         else
-            cp "$baked" "$dst"
+            cp "$baked" "$dst" || die "cp failed: $dst"
             ok "$fname → $COMMANDS_DST/"
         fi
     done
@@ -275,7 +276,7 @@ copy_file() {
     local name="${dst#"$HOME"/}"
 
     if [ ! -f "$src" ]; then
-        warn "source missing: $src"
+        drift "$name (source missing — not in repo source tree)"
         return
     fi
 
