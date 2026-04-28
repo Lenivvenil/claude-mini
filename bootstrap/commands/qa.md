@@ -20,7 +20,8 @@ Get the list of changed files (`git diff --cached --name-only || git diff HEAD -
 Evaluate carve-outs strictly in the order below. **If step 1 matches: write the report, stop immediately — do not evaluate step 2.**
 
 1. **ADR-only** (most specific — evaluate first): every changed file matches `docs/decisions/*.md`. If true → write `qa-report.md` with body `## QA\n\nCarve-out: ADR-only diff. No test or docs check required.` Print it. **Exit.** Do not proceed to step 2 or Phase 1.
-2. **Docs-only**: every changed file matches `*.md`. If true → write `qa-report.md` with body `## QA\n\nCarve-out: docs-only diff. No test or docs check required.` Print it. **Exit.** Do not proceed to Phase 1.
+2. **Prompt-artifact** (evaluate before docs-only — bootstrap `.md` files are not docs): every changed file matches `bootstrap/agents/*.md`, `bootstrap/commands/*.md`, or `bootstrap/skills/*/SKILL.md`. If true → run `./scripts/lint-prompts.sh` against the matched files. Write `qa-report.md` with the linter output and verdict (PASS or FAIL). **Exit.** Do not proceed to step 3 or Phase 1. Mixed PRs (prompt artifact + other files) fall through to Phase 1 — manually invoke `./scripts/lint-prompts.sh` on the changed prompt-artifact files as part of Phase 2, then continue with the standard test-coverage check for any logic files.
+3. **Docs-only**: every changed file matches `*.md`. If true → write `qa-report.md` with body `## QA\n\nCarve-out: docs-only diff. No test or docs check required.` Print it. **Exit.** Do not proceed to Phase 1.
 
 Always record the carve-out reason — never exit silently.
 
