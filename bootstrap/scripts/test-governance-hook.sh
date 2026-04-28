@@ -112,6 +112,30 @@ assert_allowed() {
     pass "$label"
 }
 
+# --- Fail-closed cases (must be blocked, not fail-open) ---
+
+echo "Fail-closed cases (must be blocked with exit 2, not silently allowed):"
+
+# Malformed stdin — hook must deny, not fail-open
+malformed_result=$(echo "not-valid-json" | bash "$HOOK" 2>/dev/null; echo "exit=$?")
+malformed_exit=$(echo "$malformed_result" | grep -oE 'exit=[0-9]+' | tail -1 | cut -d= -f2)
+if [ "$malformed_exit" = "2" ]; then
+    pass "malformed stdin — exit 2 (fail-closed)"
+else
+    fail "malformed stdin — expected exit 2, got exit $malformed_exit (fail-open!)"
+fi
+
+# jq-absent: structural check — hook must contain a fail-closed guard
+# (Runtime simulation with restricted PATH is unreliable across environments)
+if grep -q 'command -v jq' "$HOOK" && grep -q "exit 2" "$HOOK" && \
+   grep -A3 'command -v jq' "$HOOK" | grep -q 'printf\|json_deny'; then
+    pass "jq absent guard — structural check present (fail-closed on missing jq)"
+else
+    fail "jq absent guard — not found in hook source (hook may fail-open when jq missing)"
+fi
+
+echo ""
+
 # --- Bad commit cases (must be blocked) ---
 
 echo "Bad commits (must be blocked with exit 2):"
