@@ -167,9 +167,11 @@ if [ -n "$TARGET_PATH" ]; then
         if [ -f "$dst" ] && cmp -s "$baked" "$dst"; then
             ok "$fname (identical, skip)"
         elif [ "$MODE" = "check" ]; then
-            [ -f "$dst" ] \
-                && drift "$fname (would overwrite with --force)" \
-                || drift "$fname (would create)"
+            if [ -f "$dst" ]; then
+                drift "$fname (would overwrite with --force)"
+            else
+                drift "$fname (would create)"
+            fi
         elif [ -f "$dst" ] && [ "$FORCE" != "1" ]; then
             drift "$fname (exists, differs — use --force)"
             diff -u "$dst" "$baked" 2>/dev/null | head -10 | sed 's/^/    /'
@@ -183,9 +185,11 @@ if [ -n "$TARGET_PATH" ]; then
     if [ -f "$VERSION_DST" ] && [ "$(cat "$VERSION_DST")" = "$PIPELINE_VERSION" ]; then
         ok "pipeline-version $PIPELINE_VERSION (identical, skip)"
     elif [ "$MODE" = "check" ]; then
-        [ -f "$VERSION_DST" ] \
-            && drift "pipeline-version (would update $(cat "$VERSION_DST") → $PIPELINE_VERSION)" \
-            || drift "pipeline-version (would create: $PIPELINE_VERSION)"
+        if [ -f "$VERSION_DST" ]; then
+            drift "pipeline-version (would update $(cat "$VERSION_DST") → $PIPELINE_VERSION)"
+        else
+            drift "pipeline-version (would create: $PIPELINE_VERSION)"
+        fi
     elif [ -f "$VERSION_DST" ] && [ "$FORCE" != "1" ]; then
         drift "pipeline-version (installed: $(cat "$VERSION_DST"), source: $PIPELINE_VERSION — use --force)"
     else
