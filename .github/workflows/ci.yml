@@ -26,6 +26,10 @@ jobs:
       - name: Bash syntax check all scripts
         run: |
           find bootstrap -name "*.sh" -print0 | xargs -0 -I{} bash -n {}
+      - name: Lint prompt artifacts
+        run: |
+          shopt -s nullglob
+          bash scripts/lint-prompts.sh bootstrap/agents/*.md bootstrap/commands/*.md bootstrap/skills/*/SKILL.md
       - name: Validate JSON/YAML
         run: |
           for f in bootstrap/templates/*.yml; do
