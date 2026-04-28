@@ -18,5 +18,7 @@ Closes #
 - [ ] Разногласия между ревьюерами разрешены
 - [ ] Security scans clean
 - [ ] Docs обновлены (README / runbook / CHANGELOG)
+- [ ] Human-facing docs reviewed (`docs-reviewer` одобрил или изменений в этих путях нет)
+- [ ] Reliability reviewed (`reliability-reviewer` одобрил или изменений в прод-bound путях нет)
 - [ ] CI зелёный
 - [ ] Conventional Commit + issue-ref
