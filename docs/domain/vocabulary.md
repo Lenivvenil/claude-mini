@@ -1,7 +1,7 @@
 # Ubiquitous Language — claude-mini-pipeline
 
 **Version:** 2026-04-28
-**Status:** draft — approved by domain-reviewer; pending PR merge
+**Status:** current as of PR #102; updated in PR #103
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
@@ -45,6 +45,14 @@ The documented sequence in `CLAUDE.md:27-34`: `task-to-issue → plan → adr (i
 
 ---
 
+## dod_state
+
+The `FeatureRun` attribute tracking pipeline progress. Valid transitions: `in_progress → review_pending → done` (monotonic; never reversed within a run). Driven by pipeline stage completion events.
+
+*Discriminating note:* `dod_state` is not the same as the DoD checklist. The checklist is a set of boolean flags; `dod_state` is the aggregate state derived from them.
+
+---
+
 ## Definition of Done (DoD)
 
 The checklist in `docs/principles.md#definition-of-done` that every change must satisfy before merge. Includes: ADR merged (if significant), domain docs updated (if BC changed), reviews passed, CI green, governance hook passed, PR body cross-references.
@@ -62,6 +70,7 @@ The state in which the second voice of two-voice review could not complete. Repr
 ---
 
 ## Fan-out
+
 
 Spawning multiple parallel agents or sub-tasks. Forbidden for feature work (ADR 0002). Permitted only for embarrassingly-parallel tasks: symbol renames across many files, import migrations, test templating from schema.
 
@@ -137,11 +146,71 @@ A slash-command (`/plan`, `/adr`, `/implement`, `/review`, `/feature`, etc.) tha
 
 ---
 
+## Honor-System Gap
+
+A norm in the Internal Compliance table that has no mechanical enforcement artifact — it depends on operator discipline alone. Labeled explicitly in the `Honor-system gap?` column as "Yes." The existence of a gap does not mean the norm is optional; it means there is no automated gate preventing violation.
+
+*Discriminating note:* a partial-automation gap (e.g., "agent-triggered but trigger detection is human judgment") is different from a full honor-system gap. Both are documented, but full gaps carry higher regression risk.
+
+---
+
+## Interface Contract
+
+A row in the Interface Contracts section of a BC overview specifying: interface name, operations used, handled failure modes, and explicitly unhandled failure modes. Sourced empirically from code — not inferred. Unhandled failures are as important as handled ones: they define the boundary of what the pipeline can recover from.
+
+---
+
+## Internal Compliance
+
+The section of a BC overview mapping each Definition of Done norm to its enforcement type (`automated | agent-triggered | honor`), the concrete artifact enforcing it, and whether a honor-system gap exists. Distinct from NFR: NFR states what the system must do; Internal Compliance states how each DoD norm is actually enforced (or not).
+
+---
+
+## NFR (Non-Functional Requirement)
+
+In this BC: a measurable constraint on pipeline behavior that is already mechanically verified by an existing check or ADR. Speculative constraints and intent-only statements are excluded. Constraints without mechanical checks appear in the Internal Compliance table as honor-system rows instead.
+
+*Discriminating note:* not every quality attribute is an NFR in this BC's sense. A constraint must have a cited enforcement artifact to qualify.
+
+---
+
+## Policy (entity)
+
+A domain entity capturing the rule "when trigger X, then action Y." Distinct from the Policies *table* (which is the collection of all active policies). A Policy entity has `trigger`, `action`, and `active` attributes. A waived policy requires explicit justification.
+
+*Discriminating note:* "policy" (lowercase) in generic English means any rule. `Policy` in this BC means a specific persistable domain entity with a trigger-action pair and an active state.
+
+---
+
+## ReviewArtifact
+
+A domain entity representing the output of a review step: `/review` (Claude), `/codex-review` (Codex), or `advisor()` critique. Key attributes: `type`, `content` (markdown), `verdict`. For `advisor_critique` type, `verdict` is null — the advisor returns critique only, never approves or blocks. Tracked in issue #104 for model refinement.
+
+*Discriminating note:* a ReviewArtifact is not the same as the act of reviewing. It is the *persisted output* of a review step.
+
+---
+
 ## Two-voice Review
 
 The gating mechanism combining `/review` (Claude main loop) and `/codex-review` (Codex CLI). Both must pass or their disagreement must be reconciled in the PR thread. If Codex is unavailable, a deferred-review issue is created.
 
 *Discriminating note:* two-voice = Claude vs Codex. Advisor is not part of two-voice.
+
+---
+
+## two_voice_state
+
+The `FeatureRun` attribute tracking the two-voice review state machine. Valid transitions: `pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred`. The `deferred` state is reachable from both `pending` (Codex skip without disagreement) and `disagreed` (skip after unresolved conflict).
+
+*Discriminating note:* `two_voice_state` is not the same as the DoD checkbox for two-voice review. The state machine tracks the *process*; the DoD checkbox tracks whether the gate was satisfied.
+
+---
+
+## Use Case
+
+A scenario in the Use Cases section describing how an actor achieves a goal with this BC. Required structure: Actor, Preconditions, Main scenario (numbered steps), Alternatives (lettered), Postconditions. Use Cases are the primary navigation entry point for new contributors: they show *why* the pipeline behaves as it does, not just *what* it does.
+
+*Discriminating note:* a Use Case is not a user story ("As a … I want … so that …"). It is a structured scenario with explicit alternatives and postconditions.
 
 ---
 

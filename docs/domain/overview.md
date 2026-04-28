@@ -1,7 +1,7 @@
 # Bounded Context: claude-mini-pipeline
 
 **Version:** 2026-04-28
-**Status:** draft — pending domain-reviewer approval (new sections added in #100)
+**Status:** current as of PR #102; approved by domain-reviewer (pass 3)
 
 ## Table of Contents
 
@@ -199,7 +199,7 @@ Invariants:
 
 ### UC-03: Governance Block — Commit Rejected
 
-**Actor:** Main Loop (issuing `git commit` via Bash tool)
+**Actor:** Operator (via Main Loop issuing `git commit` via Bash tool)
 **Preconditions:** `/implement` complete; operator triggers commit via Claude Code.
 **Main scenario:**
 1. Claude Code PreToolUse hook fires; `pre-commit-governance.sh` receives JSON on stdin.
@@ -222,7 +222,7 @@ Invariants:
 
 ### UC-04: ADR-Significant Detection — Architecture Gate
 
-**Actor:** Main Loop (running `/plan`)
+**Actor:** Operator (running `/plan` via Main Loop)
 **Preconditions:** Issue describes a change meeting at least one trigger in `docs/principles.md` (section "Что значит «архитектурно-значимо»").
 **Main scenario:**
 1. `/plan` reads issue and existing code.
@@ -271,7 +271,7 @@ No storage schema. Attributes reflect domain invariants only.
 |---|---|---|
 | **FeatureRun** | `issue_ref` (string, `#NNN`, exactly one per run); `dod_state` (enum); `two_voice_state` (enum); `advisor_call_count` (int ≥ 0); `adr_required` (bool) | `in_progress → review_pending → done` (monotonic; no reversal within a run) |
 | **DomainEvent** | `name` (string, PastTense); `emitted_by` (Command); `timestamp` | No state; append-only log |
-| **ReviewArtifact** | `type` (enum: `claude_review \| codex_review \| advisor_critique`); `content` (markdown); `verdict` (enum) | `pending → approved \| blocked \| deferred` |
+| **ReviewArtifact** | `type` (enum: `claude_review \| codex_review \| advisor_critique`); `content` (markdown); `verdict` (enum, null for `advisor_critique` — see issue #104) | `pending → approved \| blocked \| deferred` (advisor_critique: verdict always null) |
 | **Policy** | `trigger` (DomainEvent or condition); `action` (agent invocation or governance rule); `active` (bool) | `active \| waived` (waiver requires explicit justification) |
 
 ### FeatureRun invariant enforcement
@@ -293,21 +293,20 @@ Sourced empirically from `bootstrap/scripts/review-codex.sh`, `bootstrap/hooks/p
 
 | Interface | Operations used | Handled failures | Unhandled failures |
 |---|---|---|---|
-| **GitHub MCP** | Issue read (`issue_read`), issue write (`issue_write`), PR read/review write, project item list/edit — loaded and available; actual pipeline scripts primarily route ops through `gh` CLI | Item not found in project → warn and continue (graceful, per `feature.md` startup block) | GitHub API rate limit; auth token expiry; MCP server unavailable — no retry in any case |
-| **gh CLI** | `gh issue view/create`, `gh project item-list/edit`, `gh pr create` | Project item not found → warn and continue; `gh` absent → SKIPPED with install instruction | Token expired → non-zero exit propagates to caller; rate limit → no retry; network failure → non-zero exit |
+| **GitHub MCP** | MCP tools loaded and available (`issue_read/write`, PR read/review write, project item list/edit); current pipeline scripts route most ops through `gh` CLI directly — MCP acts as fallback and exploratory layer | Item not found in project → warn and continue (per `feature.md` startup block) | GitHub API rate limit; auth token expiry; MCP server unavailable — no retry in any case |
+| **gh CLI** | `gh issue view`, `gh issue create --label`, `gh project item-list`, `gh project item-edit`, `gh project item-add`, `gh pr create`, `gh pr edit` | Project item not found → warn and continue; `gh` absent → SKIPPED with install instruction | Token expired → non-zero exit propagates to caller; rate limit → no retry; network failure → non-zero exit |
 | **Codex CLI** | `codex --version` (startup check, 10s timeout); `codex --model gpt-5.2 exec <prompt>` (default 120s timeout) | Startup timeout (exit 124) → SKIPPED + `type:deferred-review` issue; quota (exit 4) → SKIPPED + issue; any other non-zero → SKIPPED + issue; `codex` not installed → SKIPPED; `timeout` binary absent → SKIPPED | Successful run with malformed output → not validated; device-auth token rotation needed → falls through to startup check failure |
 
 ### Internal integration points (owned by this BC)
 
 | Mechanism | Operations | Handled failure modes | Unhandled failure modes |
 |---|---|---|---|
-| **pre-commit governance hook** | Invoked as Claude Code PreToolUse on `git commit`; reads stdin JSON (`tool_input.command`, `cwd`); enforces Conventional Commits (Rule 1), issue-ref (Rule 2), ADR-ref for decision-type staged files (Rule 3), no-commit-to-main (Rule 4). Also installed at `.git/hooks/commit-msg` for terminal commits via `--hook-this-repo` (ADR-0011). | `--amend` → skip strict check; `adr:` prefix → waive issue-ref/ADR-ref; detached HEAD → fail-open; `cd $cwd` fails → fail-open | stdin not valid JSON → `jq` returns empty strings; malformed command string → message extraction may fail; hook file removed or corrupted → no enforcement at either level |
+| **pre-commit governance hook** | Invoked as Claude Code PreToolUse on `git commit`; reads stdin JSON (`tool_input.command`, `cwd`); enforces Conventional Commits (Rule 1), issue-ref (Rule 2), ADR-ref for decision-type staged files (Rule 3), no-commit-to-main (Rule 4). Also installed at `.git/hooks/commit-msg` for terminal commits via `--hook-this-repo` (ADR-0011). | `--amend` → skip strict check; `adr:` prefix → waive issue-ref/ADR-ref; detached HEAD → fail-open; `cd $cwd` fails → fail-open | stdin not valid JSON → `jq` returns empty strings; malformed command string → message extraction may fail; hook file removed or corrupted → no enforcement at either level (see Red Hotspot #8) |
+| **universal-setup.sh** | `--install` (global skills/hooks/scripts); `--target <repo>` (per-project commands + pipeline-version); `--hook-this-repo` (copies staged hook to `.git/hooks/commit-msg`); `--check` (drift report, exits 0 always) | cp failure → `die` (exit 3); post-copy `cmp -s` mismatch → `die`; source file missing → `drift()` counter incremented | `--check` always exits 0 even with drift (use stdout, not exit code, for diagnostics) — see ADR-0019 |
 
 ---
 
 ## NFR
-
-**Decision tree applied per entry:** (a) mechanical check exists in ADR/principles → include with citation; (b) no mechanical check → row moved to Internal Compliance as honor-system; (c) speculative / intent-only → dropped.
 
 | Requirement | Measure | Enforcement artifact | Source |
 |---|---|---|---|
@@ -341,17 +340,21 @@ Every norm from `docs/principles.md` Definition of Done. **Enforcement type:** `
 | Conventional Commits; governance hook passed | Automated | `pre-commit-governance.sh` (PreToolUse + commit-msg) | No |
 | PR body cross-references issue (`Closes #NNN`) | Honor | PR body convention | Yes |
 | PR body cross-references ADR if one was authored | Automated (partial) | `pre-commit-governance.sh` Rule 3 requires ADR-ref in commit message | Partial — commit is enforced; PR body is honor |
-| **`advisor()` called ≥ 2× on nontrivial tasks** (per advisor policy, `docs/principles.md` §6 — beyond DoD checklist but included here for completeness) | **Honor** | **None** | **Yes — no mechanical enforcement; tracked in issue #101** |
+| `advisor()` called ≥ 2× on nontrivial tasks (per advisor policy, `docs/principles.md` §6 — beyond DoD checklist but included here for completeness) | Honor | None | Yes — no mechanical enforcement; tracked in issue #101 |
+
+**Meta-result:** 8 norms are full honor-system gaps; 6 are partially automated (trigger detection or approval step is human judgment); only 2 are fully automated (CI, governance hook). This table documents a partially aspirational DoD — not a description of a fully automated quality gate.
 
 ---
 
 ## Security
 
-Security model is distributed across three authoritative sources — no duplication here:
+Security model summary: governance is enforced at the physical installation boundary (per-repo, not global); no global git config is mutated; system-secret-store and GUI-dependent steps are explicitly excluded from automation. Known unmitigated gap: governance hook fails open when `jq` is missing or stdin is malformed (see Red Hotspot #8).
+
+Authoritative sources — no duplication here:
 
 - **ADR-0008** (`docs/decisions/0008-hardware-universal-split.md`) — hardware layer vs. universal layer split; rationale for why GUI-dependent steps and system-secret-store operations are excluded from automation.
 - **ADR-0011** (`docs/decisions/0011-git-level-governance-phase2.md`) — per-repository commit-msg hook installation; isolation principle (scope limited to explicit installation); rationale for no global git config.
-- **Governance hook docs** — source: `bootstrap/hooks/pre-commit-governance.sh`; recovery: `docs/runbooks/incident-recovery.md` (hook failures and bypasses).
+- **Governance hook docs** — source: `bootstrap/hooks/pre-commit-governance.sh`; recovery procedures: `docs/runbooks/incident-recovery.md`.
 
 ---
 
@@ -366,3 +369,6 @@ Unresolved questions left explicit — not papered over:
 5. **Nontrivial-task criterion for advisor-×-2** is enumerated in `docs/principles.md` but requires judgement at the margin.
 6. **Skill vs agent distinction can drift.** ADR 0007 is normative but subtle; new contributors may conflate them.
 7. **ADR 0013 cited in domain policies is `proposed`, not `accepted`.** Policy `DomainDocsChanged → domain-reviewer` is contingent on ADR 0013 being accepted. This doc should be updated once ADR 0013 status changes.
+8. **Governance hook fails open on malformed input.** If `jq` is not installed or stdin is not valid JSON, `pre-commit-governance.sh` exits 0 (fail-open), bypassing all commit policy rules. Documented in `docs/runbooks/incident-recovery.md` but not mechanically mitigated. Tracked in issue #109.
+9. **`BacklogGroomed` placement in Commands and Domain Events is unresolved.** It appears in the table with an "out-of-band" label, implying it does not belong there. The organisational question is whether it should be in this table at all or replaced with a one-line cross-reference to a separate aggregate. Both "out-of-band" and "separate aggregate" mean the same thing; the tension is structural, not logical. Tracked in issue #107 for ADR resolution.
+10. **Worktree isolation (ADR-0017) not modelled.** `bootstrap/scripts/sweep-worktree*.sh` implements per-ticket git worktree isolation (merged). It appears in neither Boundary nor Commands/Events. If sweep is in scope for this BC, add it. If out of scope, say so explicitly. Tracked in issue #110.
