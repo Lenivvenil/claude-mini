@@ -71,7 +71,27 @@ If operator doesn't know these patterns, briefly explain — but insist on picki
 
 ## Output
 
-Write `docs/domain/<bc-name>/overview.md` with sections from the schema in agent `domain-researcher.md`.
+Write `docs/domain/<bc-name>/overview.md` per the section table below. This table is the authoritative output schema; `domain-researcher.md` agent output format is a subset used for the discovery phase only.
+
+The output document must include all of the following sections. Sections marked **[discovery]** are produced from the interview. Sections marked **[post-interview]** are authored after the interview using empirical sources (code, ADRs, principles).
+
+| Section | Source | Minimum content |
+|---|---|---|
+| Purpose | [discovery] Phase 3 | One paragraph: what the BC owns and explicitly does NOT own |
+| Actors | [discovery] Phase 1 | ≥ 3 actors with role and authority |
+| Commands and Domain Events | [discovery] Phase 2 | ≥ 5 events; commands paired with their emitted events |
+| Boundary | [discovery] Phase 3 | In-scope list, out-of-scope list, terms that change meaning at the boundary |
+| Aggregate Root | [discovery] Phase 2 | Invariants enumerated explicitly as checkable conditions |
+| Policies | [discovery] Phase 2 | Trigger → action pairs (when X, then Y) |
+| Context Map | [discovery] Phase 5 | DDD pattern named for each external BC edge |
+| **Use Cases** | [post-interview] | ≥ 5 UCs; each with Actor, Preconditions, Main scenario, Alternatives, Postconditions |
+| **Domain Data Model** | [post-interview] | Key entities with attributes and valid states; invariants enumerated per entity |
+| **Interface Contracts** | [post-interview] | One row per external interface; columns: Operations, Handled failures, Unhandled failures (sourced from code, not inferred) |
+| **NFR** | [post-interview] | Only mechanically-verified constraints cited to an existing check or ADR; speculative constraints dropped |
+| **Internal Compliance** | [post-interview] | Table: Norm \| Enforcement type \| Artifact \| Honor-system gap? — every DoD norm must appear |
+| Red Hotspots | [discovery] | Explicit unresolved questions; "none" requires justification |
+
+**Note on Security:** if the BC has a security model documented in ADRs or runbooks, add a `## Security` section with one-line pointers only — no duplication of content from the source documents. This section is optional for new BCs with no established security model.
 
 ## Hand-off
 
