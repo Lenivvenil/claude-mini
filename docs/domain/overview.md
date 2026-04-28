@@ -1,6 +1,6 @@
 # Bounded Context: claude-mini-pipeline
 
-**Version:** 2026-04-24
+**Version:** 2026-04-28
 **Status:** draft — approved by domain-reviewer; pending PR merge
 
 ## Purpose
@@ -16,7 +16,7 @@ This BC owns the workflow choreography for AI-assisted software development: pip
 | **Operator** | Human running Claude Code; sole final decision-maker and author of production code | Full write, merge, approve |
 | **Main Loop** (Sonnet) | Orchestrates all pipeline actions under operator direction | Write authority within repo |
 | **Advisor** (Opus) | Consulted via `advisor()` before substantive work and before declaring done; two calls minimum on nontrivial tasks | Read-only; returns critique, not edits |
-| **Read-only Critic** (subagent) | `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `backlog-groomer`, `docs-reviewer` — evaluate artifacts, return markdown reports | Read-only; never writes to filesystem or mutates GitHub |
+| **Read-only Critic** (subagent) | `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `reliability-reviewer`, `backlog-groomer`, `docs-reviewer` — evaluate artifacts, return markdown reports | Read-only; never writes to filesystem or mutates GitHub |
 | **Author-gateway** (subagent) | `domain-researcher`, `solutions-architect` — invoke write-capable skills for docs artifacts only | Limited write via skill (docs only, not production code) |
 | **Skill** | Slash-command (`/plan`, `/adr`, `/implement`, `/review`, `/feature`, etc.) executing under main-loop authority | Main-loop authority |
 | **GitHub MCP** | MCP server invocable from inside the pipeline; ACL layer over GitHub platform | Pipeline-scoped GitHub API calls |
@@ -43,6 +43,7 @@ Commands are what mutate the `FeatureRun` aggregate. Each command emits one or m
 | `RequestCodexReview` | `CodexReviewRequested` \| `CodexReviewSkipped` |
 | `RecordTwoVoiceResult(agreed\|disagreed)` | `TwoVoiceDisagreed` \| `TwoVoiceReconciled` \| `DeferredReviewIssueCreated` |
 | `RequestSecurityReview` | `SecurityReviewRequested` |
+| `RequestReliabilityReview` | `ReliabilityReviewRequested` |
 | `AttemptCommit` | `CommitAttempted` → `GovernanceBlocked` \| `GovernanceApproved` |
 | `CreatePR` | `PRCreated` |
 | `DeclareDoDSatisfied` | `DoDSatisfied` |
@@ -111,7 +112,7 @@ Invariants:
 |---|---|
 | `DomainDocsChanged` | Invoke `domain-reviewer` |
 | `ADRDrafted` | Invoke `adr-reviewer` |
-| PR contains prod-bound change | Invoke `security-reviewer` inside `/review` phase |
+| PR contains prod-bound change | Invoke `security-reviewer` and `reliability-reviewer` inside `/review` phase |
 | PR touches human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) | Invoke `docs-reviewer` inside `/review` phase |
 | `TwoVoiceDisagreed` and unresolved at PR time | Create deferred-review issue (`type:deferred-review`) |
 | `CommitAttempted` without issue-ref | `GovernanceBlocked` |
@@ -135,7 +136,7 @@ Invariants:
 Unresolved questions left explicit — not papered over:
 
 1. **`domain-researcher` has no pipeline stage trigger.** ADR 0013 names this gap. Correct trigger is "docs/domain/ missing or stale", not "greenfield only". Resolution requires ADR 0014. Tracked in issue #60.
-2. **24 events may indicate God BC.** `BacklogGroomed` and the governance sub-flow (`CommitAttempted` / `GovernanceBlocked` / `GovernanceApproved`) are candidates for a separate BC. Not split here — decision deferred until the aggregate proves unwieldy in practice.
+2. **25 events may indicate God BC.** `BacklogGroomed` and the governance sub-flow (`CommitAttempted` / `GovernanceBlocked` / `GovernanceApproved`) are candidates for a separate BC. Not split here — decision deferred until the aggregate proves unwieldy in practice.
 3. **Fan-out boundary is human judgement.** "Embarrassingly parallel" (ADR 0002) is defined by examples, not a mechanical rule. No automation path identified.
 4. **Codex skip ≠ Codex disapproval.** DoD requires a `deferred-review` issue on skip, but the gate between skip and fail is operator judgement. Not modelled formally.
 5. **Nontrivial-task criterion for advisor-×-2** is enumerated in `docs/principles.md` but requires judgement at the margin.

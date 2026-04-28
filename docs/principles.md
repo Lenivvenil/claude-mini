@@ -46,6 +46,7 @@
 - [ ] Security scans clean: `uv pip audit` / `cargo audit` / `npm audit --audit-level=high` / `govulncheck` — в зависимости от языка
 - [ ] Docs обновлены: README (при публичных изменениях), relevant runbook, CHANGELOG (через release-please)
 - [ ] Human-facing docs reviewed: если PR меняет `docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md` — `docs-reviewer` одобрил ИЛИ изменений в этих путях нет
+- [ ] Reliability reviewed: если PR прод-bound (`bootstrap/`, `.github/workflows/`, `.git/hooks/`, label `prod-bound`) — `reliability-reviewer` одобрил ИЛИ изменений в прод-bound путях нет
 - [ ] CI зелёный на всех required jobs
 - [ ] Conventional Commits; governance-hook проверку прошёл
 - [ ] PR body ссылается на issue (`Closes #NNN`) и на ADR (`Implements docs/decisions/NNNN-*.md`) если был

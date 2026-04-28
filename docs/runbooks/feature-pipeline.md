@@ -125,9 +125,10 @@ Claude сам критикует свой diff по severity.
 Если PR затрагивает prod-bound пути (`bootstrap/`, `.github/workflows/`, `.git/hooks/`) или имеет label `prod-bound` — **в рамках той же фазы /review, до перехода к /codex-review**:
 ```
 @agent-security-reviewer
+@agent-reliability-reviewer
 ```
 
-`security-reviewer` — дополнение к `/review`, не замена и не отдельный шаг после него.
+Оба агента запускаются на одном диффе; порядок между ними произвольный. `security-reviewer` проверяет OWASP Top 10 и зависимости. `reliability-reviewer` проверяет idempotency, recoverability, fault tolerance, observability, auditability, resilience. Каждый возвращает независимый вердикт APPROVE / BLOCK. Оба должны вернуть APPROVE перед переходом к `/codex-review`. SUGGEST/NIT не блокируют: pipeline продолжается, но находки фиксируются в PR-треде. BLOCK блокирует переход к `/codex-review`; оператор фиксит и повторно вызывает агента.
 
 Если PR затрагивает human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) — **в рамках той же фазы /review**:
 ```
