@@ -80,6 +80,44 @@ bootstrap/
 - Hardware-специфичное живёт в `bootstrap/hardware/<platform>.md` и **не вызывается** из `universal-setup.sh`.
 - Переход с Mac на Linux = пройти соответствующий hardware-runbook, затем запустить тот же `universal-setup.sh`.
 
+## Как работает пайплайн
+
+Каждая фича проходит через три управляемых цикла. Все три создаются в момент старта `/feature <issue>` и не существуют без него:
+
+```
+/feature <issue>
+│
+├─ FeatureRun (оркестратор) ─────────────────────────────────────────┐
+│   issue → plan → (ADR?) → implement → qa                           │
+│                                        │                            │
+│   ┌── GovernanceRun ─────────────┐     │                            │
+│   │  AttemptCommit               │     │                            │
+│   │  ├─ BLOCKED → retry          │     │                            │
+│   │  └─ APPROVED ✓ (terminal)    │     │                            │
+│   └──────────────────────────────┘     │                            │
+│                                        │                            │
+│   ┌── TwoVoiceReview ────────────┐     │                            │
+│   │  /review (Claude)            │     │                            │
+│   │  /codex-review (Codex)       │     │                            │
+│   │  ├─ agreed ✓                 │     │                            │
+│   │  ├─ reconciled ✓             │     │                            │
+│   │  └─ deferred ✓ (+issue)      │     │                            │
+│   └──────────────────────────────┘     │                            │
+│                                        │                            │
+│   DoD = done iff:                      │                            │
+│     GovernanceRun.state = approved  ───┘                            │
+│     TwoVoiceReview.state ∈ {agreed|reconciled|deferred}             │
+└─────────────────────────────────────────────────────────────────────┘
+        │
+        └─▶ gh pr create  (pre-PR artifact gate — issue #115)
+```
+
+**Что обязательно на каждом этапе** — см. `docs/runbooks/feature-pipeline.md#10-pre-pr-artifact-verification`. Пропуск этапа без явного основания блокирует pipeline.
+
+**Механический gate коммитов:** `pre-commit-governance.sh` блокирует коммит без Conventional Commits prefix + issue-ref.
+
+**Механический gate PR:** планируется в issue #115.
+
 ## Как с этим работать
 
 - Ежедневный флоу: `docs/runbooks/daily-session.md`

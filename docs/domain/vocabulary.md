@@ -1,7 +1,7 @@
 # Ubiquitous Language — claude-mini-pipeline
 
 **Version:** 2026-04-28
-**Status:** current as of PR #111; updated in PR #103 and issues #104-#110
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108); three aggregate roots
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
@@ -86,13 +86,27 @@ The canonical multi-stage workflow for delivering a change: issue → plan → (
 
 ## Feature Run
 
-One complete execution of `/feature <issue-number>`. The aggregate root of this BC. Invariants: single issue reference, monotonic DoD checklist, two-voice state machine, advisor called ≥ 2 times on nontrivial work.
+One complete execution of `/feature <issue-number>`. The orchestrating aggregate root of `claude-mini-pipeline` BC. Holds full context (`issue_ref`, `dod_state`, `advisor_call_count`) from pipeline start to merge. Delegates to `GovernanceRun` and `TwoVoiceReview` sub-cycles and reads their terminal states at DoD evaluation.
+
+Invariants: single issue reference; monotonic `dod_state` (`in_progress → review_pending → done`); `dod_state = done` requires `GovernanceRun.state = approved` AND `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}`; advisor called ≥ 2 times on nontrivial work.
+
+*Discriminating note:* `FeatureRun` no longer owns `two_voice_state` — that attribute migrated to `TwoVoiceReview` (ADR-0020). `FeatureRun` reads `TwoVoiceReview.state` by ID reference; it does not embed a copy.
 
 ---
 
 ## Governance Hook
 
 The `pre-commit-governance.sh` shell hook installed at `.git/hooks/commit-msg`. Enforces Conventional Commits prefix and issue-ref (`#NNN`) on every commit. For ADR-significant changes, also enforces `Implements docs/decisions/NNNN-*.md`. Blocks commit if rules fail (`GovernanceBlocked` event).
+
+---
+
+## GovernanceRun
+
+An aggregate root within `claude-mini-pipeline` BC. One commit-governance episode per `FeatureRun`. Created by `FeatureRun` on `FeaturePipelineStarted`; remains in `pending` state until `AttemptCommit` is first called. Owns: command `AttemptCommit`; events `CommitAttempted`, `GovernanceBlocked`, `GovernanceApproved`; internal `retry_count`.
+
+State machine: `pending → approved` (terminal). `GovernanceBlocked` increments retry counter without changing the instance; `GovernanceApproved` terminates it. `GovernanceRun.state = approved` is required for `FeatureRun.dod_state = done`. Enforcement artifact: `pre-commit-governance.sh`.
+
+*Discriminating note:* `GovernanceRun` is not the same as the governance hook. The hook is the enforcement mechanism; `GovernanceRun` is the domain aggregate that models the lifecycle of one commit-governance episode.
 
 ---
 
@@ -184,9 +198,14 @@ A domain entity capturing the rule "when trigger X, then action Y." Distinct fro
 
 ## ReviewArtifact
 
-A domain entity representing the output of a review step: `/review` (Claude), `/codex-review` (Codex), or `advisor()` critique. Key attributes: `type`, `content` (markdown), `verdict` (enum | null). For `advisor_critique` type, `verdict` is null — the advisor returns critique only, never approves or blocks.
+A domain entity representing the output of a review step. Three types, two owners (ADR-0020):
+- `claude_review` — owned by `TwoVoiceReview`; verdict: `pending → approved | blocked | deferred`
+- `codex_review` — owned by `TwoVoiceReview`; verdict: `pending → approved | blocked | deferred`
+- `advisor_critique` — owned by `FeatureRun`; verdict always null (advisor returns critique only, never approves or blocks)
 
-*Discriminating note:* a ReviewArtifact is not the same as the act of reviewing. It is the *persisted output* of a review step.
+The split is intentional: advisor is not part of two-voice review. `claude_review` and `codex_review` form the two-voice pair; `advisor_critique` is pre-work validation outside that pair.
+
+*Discriminating note:* a ReviewArtifact is not the same as the act of reviewing. It is the *persisted output* of a review step. The type-discriminator determines which aggregate owns the instance.
 
 ---
 
@@ -198,11 +217,21 @@ The gating mechanism combining `/review` (Claude main loop) and `/codex-review` 
 
 ---
 
+## TwoVoiceReview
+
+An aggregate root within `claude-mini-pipeline` BC. One two-voice review episode per `FeatureRun`. Owns: commands `RequestReview`, `RequestCodexReview`, `RecordTwoVoiceResult`; all two-voice events; `ReviewArtifact` entities of type `claude_review` and `codex_review`; the `two_voice_state` machine.
+
+State machine: `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}`. Terminal states (`agreed`, `reconciled`, `deferred`) are monotonically stable — no backward transitions. `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` is required for `FeatureRun.dod_state = done`.
+
+*Discriminating note:* `TwoVoiceReview` (the aggregate root) is not the same as "two-voice review" (the gating concept). The aggregate owns the lifecycle; the concept names the protocol.
+
+---
+
 ## two_voice_state
 
-The `FeatureRun` attribute tracking the two-voice review state machine. Valid transitions: `pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred`. The `deferred` state is reachable from both `pending` (Codex skip without disagreement) and `disagreed` (skip after unresolved conflict).
+The `TwoVoiceReview` aggregate attribute tracking the two-voice review state machine. Valid transitions: `pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred`. The `deferred` state is reachable from both `pending` (Codex skip without disagreement) and `disagreed` (skip after unresolved conflict). Terminal states are monotonically stable.
 
-*Discriminating note:* `two_voice_state` is not the same as the DoD checkbox for two-voice review. The state machine tracks the *process*; the DoD checkbox tracks whether the gate was satisfied.
+*Discriminating note:* `two_voice_state` is the vocabulary term name for this concept. The aggregate attribute name on `TwoVoiceReview` is `state` — use `TwoVoiceReview.state` in cross-aggregate references, not `TwoVoiceReview.two_voice_state`. The term migrated from `FeatureRun` to `TwoVoiceReview` in ADR-0020; references to `FeatureRun.two_voice_state` in pre-ADR-0020 docs are stale.
 
 ---
 

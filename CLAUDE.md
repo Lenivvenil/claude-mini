@@ -52,8 +52,8 @@ Read-only критики. Вызов: `@agent-<name>`.
 
 | Агент | Когда звать |
 |---|---|
-| `adr-reviewer` | После черновика ADR — проверит полноту секций MADR 4.0 и конфликты с инвариантами `FeatureRun` |
-| `domain-reviewer` | После правки `docs/domain/` — ловит vocabulary drift, нарушения BC, нарушения инвариантов `FeatureRun` в текущем диффе |
+| `adr-reviewer` | После черновика ADR — проверит полноту секций MADR 4.0 и конфликты с инвариантами агрегатов BC (`FeatureRun`, `GovernanceRun`, `TwoVoiceReview`) |
+| `domain-reviewer` | После правки `docs/domain/` — ловит vocabulary drift, нарушения BC, нарушения инвариантов всех трёх агрегатов (`FeatureRun`, `GovernanceRun`, `TwoVoiceReview`) в текущем диффе |
 | `domain-researcher` | Когда `docs/domain/` пуст или устарел — перед `/plan` (триггер: missing-or-stale, не только greenfield) |
 | `solutions-architect` | Значимый технический выбор — library, integration contract, данные |
 | `backlog-groomer` | **Out-of-band by design.** Раз в неделю — предлагает triage, сам не мутирует. Не входит в feature pipeline. |

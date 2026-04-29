@@ -114,6 +114,14 @@ Claude:
 
 Дождись APPROVE перед `/review`.
 
+### 5c. QA check
+
+```
+/qa
+```
+
+Запускает проверку тестового покрытия и актуальности документации. Создаёт `qa-report.md` в корне репо. Секция `## QA` из этого файла копируется в тело PR при создании — это обязательный артефакт для шага 10 (pre-PR verification).
+
 ### 6. Review
 
 ```
@@ -161,7 +169,25 @@ git commit -m "feat: добавить retry logic (#42)"
 
 PreToolUse hook проверит: CC prefix, issue-ref, ADR-ref. При ошибке — исправь сообщение.
 
-### 10. PR
+### 10. Pre-PR artifact verification
+
+Перед `gh pr create` проверь каждый пункт. Пропуск без явного основания — блокировка.
+
+| Артефакт | Где смотреть | Обязателен когда |
+|---|---|---|
+| `plan.md` в корне репо | `ls plan.md` | Всегда |
+| ADR смержен (`Status: accepted`) | `docs/decisions/NNNN-*.md` | `adr-needed` label на issue |
+| `plan.md §4` ссылается на ADR | `grep "docs/decisions" plan.md` | Если был ADR |
+| `domain-reviewer` вернул APPROVE | Вывод агента в этой сессии | `docs/domain/` изменялся |
+| `/review` завершён | Результат в сессии | Всегда |
+| `/codex-review` завершён ИЛИ `type:deferred-review` issue открыт | GitHub issues | Всегда |
+| Governance hook прошёл (`GovernanceRun.state = approved`) | `git log --oneline -1` + hook exit 0 | Всегда |
+| `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` | Результат /codex-review | Всегда |
+| QA report в PR body | `qa-report.md` секция `## QA` | Всегда |
+
+Механический enforcement этого gate — см. issue #115 (`pre-pr-verify.sh`, запланировано).
+
+### 11. PR
 
 ```bash
 gh pr create --title "..." --body "Closes #42"
@@ -171,14 +197,16 @@ PR body должен включать:
 - `Closes #<issue>`
 - `Implements docs/decisions/NNNN-*.md` если был ADR
 - DoD checklist из `.github/pull_request_template.md`
+- `## QA` секцию из `qa-report.md`
+- Known gaps/follow-ups если были задокументированные компромиссы
 
-### 11. Forge lock-in surface
+### 12. Forge lock-in surface
 
 The following GitHub-specific commands and files are used in this pipeline. This inventory exists so a future forge migration has known, enumerated scope rather than surprise discovery. **Update this section when adding new `gh` commands.**
 
 | Artifact | Location | Notes |
 |---|---|---|
-| `gh pr create` | Step 10 above; `bootstrap/commands/feature.md` step 11 | Creates PR from feature branch |
+| `gh pr create` | Step 11 above; `bootstrap/commands/feature.md` step 11 | Creates PR from feature branch |
 | `gh pr merge` | Operator post-review; `docs/decisions/0009-feature-branch-pr-flow.md` | Merges PR to main |
 | `gh pr view` | `/review` skill, `/codex-review` skill | Reads PR metadata and diff |
 | `gh issue view` | `bootstrap/commands/feature.md` line 11 | Loads issue JSON for `/feature` |
