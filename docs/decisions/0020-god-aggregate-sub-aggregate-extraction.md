@@ -374,7 +374,7 @@ Re-open this decision when **any one** is true:
 * `docs/domain/vocabulary.md` — entries for `FeatureRun`, `Advisor`,
   `Two-voice Review`, `two_voice_state`, `ReviewArtifact` — sources for
   the boundary clarity arguments above.
-* `docs/principles.md#директивы` — Principle 4 (knowledge in tools,
+* `docs/principles.md#4-знание-живёт-в-репо-в-репо-или-нигде` — Principle 4 (knowledge in tools,
   not memory): naming the modeled concepts in the ubiquitous language is
   a discipline this principle demands.
 * `docs/principles.md#что-значит-архитектурно-значимо` — BC boundary /
