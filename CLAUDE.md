@@ -9,6 +9,7 @@
 - **Domain model:** `docs/domain/`. Эволюционирует через `domain-researcher`.
 - **System structure:** `docs/architecture/`.
 - **Principles:** `docs/principles.md`.
+- **Anti-patterns:** `docs/anti-patterns.md` (реестр ленивых решений LLM, Принцип 4).
 - **Runbooks:** `docs/runbooks/`.
 
 ## Hard rules
