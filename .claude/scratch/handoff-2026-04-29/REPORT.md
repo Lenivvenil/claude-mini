@@ -181,3 +181,23 @@ Phase 2 artefacts in scratch:
 - `issue-map.json` — `{"01": 118, ..., "41": 158}`.
 - `EXECUTION-ORDER.md` — start-here roadmap with all dependencies resolved to issue numbers.
 - `labels.sh` — updated to idempotent (skip on already-exists, fail on other errors).
+
+---
+
+## 10. Phase 3 completion (2026-04-29)
+
+Operator directive Phase 3: расставить Status на 41 board item. Default Icebox confirmed (Phase 2 left all items in default column).
+
+| Item | Status |
+|---|---|
+| Status field set on Next up | 7/7 (P0 unblocked roots: tickets 01, 02, 03, 04, 05, 07, 08 → issues #118, 119, 120, 121, 122, 124, 125) |
+| Status field set on Backlog | 13/13 (#123 ticket 06 wave-2 + 12 synthesis P1 tickets 09..20 → issues #126..#137) |
+| Items left in default Icebox | 21 (12 P2 tickets 21..32 + 8 P3 tickets 33..40 + ticket 41 post-handoff defer) |
+| Verification counts (`gh project item-list`) | **Next up 7, Backlog 13, Icebox 21** = 41 ✓ |
+| Failures | none |
+
+Placement rationale for ticket 41 (post-handoff `chore(docs): migrate DoD/ADR-trigger/advisor-policy from principles.md to runbooks`): brief math (Icebox = 21) is consistent with ticket 41 → Icebox. Logical defer until `/adr` pass on issue #117 closes principles revision; only then does the migration target become canonical. Operator may reclassify to Backlog at any time via `gh project item-edit`.
+
+Phase 3 artefacts in scratch:
+- `_phase3_set_status.py` — idempotent Status setter (re-running overwrites Status with same option, no side effects).
+- `item-map.json` — `{"118": "PVTI_...", ...}` 41 entries, mapping GitHub issue number → board item node ID for future Status mutations.
