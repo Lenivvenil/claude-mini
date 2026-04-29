@@ -1,7 +1,7 @@
 # Bounded Context: claude-mini-pipeline
 
 **Version:** 2026-04-28
-**Status:** current as of PR #111; pending domain-reviewer approval (model gap fixes #104-#110)
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108); three aggregate roots: FeatureRun, GovernanceRun, TwoVoiceReview
 
 ## Table of Contents
 
@@ -45,9 +45,9 @@ This BC owns the workflow choreography for AI-assisted software development: pip
 
 ## Commands and Domain Events
 
-Commands are what mutate the `FeatureRun` aggregate. Each command emits one or more events.
+Three aggregate roots own commands within this BC (ADR-0020). Commands are organized by owning aggregate. All 17 in-BC commands are accounted for within the three aggregate roots — none removed, none duplicated. (`PromoteTaskToIssue` is out-of-band and excluded from this count.)
 
-### FeatureRun commands (lifecycle)
+### FeatureRun commands (pipeline orchestration)
 
 | Command | Emits |
 |---|---|
@@ -58,16 +58,26 @@ Commands are what mutate the `FeatureRun` aggregate. Each command emits one or m
 | `RequestADRReview` | `ADRReviewRequested` |
 | `StartImplementation` | `ImplementationStarted` |
 | `ModifyDomainDocs` | `DomainDocsChanged` |
-| `RequestReview` | `ReviewRequested` |
-| `RequestCodexReview` | `CodexReviewRequested` \| `CodexReviewSkipped` |
-| `RecordTwoVoiceResult(agreed\|disagreed)` | `TwoVoiceAgreed` \| `TwoVoiceDisagreed` \| `TwoVoiceReconciled` \| `DeferredReviewIssueCreated` |
 | `RequestSecurityReview` | `SecurityReviewRequested` |
 | `RequestReliabilityReview` | `ReliabilityReviewRequested` |
-| `AttemptCommit` | `CommitAttempted` → `GovernanceBlocked` \| `GovernanceApproved` |
 | `CreatePR` | `PRCreated` |
 | `DeclareDoDSatisfied` | `DoDSatisfied` |
 | `MergeToMain` | `MergedToMain` |
 | `MergeADR` | `ADRMerged` |
+
+### GovernanceRun commands
+
+| Command | Emits |
+|---|---|
+| `AttemptCommit` | `CommitAttempted` → `GovernanceBlocked` (retry; stays in same instance) \| `GovernanceApproved` (terminal) |
+
+### TwoVoiceReview commands
+
+| Command | Emits |
+|---|---|
+| `RequestReview` | `ReviewRequested` |
+| `RequestCodexReview` | `CodexReviewRequested` \| `CodexReviewSkipped` |
+| `RecordTwoVoiceResult(agreed\|disagreed)` | `TwoVoiceAgreed` (arg=agreed) \| `TwoVoiceDisagreed` (arg=disagreed); subsequent call after disagreed: `TwoVoiceReconciled` (disagreement resolved) \| `DeferredReviewIssueCreated` (Codex skipped after disagreement) |
 
 ### Out-of-band commands (not part of FeatureRun)
 
@@ -115,29 +125,61 @@ Commands are what mutate the `FeatureRun` aggregate. Each command emits one or m
 
 ## Aggregate Root
 
-**`FeatureRun`** — one complete invocation of `/feature <issue-number>`.
+Three aggregate roots within `claude-mini-pipeline` BC, per ADR-0020 (`docs/decisions/0020-god-aggregate-sub-aggregate-extraction.md`).
+
+### FeatureRun
+
+**`FeatureRun`** — one complete invocation of `/feature <issue-number>`. The single orchestrator: holds full context (`issue_ref`, `dod_state`, `advisor_call_count`) from pipeline start to merge. Delegates to `GovernanceRun` and `TwoVoiceReview` sub-cycles and reads their terminal states for DoD evaluation.
+
+On `FeaturePipelineStarted`, `FeatureRun` creates one `GovernanceRun` (state=pending, retry_count=0) and one `TwoVoiceReview` (state=pending) by reference. Sub-aggregates do not exist outside a `FeatureRun`; their lifecycle is bounded by the run that spawned them.
 
 Invariants:
 - Exactly one issue reference (`Closes #NNN`) per run
-- DoD checklist is monotonic: checkboxes flip false → true only, never reversed within a run
-- Two-voice state machine: `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}` — `disagreed` entered via `RecordTwoVoiceResult(disagreed)`; `deferred` reachable from `pending` (Codex skip) and from `disagreed` (skip after unresolved conflict)
+- `dod_state` monotonic: `in_progress → review_pending → done`; never reversed within a run
+- `dod_state` may transition to `done` only when both: `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` AND `GovernanceRun.state = approved` — cross-aggregate query, not embedded state (ADR-0020 §Cross-aggregate-communication)
 - `advisor()` called ≥ 2 times when task is nontrivial (per `docs/principles.md`)
 
-**Note:** `BacklogGroomed` belongs to a separate out-of-band aggregate (weekly backlog run). It is not part of `FeatureRun`.
+**Note:** `BacklogGroomed` belongs to a separate out-of-band aggregate (`BacklogGroomRun`). It is not part of `FeatureRun`.
+
+---
+
+### GovernanceRun
+
+**`GovernanceRun`** — one commit-governance episode for a `FeatureRun`. Created by `FeatureRun` on `FeaturePipelineStarted`; one instance per run, shared across all retry attempts. Remains in `pending` state until `AttemptCommit` is called; `GovernanceApproved` transitions it to `approved`. Enforcement artifact: `pre-commit-governance.sh`.
+
+Invariants:
+- State machine: `pending → approved` (terminal). `GovernanceBlocked` increments the internal retry counter without changing the instance; only `GovernanceApproved` terminates the run.
+- Internal retry counter starts at 0; incremented by each `GovernanceBlocked`; no upper bound enforced — operator must resolve governance issues before proceeding.
+- `GovernanceRun.state = approved` is required for `FeatureRun.dod_state` to reach `done`.
+
+---
+
+### TwoVoiceReview
+
+**`TwoVoiceReview`** — one two-voice review episode for a `FeatureRun`. Owns the two-voice state machine and `ReviewArtifact` entities of type `claude_review` and `codex_review`.
+
+Invariants:
+- State machine: `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}` — `disagreed` entered via `RecordTwoVoiceResult(disagreed)`; `deferred` reachable from `pending` (Codex skip) and from `disagreed` (unresolved conflict)
+- Terminal states (`agreed`, `reconciled`, `deferred`) are monotonically stable: no backward transition out of any terminal state.
+- `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` is required for `FeatureRun.dod_state` to reach `done`.
+- `ReviewArtifact` entities of type `claude_review` and `codex_review` are owned by this aggregate. `advisor_critique` type stays in `FeatureRun` — advisor is not part of two-voice review (per `vocabulary.md`, ADR-0020).
+- `RequestSecurityReview` and `RequestReliabilityReview` commands must **not** be migrated into `TwoVoiceReview` — they are conditional prod-bound gates owned by `FeatureRun` (ADR-0020 Confirmation §5).
 
 ---
 
 ## Policies
 
-| Trigger event/condition | Policy |
-|---|---|
-| `DomainDocsChanged` | Invoke `domain-reviewer` |
-| `ADRDrafted` | Invoke `adr-reviewer` |
-| PR contains prod-bound change | Invoke `security-reviewer` and `reliability-reviewer` inside `/review` phase |
-| PR touches human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) | Invoke `docs-reviewer` inside `/review` phase |
-| `TwoVoiceDisagreed` and unresolved at PR time | Create deferred-review issue (`type:deferred-review`) |
-| `CommitAttempted` without issue-ref | `GovernanceBlocked` |
-| `CommitAttempted` on ADR-significant change without ADR-link | `GovernanceBlocked` |
+BC-wide flat table (not per-aggregate). Policy trigger ownership follows the owning aggregate — triggers from `GovernanceRun` and `TwoVoiceReview` are listed here for centralized reference (ADR-0020 Confirmation §8).
+
+| Trigger event/condition | Owning aggregate | Policy |
+|---|---|---|
+| `DomainDocsChanged` | FeatureRun | Invoke `domain-reviewer` |
+| `ADRDrafted` | FeatureRun | Invoke `adr-reviewer` |
+| PR contains prod-bound change | FeatureRun | Invoke `security-reviewer` and `reliability-reviewer` inside `/review` phase |
+| PR touches human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) | FeatureRun | Invoke `docs-reviewer` inside `/review` phase |
+| `TwoVoiceDisagreed` and unresolved at PR time | TwoVoiceReview | Create deferred-review issue (`type:deferred-review`) |
+| `CommitAttempted` without issue-ref | GovernanceRun | `GovernanceBlocked` |
+| `CommitAttempted` on ADR-significant change without ADR-link | GovernanceRun | `GovernanceBlocked` |
 
 ---
 
@@ -195,7 +237,7 @@ Invariants:
 - (b) `gh` CLI unavailable: issue creation silently skipped; SKIPPED marker still output.
 - (c) Codex not installed: SKIPPED with install instruction; no issue created.
 
-**Postconditions:** `FeatureRun.two_voice_state = deferred`; `type:deferred-review` issue exists; PR body documents the gap.
+**Postconditions:** `TwoVoiceReview.state = deferred`; `type:deferred-review` issue exists; PR body documents the gap.
 
 ---
 
@@ -269,21 +311,41 @@ No storage schema. Attributes reflect domain invariants only.
 
 ### Entities
 
-| Entity | Key Attributes | Valid States |
-|---|---|---|
-| **FeatureRun** | `issue_ref` (string, `#NNN`, exactly one per run); `dod_state` (enum); `two_voice_state` (enum); `advisor_call_count` (int ≥ 0); `adr_required` (bool) | `in_progress → review_pending → done` (monotonic; no reversal within a run) |
-| **DomainEvent** | `name` (string, PastTense); `emitted_by` (Command); `timestamp` | No state; append-only log |
-| **ReviewArtifact** | `type` (enum: `claude_review \| codex_review \| advisor_critique`); `content` (markdown); `verdict` (enum \| null) | `claude_review`, `codex_review`: `pending → approved \| blocked \| deferred`; `advisor_critique`: verdict always null (advisor returns critique only, never approves or blocks) |
-| **Policy** | `trigger` (DomainEvent or condition); `action` (agent invocation or governance rule); `active` (bool) | `active \| waived` (waiver requires explicit justification) |
+Per ADR-0020, entities are distributed across three aggregate roots.
+
+| Entity | Owned by | Key Attributes | Valid States |
+|---|---|---|---|
+| **FeatureRun** | FeatureRun | `issue_ref` (string, `#NNN`, exactly one per run); `dod_state` (enum); `advisor_call_count` (int ≥ 0); `adr_required` (bool); `governance_run_ref` (ID); `two_voice_review_ref` (ID) | `in_progress → review_pending → done` (monotonic; DoD transition requires GovernanceRun.state = approved AND TwoVoiceReview.state ∈ {agreed, reconciled, deferred}) |
+| **GovernanceRun** | GovernanceRun | `feature_run_ref` (ID); `retry_count` (int ≥ 0); `state` (enum: `pending \| approved`) | `pending → approved` (terminal; no backward transition; `GovernanceBlocked` increments `retry_count` without transitioning) |
+| **TwoVoiceReview** | TwoVoiceReview | `feature_run_ref` (ID); `state` (enum) | `pending → agreed \| deferred \| disagreed → reconciled \| deferred` (terminal states monotonically stable — no backward transitions) |
+| **DomainEvent** | BC-wide | `name` (string, PastTense); `emitted_by` (Command); `timestamp` | No state; append-only log |
+| **ReviewArtifact** | Split — see note | `type` (enum: `claude_review \| codex_review` [owned by TwoVoiceReview] \| `advisor_critique` [owned by FeatureRun]); `content` (markdown); `verdict` (enum \| null) | `claude_review`, `codex_review`: `pending → approved \| blocked \| deferred`; `advisor_critique`: verdict always null (advisor returns critique only, never approves or blocks) |
+| **Policy** | BC-wide | `trigger` (DomainEvent or condition); `action` (agent invocation or governance rule); `active` (bool) | `active \| waived` (waiver requires explicit justification) |
+
+**ReviewArtifact seam:** `claude_review` and `codex_review` types are owned by `TwoVoiceReview`; `advisor_critique` type is owned by `FeatureRun`. This split is intentional — advisor is not part of two-voice review (ADR-0020, `vocabulary.md`). Three types, two owners, one entity name.
 
 ### FeatureRun invariant enforcement
 
 | Invariant | Enforcement |
 |---|---|
 | Exactly one `issue_ref` per run | Governance hook Rule 2; `/feature` reads single issue number |
-| `dod_state` monotonic: `in_progress → review_pending → done`; driven by `DoDSatisfied` (→ done) and stage-completion events; never reversed | Honor system — no artifact enforces the transition sequence |
-| `two_voice_state` machine: see Aggregate Root invariant (canonical definition) | `review-codex.sh` drives `pending → deferred` path; reconciliation is operator judgment |
+| `dod_state` monotonic: `in_progress → review_pending → done`; driven by `DoDSatisfied` (→ done); never reversed | Honor system — no artifact enforces the transition sequence |
+| `dod_state = done` requires TwoVoiceReview.state ∈ {agreed, reconciled, deferred} AND GovernanceRun.state = approved | Honor system — cross-aggregate reads are operator judgment at DoD evaluation time |
 | `advisor_call_count ≥ 2` on nontrivial tasks | Honor system — no artifact; see Internal Compliance table |
+
+### TwoVoiceReview invariant enforcement
+
+| Invariant | Enforcement |
+|---|---|
+| State machine: `pending → agreed \| deferred \| disagreed → reconciled \| deferred` | `review-codex.sh` drives `pending → deferred` path; reconciliation is operator judgment |
+| Terminal states (`agreed`, `reconciled`, `deferred`) monotonically stable — no backward transitions | Honor system — no artifact; enforced by `domain-reviewer` checklist |
+
+### GovernanceRun invariant enforcement
+
+| Invariant | Enforcement |
+|---|---|
+| One GovernanceRun per FeatureRun; GovernanceBlocked increments retry counter, does not create new instance | Honor system — `pre-commit-governance.sh` enforces individual commit rules but does not track instance count |
+| GovernanceApproved is terminal | Mechanical — commit proceeds and hook exits 0 |
 
 ---
 
@@ -365,7 +427,7 @@ Authoritative sources — no duplication here:
 Unresolved questions left explicit — not papered over:
 
 1. **`domain-researcher` has no pipeline stage trigger.** ADR 0013 names this gap. Correct trigger is "docs/domain/ missing or stale", not "greenfield only". Resolution requires ADR 0014. Tracked in issue #60.
-2. **25 events may indicate God BC.** The governance sub-flow (`CommitAttempted` / `GovernanceBlocked` / `GovernanceApproved`) is a candidate for a separate aggregate. `BacklogGroomed` has been moved to `BacklogGroomRun` aggregate (separate from `FeatureRun`); ADR formalising this is in issue #107. The God Aggregate question (splitting `Governance` and `TwoVoiceReview` as sub-aggregates) is tracked in issue #108.
+2. ~~God Aggregate: FeatureRun too large~~ — **resolved in issue #108** (`docs/decisions/0020-god-aggregate-sub-aggregate-extraction.md`). `GovernanceRun` and `TwoVoiceReview` extracted as separate aggregate roots. `FeatureRun` now owns 13 pipeline-orchestration commands; the two sub-aggregates own their respective flows. `domain-reviewer` scope updated to check all three roots.
 3. **Fan-out boundary is human judgement.** "Embarrassingly parallel" (ADR 0002) is defined by examples, not a mechanical rule. No automation path identified.
 4. **Codex skip ≠ Codex disapproval.** DoD requires a `deferred-review` issue on skip, but the gate between skip and fail is operator judgement. Not modelled formally.
 5. **Nontrivial-task criterion for advisor-×-2** is enumerated in `docs/principles.md` but requires judgement at the margin.

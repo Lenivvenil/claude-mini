@@ -1,6 +1,6 @@
 # 0020. Extract `GovernanceRun` and `TwoVoiceReview` as sub-aggregates of `claude-mini-pipeline`
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-28
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)
 * Tags: domain, bounded-context, aggregate, ddd, modeling
@@ -140,7 +140,7 @@ attributes. Concretely, in `docs/domain/overview.md`:
   deferred}`."
 
 `GovernanceRun` is consulted similarly: `FeatureRun` reads
-`GovernanceRun.terminal_state` (must be `approved`) before the DoD checklist
+`GovernanceRun.state` (must be `approved`) before the DoD checklist
 permits merge.
 
 ### Scope of extraction (what moves and what stays)
@@ -300,10 +300,12 @@ domain-doc updates:
    in `domain-reviewer`'s checklist as an explicit invariant: these
    commands belong to `FeatureRun`, not `TwoVoiceReview`. A future PR
    that attempts to migrate them must trigger a `domain-reviewer` BLOCK.
-6. **Manual command coverage check.** All 19 `FeatureRun` commands listed
-   in the pre-extraction `overview.md` are accounted for after extraction:
-   each appears either in `FeatureRun`, `GovernanceRun`, or
-   `TwoVoiceReview`. None disappear; none are duplicated.
+6. **Manual command coverage check.** All 17 in-BC commands (13 in
+   `FeatureRun`, 1 in `GovernanceRun`, 3 in `TwoVoiceReview`) are
+   accounted for after extraction — none disappear, none are duplicated.
+   The pre-extraction `overview.md` had 17 in-BC commands (the issue
+   statement estimated 19; the actual pre-extraction count was 17).
+   `PromoteTaskToIssue` is out-of-band and not counted here.
 7. **`TwoVoiceReview` monotonicity invariant is enumerated explicitly.**
    `TwoVoiceReview`'s invariant section in `overview.md` states: the
    state machine has no backward transitions out of `agreed`, `reconciled`,

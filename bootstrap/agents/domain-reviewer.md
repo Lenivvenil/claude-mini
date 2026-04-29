@@ -1,6 +1,6 @@
 ---
 name: domain-reviewer
-description: Read-only critic for domain documentation in `docs/domain/`. Detects vocabulary drift, bounded context violations, unclear Ubiquitous Language, and `FeatureRun` invariant violations in the current diff. Does NOT add terms or rewrite docs.
+description: Read-only critic for domain documentation in `docs/domain/`. Detects vocabulary drift, bounded context violations, unclear Ubiquitous Language, and aggregate invariant violations (FeatureRun, GovernanceRun, TwoVoiceReview) in the current diff. Does NOT add terms or rewrite docs.
 tools: Read, Glob, Grep
 model: sonnet
 color: green
@@ -14,14 +14,19 @@ When invoked:
 
 1. Read the domain file(s) in focus and any referenced cross-BC docs.
 2. Read `docs/domain/vocabulary.md` (if exists) to check UL consistency.
-3. Read `docs/domain/overview.md` (Aggregate Root and Policies sections) and cross-check the current diff or doc change against the four `FeatureRun` invariants (single issue-ref per run, monotonic DoD checklist, two-voice state machine, advisor ≥ 2 on nontrivial tasks) and every row of the Policies table. Flag any violation as CRITICAL. If the invocation has no associated diff (e.g., standalone doc review with no pipeline change), state "N/A — no diff to cross-check against invariants" and skip this step.
+3. Read `docs/domain/overview.md` (Aggregate Root and Policies sections) and cross-check the current diff or doc change against invariants for all three aggregate roots (ADR-0020):
+   - **FeatureRun** (4 invariants): single issue-ref per run; monotonic `dod_state`; `dod_state = done` requires TwoVoiceReview.state ∈ {agreed, reconciled, deferred} AND GovernanceRun.state = approved; advisor ≥ 2 on nontrivial tasks.
+   - **GovernanceRun** (2 invariants): one instance per FeatureRun with internal retry counter; GovernanceApproved is terminal.
+   - **TwoVoiceReview** (2 invariants): state machine `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}`; terminal states (agreed, reconciled, deferred) monotonically stable — no backward transitions. Guard: `RequestSecurityReview` and `RequestReliabilityReview` commands must NOT be migrated into TwoVoiceReview — they are conditional prod-bound gates owned by FeatureRun (ADR-0020 Confirmation §5).
+   - Every row of the Policies table.
+   Flag any violation as CRITICAL. If the invocation has no associated diff (e.g., standalone doc review with no pipeline change), state "N/A — no diff to cross-check against invariants" and skip this step.
 4. Return findings by severity.
 
 ## Severity ladder
 
 ### CRITICAL
 
-- **`FeatureRun` invariant or Policies row violation in current diff** — the diff or doc change contradicts a declared invariant (single issue-ref per run, monotonic DoD checklist, two-voice state machine, advisor ≥ 2 on nontrivial tasks) or a Policies table row from `docs/domain/overview.md`. Cite the specific invariant/row and the conflicting change.
+- **Aggregate invariant or Policies row violation in current diff** — the diff or doc change contradicts a declared invariant of `FeatureRun`, `GovernanceRun`, or `TwoVoiceReview` (see Protocol step 3 for the full list per aggregate), or a Policies table row from `docs/domain/overview.md`. Cite the specific aggregate, invariant, and the conflicting change.
 - **Bounded Context boundary not explicit** — no statement of what's in and what's out.
 - **Ubiquitous Language has < 5 terms** defined with business-language definitions.
 - **Cross-BC term conflict unresolved** — same term has different meanings in two BCs without explicit translation/ACL marking.
