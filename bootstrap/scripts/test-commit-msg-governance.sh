@@ -361,11 +361,13 @@ assert_stderr_contains \
 
 # T2: exit code is still 0 (non-blocking)
 run_hook_capture_stderr "fix: patch something (#124)" "$AP_REPO"
-if [ $? -eq 0 ]; then
+_rc=$?
+if [ "$_rc" -eq 0 ]; then
     pass "AP-T2: reminder is non-blocking (exit 0)"
 else
     fail "AP-T2: expected exit 0, reminder must not block"
 fi
+unset _rc
 
 # T3: docs/anti-patterns.md also staged → no reminder
 mkdir -p "$AP_REPO/docs"
