@@ -76,7 +76,7 @@ bootstrap/
 
 **Slash commands (10):** `/plan`, `/implement`, `/adr`, `/review`, `/codex-review`, `/task-to-issue`, `/issue-to-task`, `/backlog-review`, `/project-health`, `/feature` (master orchestrator).
 
-**Hooks (3):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `posttooluse-format.sh` — проверяет форматирование и lint после Edit|MultiEdit|Write и выдаёт предупреждение Claude (PostToolUse, не блокирует). `stop-hook.sh` — блокирует завершение сессии если тесты не проходят (Stop); уважает `stop_hook_active` escape-hatch.
+**Hooks (4):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `commit-msg-governance.sh` — применяет те же блокирующие правила к прямым терминальным коммитам (git hook); также выдаёт non-blocking reminder если `docs/anti-patterns.md` не трогался на текущей ветке при наличии code-файлов в коммите. `posttooluse-format.sh` — проверяет форматирование и lint после Edit|MultiEdit|Write и выдаёт предупреждение Claude (PostToolUse, не блокирует). `stop-hook.sh` — блокирует завершение сессии если тесты не проходят (Stop); уважает `stop_hook_active` escape-hatch.
 
 **Scripts (5):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`.
 
@@ -120,7 +120,7 @@ bootstrap/
 
 **Что обязательно на каждом этапе** — см. `docs/runbooks/feature-pipeline.md#10-pre-pr-artifact-verification`. Пропуск этапа без явного основания блокирует pipeline.
 
-**Механический gate коммитов:** `pre-commit-governance.sh` блокирует коммит без Conventional Commits prefix + issue-ref.
+**Механический gate коммитов:** `pre-commit-governance.sh` (Claude Code PreToolUse) блокирует коммит без Conventional Commits prefix + issue-ref. `commit-msg-governance.sh` (git-level) дополнительно напоминает (non-blocking) обновить `docs/anti-patterns.md`, если в этой ветке не было ни одного коммита с правками этого файла, а в текущем коммите есть code-файлы.
 
 **Механический gate PR:** планируется в issue #115.
 

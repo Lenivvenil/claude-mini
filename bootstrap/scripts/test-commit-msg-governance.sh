@@ -12,7 +12,11 @@
 
 set -uo pipefail
 
-HOOK="${1:-$(dirname "$0")/../../bootstrap/hooks/commit-msg-governance.sh}"
+# Canonicalize to absolute path so cd into sandbox repos doesn't break the
+# hook invocation (relative paths resolve against the current directory).
+_hook_default="$(cd "$(dirname "$0")/../.." && pwd)/bootstrap/hooks/commit-msg-governance.sh"
+HOOK="${1:-$_hook_default}"
+unset _hook_default
 # Fall back to installed location
 if [ ! -f "$HOOK" ]; then
     HOOK="$HOME/.claude/git-hooks/commit-msg"
@@ -292,6 +296,131 @@ else
         fail "HTR-bad: expected exit 2 when staged hook missing, got exit $rc"
     fi
 fi
+
+echo ""
+
+# ===== ANTI-PATTERNS REMINDER =====
+# Tests for the non-blocking reminder that fires when code is staged but
+# docs/anti-patterns.md has never been touched on the current HEAD.
+echo "Anti-patterns reminder (non-blocking)"
+
+# Helper: run hook, capture stderr, return exit code via global AP_STDERR
+AP_STDERR=""
+run_hook_capture_stderr() {
+    local msg="$1"
+    local repo="${2:-$TMPDIR_REPO}"
+    local msg_file stderr_file
+    msg_file=$(mktemp)
+    stderr_file=$(mktemp)
+    echo "$msg" > "$msg_file"
+    (cd "$repo" && "$HOOK" "$msg_file") 2>"$stderr_file"
+    local rc=$?
+    AP_STDERR=$(cat "$stderr_file")
+    rm -f "$msg_file" "$stderr_file"
+    return $rc
+}
+
+assert_stderr_contains() {
+    local label="$1"
+    local pattern="$2"
+    if echo "$AP_STDERR" | grep -qF "$pattern"; then
+        pass "$label — stderr contains expected pattern"
+    else
+        fail "$label — expected stderr to contain '$pattern'; got: $AP_STDERR"
+    fi
+}
+
+assert_stderr_lacks() {
+    local label="$1"
+    local pattern="$2"
+    if echo "$AP_STDERR" | grep -qF "$pattern"; then
+        fail "$label — expected stderr NOT to contain '$pattern'; got: $AP_STDERR"
+    else
+        pass "$label — stderr correctly lacks '$pattern'"
+    fi
+}
+
+# Sandboxed repo for reminder tests — no prior commits touching anti-patterns.md
+AP_REPO=$(mktemp -d /tmp/claude-mini-ap-reminder-test-XXXXXX)
+trap 'rm -rf "$TMPDIR_REPO" "$TMPDIR_HOME" "$TMPDIR_REPO2" "$AP_REPO"' EXIT
+git -C "$AP_REPO" init -q
+git -C "$AP_REPO" symbolic-ref HEAD refs/heads/feat/ap-124
+export GIT_CONFIG_GLOBAL="$TMPDIR_HOME/.gitconfig"
+# Initial commit (README only — not touching anti-patterns.md)
+echo "readme" > "$AP_REPO/README.md"
+git -C "$AP_REPO" add README.md
+GIT_DIR="$AP_REPO/.git" GIT_WORK_TREE="$AP_REPO" git commit -q -m "chore: initial (#0)"
+
+# T1: code staged, anti-patterns.md never touched on HEAD → reminder fires
+echo "fix-something.sh" > "$AP_REPO/fix-something.sh"
+git -C "$AP_REPO" add fix-something.sh
+run_hook_capture_stderr "fix: patch something (#124)" "$AP_REPO"
+assert_stderr_contains \
+    "AP-T1: reminder fires when .sh staged and anti-patterns.md untouched" \
+    "REMINDER"
+
+# T2: exit code is still 0 (non-blocking)
+run_hook_capture_stderr "fix: patch something (#124)" "$AP_REPO"
+if [ $? -eq 0 ]; then
+    pass "AP-T2: reminder is non-blocking (exit 0)"
+else
+    fail "AP-T2: expected exit 0, reminder must not block"
+fi
+
+# T3: docs/anti-patterns.md also staged → no reminder
+mkdir -p "$AP_REPO/docs"
+echo "# Anti-patterns" > "$AP_REPO/docs/anti-patterns.md"
+git -C "$AP_REPO" add docs/anti-patterns.md
+run_hook_capture_stderr "fix: patch something (#124)" "$AP_REPO"
+assert_stderr_lacks \
+    "AP-T3: no reminder when docs/anti-patterns.md is staged" \
+    "REMINDER"
+git -C "$AP_REPO" restore --staged docs/anti-patterns.md 2>/dev/null || true
+
+# T4: anti-patterns.md previously committed on HEAD → no reminder
+GIT_DIR="$AP_REPO/.git" GIT_WORK_TREE="$AP_REPO" git add docs/anti-patterns.md
+GIT_DIR="$AP_REPO/.git" GIT_WORK_TREE="$AP_REPO" git commit -q -m "docs: seed anti-patterns (#124)"
+echo "another-fix.sh" > "$AP_REPO/another-fix.sh"
+git -C "$AP_REPO" add another-fix.sh
+run_hook_capture_stderr "fix: another fix (#124)" "$AP_REPO"
+assert_stderr_lacks \
+    "AP-T4: no reminder after anti-patterns.md committed on HEAD" \
+    "REMINDER"
+
+# T5: docs-only staged (*.md in docs/) → no reminder
+git -C "$AP_REPO" restore --staged . 2>/dev/null || true
+echo "# updated" >> "$AP_REPO/README.md"
+git -C "$AP_REPO" add README.md
+run_hook_capture_stderr "docs: update readme (#124)" "$AP_REPO"
+assert_stderr_lacks \
+    "AP-T5: no reminder for docs-only commit (no code files staged)" \
+    "REMINDER"
+
+# T6: anti-patterns.md committed on main but NOT on current branch → reminder fires
+# (validates that merge-base scoping works — prior commits on main must not suppress)
+AP_REPO2=$(mktemp -d /tmp/claude-mini-ap-reminder-t6-XXXXXX)
+trap 'rm -rf "$TMPDIR_REPO" "$TMPDIR_HOME" "$TMPDIR_REPO2" "$AP_REPO" "$AP_REPO2"' EXIT
+git -C "$AP_REPO2" init -q
+export GIT_CONFIG_GLOBAL="$TMPDIR_HOME/.gitconfig"
+git -C "$AP_REPO2" symbolic-ref HEAD refs/heads/main
+# Seed docs/anti-patterns.md on main
+mkdir -p "$AP_REPO2/docs"
+echo "# Anti-patterns" > "$AP_REPO2/docs/anti-patterns.md"
+git -C "$AP_REPO2" add docs/anti-patterns.md
+GIT_DIR="$AP_REPO2/.git" GIT_WORK_TREE="$AP_REPO2" git commit -q -m "docs: seed anti-patterns on main (#0)"
+# Branch off — new branch has no AP commits of its own
+git -C "$AP_REPO2" update-ref refs/heads/feat/new-feature refs/heads/main
+git -C "$AP_REPO2" symbolic-ref HEAD refs/heads/feat/new-feature
+# Set refs/remotes/origin/main directly — avoids fetching from a non-bare repo
+# (fetching from self is unreliable; direct update-ref is deterministic)
+git -C "$AP_REPO2" update-ref refs/remotes/origin/main refs/heads/main
+# Stage a code file without anti-patterns.md
+echo "fix.sh" > "$AP_REPO2/fix.sh"
+git -C "$AP_REPO2" add fix.sh
+run_hook_capture_stderr "fix: something (#124)" "$AP_REPO2"
+assert_stderr_contains \
+    "AP-T6: reminder fires on branch even when anti-patterns.md committed on main" \
+    "REMINDER"
 
 echo ""
 
