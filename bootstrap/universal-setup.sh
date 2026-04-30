@@ -198,6 +198,31 @@ if [ -n "$TARGET_PATH" ]; then
         ok "pipeline-version $PIPELINE_VERSION → $VERSION_DST"
     fi
 
+    # Named exception: bootstrap/templates/conftest.py → <target>/conftest.py (ADR-0022)
+    # This is the only bootstrap/templates/ file delivered into the target repo root.
+    # By-name, not by-destination: do NOT add a wildcard loop here.
+    CONFTEST_SRC="$REPO_ROOT_T/bootstrap/templates/conftest.py"
+    CONFTEST_DST="$TARGET_DIR/conftest.py"
+    if [ -f "$CONFTEST_SRC" ]; then
+        if [ -f "$CONFTEST_DST" ] && cmp -s "$CONFTEST_SRC" "$CONFTEST_DST"; then
+            ok "conftest.py (identical, skip)"
+        elif [ "$MODE" = "check" ]; then
+            if [ -f "$CONFTEST_DST" ]; then
+                drift "conftest.py (would overwrite with --force)"
+            else
+                drift "conftest.py (would create)"
+            fi
+        elif [ -f "$CONFTEST_DST" ] && [ "$FORCE" != "1" ]; then
+            drift "conftest.py (exists, differs — use --force)"
+            diff -u "$CONFTEST_DST" "$CONFTEST_SRC" 2>/dev/null | head -10 | sed 's/^/    /' || true
+        else
+            cp "$CONFTEST_SRC" "$CONFTEST_DST" || die "cp failed: $CONFTEST_DST"
+            ok "conftest.py → $TARGET_DIR/"
+        fi
+    else
+        drift "bootstrap/templates/conftest.py not found in source tree — skipping (re-run after restoring source)"
+    fi
+
     echo ""
     log "Done (target mode, pipeline v$PIPELINE_VERSION)"
     if [ "$DRIFT" -gt 0 ]; then

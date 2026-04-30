@@ -35,6 +35,8 @@ jobs:
           for f in bootstrap/templates/*.yml; do
             python3 -c "import yaml; yaml.safe_load(open('$f'))"
           done
+      - name: Validate conftest.py template syntax
+        run: python3 -m py_compile bootstrap/templates/conftest.py
       - name: Validate ADR numbering
         run: |
           expected=1
