@@ -132,6 +132,14 @@ The rule that any task longer than one session must have a GitHub issue before w
 
 ---
 
+## Layer 1 Gate
+
+The deterministic verification phase within `/review` that runs `~/.claude/scripts/verify.sh` before any LLM analysis. Outputs `LAYER1_PASSED` or `LAYER1_FAILED`. When it passes, Layer 2 (LLM review) and Layer 3 (adversarial-critic) both proceed. When it fails, `/review` stops and the operator must resolve the deterministic findings before re-invoking.
+
+*Discriminating note:* "Layer 1 Gate" is often abbreviated "Layer 1" in implementation artifacts (`bootstrap/commands/review.md`). In domain language, use "Layer 1 Gate" to distinguish it from the LLM-review phases (Layer 2, Layer 3). The gate is a single `verify.sh` invocation — not a separate aggregate; it is a precondition step owned by `FeatureRun`.
+
+---
+
 ## Main Loop
 
 The Sonnet model instance that orchestrates all pipeline actions within a session. Has write authority over files and GitHub (within permissions). Distinct from the advisor (read-only) and agents (subagents with constrained toolsets).

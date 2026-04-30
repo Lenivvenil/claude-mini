@@ -178,7 +178,7 @@ BC-wide flat table (not per-aggregate). Policy trigger ownership follows the own
 | `ADRDrafted` | FeatureRun | Invoke `adr-reviewer` |
 | PR contains prod-bound change | FeatureRun | Invoke `security-reviewer` and `reliability-reviewer` inside `/review` phase |
 | PR touches human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) | FeatureRun | Invoke `docs-reviewer` inside `/review` phase |
-| Layer 1 passes on any `/review` invocation | FeatureRun | Invoke `adversarial-critic` (unconditional); findings are context for `claude_review` ReviewArtifact, not a new artifact type |
+| Layer 1 Gate passes on any `/review` invocation | FeatureRun | Invoke `adversarial-critic` (unconditional); findings are context for `claude_review` ReviewArtifact, not a new artifact type |
 | `TwoVoiceDisagreed` and unresolved at PR time | TwoVoiceReview | Create deferred-review issue (`type:deferred-review`) |
 | `CommitAttempted` without issue-ref | GovernanceRun | `GovernanceBlocked` |
 | `CommitAttempted` on ADR-significant change without ADR-link | GovernanceRun | `GovernanceBlocked` |
