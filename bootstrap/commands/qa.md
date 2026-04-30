@@ -29,6 +29,32 @@ Always record the carve-out reason — never exit silently.
 
 Get the full diff: `git diff --cached` (staged) → `git diff HEAD` (working tree) → `git show HEAD` (last commit). Use first non-empty result.
 
+### Phase 2.5 — Property-based testing (Python projects only)
+
+Skip this phase if no `.py` files are in the diff, or if `conftest.py` is absent from the project root.
+
+For each critical-path function changed in the diff, apply the six-step PBT workflow (Principle 3 — deterministic tooling first):
+
+#### Step 1 — Analyze
+Read the function signature, docstring, and call sites. Identify: input type, output type, any side effects.
+
+#### Step 2 — Understand
+State in one sentence what invariant this function must preserve for **all** valid inputs (not just the happy path).
+
+#### Step 3 — Propose
+Name the property pattern that applies: `round-trip`, `metamorphic`, `invariant`, `idempotence`, or `oracle`. If none fits clearly, state "example-based only" and skip to Phase 2.
+
+#### Step 4 — Write
+Write a `@given` test using Hypothesis strategies. Include at least one `@example` with an explicit edge case (`[]`, `0`, `""`, `None` as applicable).
+
+#### Step 5 — Execute
+Run `uv run pytest -m hypothesis -x --tb=short` (or equivalent). If it fails: shrink the strategy, not the property. The property is the spec.
+
+#### Step 6 — Triage
+If Hypothesis finds a counterexample: record it as a new `@example` in the test, fix the bug, re-run. If the property itself was wrong: update the invariant statement (Step 2) and re-derive.
+
+---
+
 ### Phase 2 — Test coverage
 
 For each modified `.sh`, `.py`, or other logic file in the diff:

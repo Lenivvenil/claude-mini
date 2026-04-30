@@ -16,3 +16,6 @@ create-backlog.sh
 # Per-project pipeline install artifacts (ADR-0018)
 .claude/commands/
 .claude/pipeline-version
+# Python bytecode
+__pycache__/
+*.pyc

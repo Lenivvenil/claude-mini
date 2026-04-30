@@ -3,10 +3,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '0 3 * * *'  # nightly at 03:00 UTC
 
 jobs:
   lint-type-test:
     runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
@@ -20,3 +23,51 @@ jobs:
         run: uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80
       - name: Audit
         run: uv run pip-audit || true
+
+  hypothesis-ci:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Install
+        run: uv sync --all-extras --dev
+      - name: Hypothesis CI profile (500 examples)
+        # -m hypothesis selects tests tagged @pytest.mark.hypothesis.
+        # If no such tests exist yet, pytest exits 5 — we treat that as success
+        # so empty consumer repos don't go red on first install.
+        # Register the marker in pyproject.toml: [tool.pytest.ini_options] markers = ["hypothesis"]
+        run: |
+          set +e
+          uv run pytest -m hypothesis --tb=short
+          rc=$?
+          [ "$rc" -eq 5 ] && { echo "no @pytest.mark.hypothesis tests found — skipping"; exit 0; }
+          exit "$rc"
+
+  hypothesis-nightly:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    timeout-minutes: 60   # backstop against runaway shrink loop on a pathological generator
+    env:
+      HYPOTHESIS_PROFILE: nightly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Install
+        run: uv sync --all-extras --dev
+      - name: Hypothesis nightly profile (5000 examples)
+        run: |
+          set +e
+          uv run pytest -m hypothesis --tb=short
+          rc=$?
+          [ "$rc" -eq 5 ] && { echo "no @pytest.mark.hypothesis tests found — skipping"; exit 0; }
+          exit "$rc"
+      - name: Upload Hypothesis database
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hypothesis-db
+          path: .hypothesis/
+          retention-days: 7
