@@ -4,8 +4,8 @@
 # Что делает:
 #   1. Проверяет hardware-layer done-flag (иначе отказывается работать)
 #   2. Копирует agents/skills/commands/hooks/scripts в ~/.claude/
-#   3. Патчит ~/.claude/settings.json через jq (добавляет PreToolUse hook
-#      к existing массиву, не разрушая RTK или другие hooks)
+#   3. Патчит ~/.claude/settings.json через jq (добавляет PreToolUse, PostToolUse,
+#      и Stop hooks к existing массивам, не разрушая RTK или другие hooks)
 #   4. Добавляет env vars в ~/.zshrc (idempotent)
 #   5. Создаёт symlinks ~/bin/mini-* на session-scripts
 #   6. Копирует templates в ~/.claude/templates/claude-mini/
@@ -611,6 +611,90 @@ if [ -f "$CLAUDE_SETTINGS" ]; then
                 fi
             else
                 err "PostToolUse jq patch failed post-verification — settings.json не изменён"
+                rm -f "$tmp"
+                exit 3
+            fi
+        fi
+    fi
+fi
+
+# --- Patch settings.json: Stop hook (stop-hook.sh) ---
+STOP_HOOK_PATH="$CLAUDE_HOME/hooks/stop-hook.sh"
+
+if [ -f "$CLAUDE_SETTINGS" ]; then
+    stop_existing=$(jq -r '.hooks.Stop // [] | .[].hooks[]?.command' "$CLAUDE_SETTINGS" 2>/dev/null || echo "")
+    if printf '%s\n' "$stop_existing" | grep -Fxq "$STOP_HOOK_PATH"; then
+        ok "stop hook already in settings.json"
+    else
+        if [ "$MODE" = "check" ]; then
+            drift "stop hook NOT in settings.json (would be added)"
+            echo "    Would add to Stop[]: $STOP_HOOK_PATH"
+        else
+            if ! jq -e 'type == "object"' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
+                err "Pre-verify: settings.json is not valid JSON — refusing to patch Stop"
+                exit 3
+            fi
+            # Snapshot PreToolUse and PostToolUse before patch to verify they are untouched
+            pretooluse_before=$(jq -cS '.hooks.PreToolUse // []' "$CLAUDE_SETTINGS" 2>/dev/null || echo "[]")
+            posttooluse_before=$(jq -cS '.hooks.PostToolUse // []' "$CLAUDE_SETTINGS" 2>/dev/null || echo "[]")
+            tmp=$(mktemp "${CLAUDE_SETTINGS}.tmp.XXXXXX")
+            jq \
+                --arg cmd "$STOP_HOOK_PATH" \
+                '
+                .hooks = (.hooks // {})
+                | .hooks.Stop = (.hooks.Stop // [])
+                | (
+                    (.hooks.Stop | map(.hooks[]?.command) | flatten | any(. == $cmd)) as $already
+                    | if $already then .
+                      else .hooks.Stop += [{"hooks": [{"type": "command", "command": $cmd}]}]
+                      end
+                  )
+                ' \
+                "$CLAUDE_SETTINGS" > "$tmp"
+            stop_post_ok=1
+            # Shape check
+            if ! jq -e 'type == "object" and (.hooks.Stop | type == "array")' "$tmp" >/dev/null 2>&1; then
+                err "Post-verify: output is not a valid settings object"
+                stop_post_ok=0
+            fi
+            # PreToolUse and PostToolUse must be byte-identical before and after
+            pretooluse_after=$(jq -cS '.hooks.PreToolUse // []' "$tmp" 2>/dev/null || echo "[]")
+            if [ "$pretooluse_before" != "$pretooluse_after" ]; then
+                err "Post-verify: PreToolUse was altered by Stop patch — refusing"
+                stop_post_ok=0
+            fi
+            posttooluse_after=$(jq -cS '.hooks.PostToolUse // []' "$tmp" 2>/dev/null || echo "[]")
+            if [ "$posttooluse_before" != "$posttooluse_after" ]; then
+                err "Post-verify: PostToolUse was altered by Stop patch — refusing"
+                stop_post_ok=0
+            fi
+            # New hook present
+            if ! jq -e --arg h "$STOP_HOOK_PATH" \
+                '.hooks.Stop[]? | .hooks[]? | select(.command == $h)' "$tmp" >/dev/null 2>&1; then
+                err "Post-verify: stop hook missing from output"
+                stop_post_ok=0
+            fi
+            # Non-hooks keys unchanged
+            if ! diff <(jq -S 'del(.hooks)' "$CLAUDE_SETTINGS") \
+                      <(jq -S 'del(.hooks)' "$tmp") >/dev/null 2>&1; then
+                err "Post-verify: non-hooks settings were altered — settings.json не изменён"
+                stop_post_ok=0
+            fi
+            if [ "$stop_post_ok" = "1" ]; then
+                if ! cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak.$(date +%s).$$"; then
+                    err "Stop backup failed — settings.json не изменён"
+                    rm -f "$tmp"
+                    exit 3
+                fi
+                if mv "$tmp" "$CLAUDE_SETTINGS"; then
+                    ok "stop hook added to Stop[]"
+                else
+                    err "Stop mv failed — settings.json не изменён (backup preserved)"
+                    rm -f "$tmp"
+                    exit 3
+                fi
+            else
+                err "Stop jq patch failed post-verification — settings.json не изменён"
                 rm -f "$tmp"
                 exit 3
             fi
