@@ -1,6 +1,6 @@
 # 0011. Install git-level commit-msg hook per-project for phase 2 governance
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-24
 * Deciders: venil
 * Tags: governance, security, hooks, installer

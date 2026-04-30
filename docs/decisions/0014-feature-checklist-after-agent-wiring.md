@@ -1,6 +1,6 @@
 # 0014. Accept longer inline checklist and correct domain-researcher trigger
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-24
 * Deciders: venil
 * Tags: pipeline, orchestration, agents

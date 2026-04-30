@@ -1,6 +1,6 @@
 # 0016. Place `/qa` between `/implement` and `/review` as the advisory repair stage
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-26
 * Deciders: Lenivvenil
 * Tags: pipeline, tooling, qa

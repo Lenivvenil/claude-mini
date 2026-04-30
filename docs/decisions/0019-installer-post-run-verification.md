@@ -1,6 +1,6 @@
 # 0019. Verify installer side-effects inline; mandate `--check` after install in `/implement`
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-28
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)
 * Tags: installer, contract, idempotency, verification, pipeline
