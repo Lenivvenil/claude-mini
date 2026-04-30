@@ -5,7 +5,7 @@
 
 **Как добавить запись:** при каждом manual catch — добавить строку в Ranked summary и раздел ниже в том же коммите. `commit-msg-governance.sh` напоминает об этом если коммит содержит code-файлы, а файл не трогался на ветке. Формат: заполни все шесть полей (Pattern, Frequency, Severity, Detectability, Detector, Example, Fix); выставь Score по формуле; пересортируй Ranked summary по убыванию Score.
 
-*Будущий adversarial-critic (synthesis ticket, ещё не реализован) загрузит этот файл в context автоматически. До его появления используй как checklist при ручной проверке.*
+*`adversarial-critic` (`bootstrap/agents/adversarial-critic.md`, issue #123) загружает этот файл в context автоматически при каждом `/review`.*
 
 ---
 

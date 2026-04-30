@@ -14,6 +14,7 @@ Closes #
 - [ ] Domain docs обновлены (если граница BC изменилась)
 - [ ] Тесты: unit / integration; coverage ≥ floor
 - [ ] `/review` прошёл
+- [ ] `adversarial-critic` запущен; BLOCK-findings устранены (или задокументированы как осознанный компромисс)
 - [ ] `/codex-review` прошёл (или `type:deferred-review` issue открыт)
 - [ ] Разногласия между ревьюерами разрешены
 - [ ] Security scans clean

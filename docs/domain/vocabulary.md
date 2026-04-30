@@ -26,7 +26,7 @@ The Opus model instance invoked via `advisor()` to critique plans and review com
 ## Agent
 
 A Claude Code subagent with a defined role and constrained toolset. Two subtypes per ADR 0007:
-- **Read-only critic** — reads and evaluates, returns markdown report, never writes: `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `reliability-reviewer`, `backlog-groomer`, `docs-reviewer`.
+- **Read-only critic** — reads and evaluates, returns markdown report, never writes: `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `reliability-reviewer`, `backlog-groomer`, `docs-reviewer`, `adversarial-critic`.
 - **Author-gateway** — invokes a write-capable skill for docs artifacts only: `domain-researcher`, `solutions-architect`.
 
 *Discriminating note:* "agent" in generic AI parlance means any AI agent. Inside this BC it means specifically a Claude Code subagent with the constraints above. See `docs/decisions/0007-read-only-critic-agents.md`.
@@ -129,6 +129,14 @@ A commit rejected by the governance hook. Not a failure state — it is the hook
 ## Issue-first
 
 The rule that any task longer than one session must have a GitHub issue before work starts. Enforced by the governance hook (commit-msg requires `#NNN`). Issues created via `/task-to-issue`.
+
+---
+
+## Layer 1 Gate
+
+The deterministic verification phase within `/review` that runs `~/.claude/scripts/verify.sh` before any LLM analysis. Outputs `LAYER1_PASSED` or `LAYER1_FAILED`. When it passes, Layer 2 (LLM review) and Layer 3 (adversarial-critic) both proceed. When it fails, `/review` stops and the operator must resolve the deterministic findings before re-invoking.
+
+*Discriminating note:* "Layer 1 Gate" is often abbreviated "Layer 1" in implementation artifacts (`bootstrap/commands/review.md`). In domain language, use "Layer 1 Gate" to distinguish it from the LLM-review phases (Layer 2, Layer 3). The gate is a single `verify.sh` invocation — not a separate aggregate; it is a precondition step owned by `FeatureRun`.
 
 ---
 

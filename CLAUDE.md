@@ -41,6 +41,7 @@
 | после `/implement` | `domain-reviewer` | если `docs/domain/` изменялся |
 | внутри `/review` | `security-reviewer`, `reliability-reviewer` | prod-bound: `bootstrap/`, `.github/workflows/`, `.git/hooks/`, или label `prod-bound` |
 | внутри `/review` | `docs-reviewer` | PR затрагивает `docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md` — и НЕ только `docs/decisions/` или `docs/domain/` |
+| внутри `/review` (всегда, после Layer 1) | `adversarial-critic` | каждый PR; передать diff как context; BLOCK-findings блокируют merge |
 | еженедельно | `backlog-groomer` | **out-of-band**, не входит в pipeline |
 
 **Оркестратор одной кнопкой:** `/feature <issue-number>` — ведёт по всем стадиям через TodoWrite.
@@ -61,6 +62,7 @@ Read-only критики. Вызов: `@agent-<name>`.
 | `security-reviewer` | Перед prod-значимым PR — затрагивает `bootstrap/`, `.github/workflows/`, `.git/hooks/`, или label `prod-bound` |
 | `reliability-reviewer` | Перед prod-значимым PR (те же условия, что `security-reviewer`) — проверяет idempotency, recoverability, fault tolerance, observability, auditability, resilience |
 | `docs-reviewer` | Внутри `/review`, если PR меняет human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) — проверяет читаемость для новичка, исполняемость примеров, отсутствие orphaned sections |
+| `adversarial-critic` | Внутри `/review` всегда (после Layer 1) — ловит ленивые паттерны LLM: дублирование, symptom-fix, narrow-case, copy-paste, truncated-file, magic constants, TODO-без-тикета, commented-out code; загружает `docs/anti-patterns.md` в context |
 
 ## MCP tooling
 

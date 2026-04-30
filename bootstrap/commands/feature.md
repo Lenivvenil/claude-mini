@@ -87,6 +87,10 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 [ ]    7b. Only if PR touches human-facing docs (docs/runbooks/, docs/architecture/,
 [ ]        docs/principles.md, README.md) — and not exclusively docs/decisions/ or docs/domain/:
 [ ]        invoke @agent-docs-reviewer inside this review phase
+[ ]    7c. Always (after Layer 1 passes): invoke @agent-adversarial-critic — pass the diff
+[ ]        as context; wait for verdict; BLOCK findings must be resolved before merge
+[ ]        If agent unavailable (not installed): document in PR thread as graceful-degradation;
+[ ]        run ./bootstrap/universal-setup.sh --install to restore
 [ ] 8. Run /codex-review
 [ ] 9. Resolve findings; decide on disagreements
 [ ] 10. git commit (governance hook checks)
