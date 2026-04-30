@@ -133,5 +133,34 @@ if [ "$is_decision_change" = "true" ]; then
     fi
 fi
 
+# --- Anti-patterns reminder (non-blocking, exit 0) ---
+# Fires when: (a) staged files include non-docs code (*.sh, *.py, *.bats,
+# bootstrap/) AND (b) docs/anti-patterns.md is not staged in this commit AND
+# (c) docs/anti-patterns.md has not been touched in any commit on this branch
+# since it diverged from origin/main.
+# Scoped to merge-base..HEAD so existing commits on main do not suppress the
+# reminder on a new branch. Falls back to HEAD (all history) when origin/main
+# does not exist (e.g. sandboxed repos in tests).
+all_staged=$(git diff --cached --name-only 2>/dev/null || true)
+staged_code=$(echo "$all_staged" | \
+    grep -v '^docs/' | grep -v '\.md$' | grep -E '\.(sh|py|bats)$|^bootstrap/' || true)
+if echo "$all_staged" | grep -qE '^docs/anti-patterns\.md$'; then
+    ap_staged=yes
+else
+    ap_staged=
+fi
+if [ -n "$staged_code" ] && [ -z "$ap_staged" ] && git rev-parse --verify HEAD >/dev/null 2>&1; then
+    _base=$(git merge-base HEAD origin/main 2>/dev/null || true)
+    if [ -n "$_base" ]; then
+        anti_pattern_commits=$(git log --oneline --max-count=1 "${_base}..HEAD" -- docs/anti-patterns.md 2>/dev/null | wc -l | tr -d '[:space:]')
+    else
+        anti_pattern_commits=$(git log --oneline --max-count=1 HEAD -- docs/anti-patterns.md 2>/dev/null | wc -l | tr -d '[:space:]')
+    fi
+    unset _base
+    if [ "${anti_pattern_commits:-0}" -eq 0 ]; then
+        log "REMINDER: code staged but docs/anti-patterns.md not touched on this branch — consider adding a new entry if you caught a lazy pattern this session"
+    fi
+fi
+
 log "OK: $msg_subject"
 exit 0
