@@ -37,6 +37,7 @@
 │                                                                          │
 │  Hooks:  pre-commit-governance.sh (PreToolUse Bash → blocks bad commits)│
 │          rtk (PreToolUse Bash → compresses output)                      │
+│          posttooluse-format.sh (PostToolUse Edit|MultiEdit|Write → lint)│
 │                                                                          │
 │  Deny-rules: .env*, secrets/**, ~/.ssh/**, age-key paths                │
 │  Mode: auto + disableBypassPermissionsMode=true                         │

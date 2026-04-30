@@ -62,7 +62,7 @@ bootstrap/
 ├── agents/             — read-only критики для ~/.claude/agents/
 ├── skills/             — авторские тулы для ~/.claude/skills/
 ├── commands/           — slash-commands для ~/.claude/commands/
-├── hooks/              — PreToolUse hooks для ~/.claude/hooks/
+├── hooks/              — Claude Code hooks (PreToolUse + PostToolUse) для ~/.claude/hooks/
 ├── scripts/            — утилиты для ~/.claude/scripts/ и ~/bin/
 ├── templates/          — шаблоны (CLAUDE.md, PR template, CI workflows)
 └── universal-setup.sh  — идемпотентный installer
@@ -76,7 +76,7 @@ bootstrap/
 
 **Slash commands (10):** `/plan`, `/implement`, `/adr`, `/review`, `/codex-review`, `/task-to-issue`, `/issue-to-task`, `/backlog-review`, `/project-health`, `/feature` (master orchestrator).
 
-**Hooks (1):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref.
+**Hooks (2):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `posttooluse-format.sh` — проверяет форматирование и lint после Edit|MultiEdit|Write и выдаёт предупреждение Claude (PostToolUse, не блокирует).
 
 **Scripts (5):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`.
 
