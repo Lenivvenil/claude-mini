@@ -1,11 +1,12 @@
 ---
-description: Claude review of staged diff or last commit by severity checklist.
-allowed-tools: Bash(git diff:*), Bash(git show:*), Bash(git status:*), Bash(git log:*), Read
+description: Two-layer review. Layer 1: deterministic gates (verify.sh). Layer 2: LLM review. LLM does not run if layer 1 fails.
+allowed-tools: Bash(~/.claude/scripts/verify.sh), Bash(git diff:*), Bash(git show:*), Bash(git status:*), Bash(git log:*), Read
 model: claude-sonnet-4-6
 ---
 
 # /review
 
+Layer-1 gate: !`~/.claude/scripts/verify.sh 2>&1`
 Diff: !`git diff --cached HEAD 2>/dev/null || git diff HEAD 2>/dev/null || git show HEAD`
 Plan: @plan.md
 Principles: @docs/principles.md
@@ -13,6 +14,22 @@ ADRs: !`ls docs/decisions/ 2>/dev/null`
 Domain contracts: @docs/domain/overview.md
 
 ## Your task
+
+### LAYER 1 GATE RULE — READ THIS FIRST
+
+Scan the "Layer-1 gate" output above for the string `LAYER1_FAILED`.
+
+**If `LAYER1_FAILED` is present:**
+1. Copy the full gate output into a fenced code block labelled `[LAYER1-BLOCK]`.
+2. End with: "Fix layer-1 findings before re-running `/review`. Do not proceed to LLM review."
+3. **STOP. Do not analyse the diff. Do not write any review sections.**
+
+**If `LAYER1_FAILED` is NOT present (gate shows `LAYER1_PASSED`):**
+All deterministic gates passed. Proceed to Layer 2 below.
+
+---
+
+## Layer 2 — LLM review (only if Layer 1 passed)
 
 Review the diff against the plan, principles, and domain contracts. Return markdown with sections:
 

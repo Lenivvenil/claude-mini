@@ -1,0 +1,33 @@
+# ruff.toml — zero-warning baseline (ADR-0023)
+# Delivered to pet-project root via: ./bootstrap/universal-setup.sh --target <repo>
+# Re-visit: if a consuming project needs stricter/looser rules, open a superseding ADR.
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["ALL"]
+ignore = [
+  # Docstring style — too opinionated; enforce manually
+  "D",
+  # Type annotations — not required at baseline
+  "ANN",
+  # FIX/FIXME comments — handled by operator judgment
+  "FIX",
+  # TODO comments — semgrep rule llm-todo-without-ticket handles ticket enforcement
+  "TD",
+  # Commented-out code detection — semgrep rule llm-commented-block handles this
+  "ERA",
+  # Trailing comma conflicts — formatter handles
+  "COM812",
+  "COM819",
+  # Implicit string concat — formatter handles
+  "ISC001",
+  # Magic value — too noisy for pet-project baseline
+  "PLR2004",
+]
+
+[lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]    # assert OK in tests
+"**/test_*.py"  = ["S101"]
+"conftest.py"   = ["S101"]

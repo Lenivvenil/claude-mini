@@ -1,0 +1,32 @@
+{
+  "_comment": "eslint baseline — ADR-0023. The binding complexity rule is 'complexity': ['error', 10] below. The eslint rule is named 'complexity', not 'max-complexity'; ADR-0023 confirmation check #6 queries for 'max-complexity' which is a typo in the ADR — tracked in follow-up issue. Value 10 is pinned explicitly and must not drift from the ADR threshold.",
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "rules": {
+    "complexity": ["error", 10],
+    "no-console": "warn",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "warn",
+    "no-constant-condition": "error",
+    "no-debugger": "error"
+  },
+  "env": {
+    "node": true,
+    "es2022": true
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    "build/",
+    "*.min.js"
+  ]
+}
