@@ -50,8 +50,8 @@ echo "--- edge: empty file_path ---"
 tmplog=$(mktemp)
 out=$(POSTTOOLUSE_LOG="$tmplog" bash "$HOOK" <<< '{"tool_name":"Write","tool_input":{}}' 2>/dev/null)
 rc=$?
-[ $rc -eq 0 ] && pass "exit 0 on empty file_path" || fail "expected exit 0, got $rc"
-[ -z "$out" ] && pass "no output on empty file_path" || fail "expected no output, got: $out"
+if [ $rc -eq 0 ]; then pass "exit 0 on empty file_path"; else fail "expected exit 0, got $rc"; fi
+if [ -z "$out" ]; then pass "no output on empty file_path"; else fail "expected no output, got: $out"; fi
 
 # ---------------------------------------------------------------
 # TEST: non-existent file → exit 0, no additionalContext
@@ -60,8 +60,8 @@ echo "--- edge: non-existent file ---"
 tmplog=$(mktemp)
 out=$(run_hook "$(mk_payload "/tmp/__does_not_exist_xyz.py" "/tmp")" "$tmplog" 2>/dev/null)
 rc=$?
-[ $rc -eq 0 ] && pass "exit 0 on missing file" || fail "expected exit 0, got $rc"
-[ -z "$out" ] && pass "no output on missing file" || fail "expected no output, got: $out"
+if [ $rc -eq 0 ]; then pass "exit 0 on missing file"; else fail "expected exit 0, got $rc"; fi
+if [ -z "$out" ]; then pass "no output on missing file"; else fail "expected no output, got: $out"; fi
 
 # ---------------------------------------------------------------
 # TEST: unknown extension → exit 0, no output
@@ -73,9 +73,9 @@ echo "a,b,c" > "$tmpfile"
 tmplog=$(mktemp)
 out=$(run_hook "$(mk_payload "$tmpfile" "$tmpdir")" "$tmplog" 2>/dev/null)
 rc=$?
-[ $rc -eq 0 ] && pass "exit 0 on unknown extension" || fail "expected exit 0, got $rc"
-[ -z "$out" ] && pass "no additionalContext on unknown extension" || fail "expected no output, got: $out"
-grep -q "unknown extension" "$tmplog" && pass "log entry for unknown extension" || fail "log missing 'unknown extension'"
+if [ $rc -eq 0 ]; then pass "exit 0 on unknown extension"; else fail "expected exit 0, got $rc"; fi
+if [ -z "$out" ]; then pass "no additionalContext on unknown extension"; else fail "expected no output, got: $out"; fi
+if grep -q "unknown extension" "$tmplog"; then pass "log entry for unknown extension"; else fail "log missing 'unknown extension'"; fi
 
 # ---------------------------------------------------------------
 # TEST: clean Python file → exit 0, no additionalContext
@@ -93,9 +93,9 @@ EOF
     tmplog=$(mktemp)
     out=$(run_hook "$(mk_payload "$tmpdir/clean.py" "$tmpdir")" "$tmplog" 2>/dev/null)
     rc=$?
-    [ $rc -eq 0 ] && pass "Python clean: exit 0" || fail "Python clean: expected exit 0, got $rc"
-    [ -z "$out" ] && pass "Python clean: no additionalContext" || fail "Python clean: unexpected output: $out"
-    grep -q "clean:" "$tmplog" && pass "Python clean: log entry written" || fail "Python clean: log entry missing"
+    if [ $rc -eq 0 ]; then pass "Python clean: exit 0"; else fail "Python clean: expected exit 0, got $rc"; fi
+    if [ -z "$out" ]; then pass "Python clean: no additionalContext"; else fail "Python clean: unexpected output: $out"; fi
+    if grep -q "clean:" "$tmplog"; then pass "Python clean: log entry written"; else fail "Python clean: log entry missing"; fi
 fi
 
 # ---------------------------------------------------------------
@@ -113,7 +113,7 @@ EOF
     tmplog=$(mktemp)
     out=$(run_hook "$(mk_payload "$tmpdir/bad.py" "$tmpdir")" "$tmplog" 2>/dev/null)
     rc=$?
-    [ $rc -eq 0 ] && pass "Python lint error: exit 0" || fail "Python lint error: expected exit 0, got $rc"
+    if [ $rc -eq 0 ]; then pass "Python lint error: exit 0"; else fail "Python lint error: expected exit 0, got $rc"; fi
     if echo "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1; then
         pass "Python lint error: additionalContext present"
         ctx=$(echo "$out" | jq -r '.hookSpecificOutput.additionalContext')
@@ -124,21 +124,19 @@ EOF
 fi
 
 # ---------------------------------------------------------------
-# TEST: Python format violation → additionalContext emitted
+# TEST: Python format violation → log entry written
 # ---------------------------------------------------------------
 echo "--- Python: format violation ---"
 if ! require_tool ruff; then
     skip "ruff not installed — skipping"
 else
     tmpdir=$(mktemp -d -p "$TMPDIR_BASE")
-    # Un-formatted: no spaces around operators
     printf 'x=1+2\nprint(x)\n' > "$tmpdir/unformatted.py"
     tmplog=$(mktemp)
     out=$(run_hook "$(mk_payload "$tmpdir/unformatted.py" "$tmpdir")" "$tmplog" 2>/dev/null)
     rc=$?
-    [ $rc -eq 0 ] && pass "Python format violation: exit 0" || fail "Python format violation: expected exit 0, got $rc"
-    # ruff format --check may or may not flag this depending on version; test that hook at least ran
-    grep -qE "py fmt=|py lint=" "$tmplog" && pass "Python format violation: log entry written" || fail "Python format violation: log entry missing"
+    if [ $rc -eq 0 ]; then pass "Python format violation: exit 0"; else fail "Python format violation: expected exit 0, got $rc"; fi
+    if grep -qE "py fmt=|py lint=" "$tmplog"; then pass "Python format violation: log entry written"; else fail "Python format violation: log entry missing"; fi
 fi
 
 # ---------------------------------------------------------------
@@ -149,7 +147,6 @@ if ! require_tool gofmt; then
     skip "gofmt not installed — skipping Go tests"
 else
     tmpdir=$(mktemp -d -p "$TMPDIR_BASE")
-    # Intentionally un-indented Go — gofmt -l will report it
     cat > "$tmpdir/bad.go" << 'EOF'
 package main
 
@@ -162,13 +159,13 @@ EOF
     tmplog=$(mktemp)
     out=$(run_hook "$(mk_payload "$tmpdir/bad.go" "$tmpdir")" "$tmplog" 2>/dev/null)
     rc=$?
-    [ $rc -eq 0 ] && pass "Go format violation: exit 0" || fail "Go format violation: expected exit 0, got $rc"
+    if [ $rc -eq 0 ]; then pass "Go format violation: exit 0"; else fail "Go format violation: expected exit 0, got $rc"; fi
     if echo "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1; then
         pass "Go format violation: additionalContext present"
     else
         fail "Go format violation: no additionalContext in output: $out"
     fi
-    grep -q "go fmt" "$tmplog" && pass "Go format violation: log entry written" || fail "Go format violation: log entry missing"
+    if grep -q "go fmt" "$tmplog"; then pass "Go format violation: log entry written"; else fail "Go format violation: log entry missing"; fi
 fi
 
 # ---------------------------------------------------------------
@@ -191,9 +188,9 @@ EOF
     tmplog=$(mktemp)
     out=$(run_hook "$(mk_payload "$tmpdir/clean.go" "$tmpdir")" "$tmplog" 2>/dev/null)
     rc=$?
-    [ $rc -eq 0 ] && pass "Go clean: exit 0" || fail "Go clean: expected exit 0, got $rc"
-    [ -z "$out" ] && pass "Go clean: no additionalContext" || fail "Go clean: unexpected output: $out"
-    grep -q "clean:" "$tmplog" && pass "Go clean: log entry written" || fail "Go clean: log entry missing"
+    if [ $rc -eq 0 ]; then pass "Go clean: exit 0"; else fail "Go clean: expected exit 0, got $rc"; fi
+    if [ -z "$out" ]; then pass "Go clean: no additionalContext"; else fail "Go clean: unexpected output: $out"; fi
+    if grep -q "clean:" "$tmplog"; then pass "Go clean: log entry written"; else fail "Go clean: log entry missing"; fi
 fi
 
 # ---------------------------------------------------------------
@@ -204,7 +201,7 @@ tmpdir=$(mktemp -d -p "$TMPDIR_BASE")
 echo "a,b" > "$tmpdir/file.csv"
 novel_log="$tmpdir/subdir/test.log"
 run_hook "$(mk_payload "$tmpdir/file.csv" "$tmpdir")" "$novel_log" >/dev/null 2>&1
-[ -f "$novel_log" ] && pass "log file created if missing" || fail "log file not created"
+if [ -f "$novel_log" ]; then pass "log file created if missing"; else fail "log file not created"; fi
 
 # ---------------------------------------------------------------
 # INSTALLER TESTS: universal-setup.sh PostToolUse patching
@@ -225,12 +222,7 @@ else
     FAKE_HOME=$(mktemp -d -p "$TMPDIR_BASE")
     mkdir -p "$FAKE_HOME/.claude/hooks" "$FAKE_HOME/.claude/git-hooks"
 
-    # Stub hooks/scripts that setup copies — enough to not fail copy_file
     cp "$REPO_ROOT/bootstrap/hooks/posttooluse-format.sh" "$FAKE_HOME/.claude/hooks/posttooluse-format.sh" 2>/dev/null || true
-
-    # Inline jq-only patch logic (mirrors universal-setup.sh) using fake HOME
-    # We directly exercise the jq filter rather than running full setup (which
-    # needs platform.done, jq/gh/claude prereqs, etc.)
 
     POSTTOOLUSE_HOOK_PATH="$FAKE_HOME/.claude/hooks/posttooluse-format.sh"
 
@@ -247,8 +239,9 @@ else
                 | if $has_matcher then
                     .hooks.PostToolUse |= map(
                         if .matcher == "Edit|MultiEdit|Write" then
-                            .hooks = ((.hooks // []) + [{"type": "command", "command": $cmd}])
-                            | .hooks |= unique_by(.command)
+                            if (.hooks // [] | map(select(.type == "command" and .command == $cmd)) | length) == 0 then
+                                .hooks = ((.hooks // []) + [{"type": "command", "command": $cmd}])
+                            else . end
                         else . end
                     )
                 else
@@ -266,32 +259,38 @@ else
     base='{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"/existing/hook.sh"}]}]}}'
     patched=$(run_patch "$base" "$POSTTOOLUSE_HOOK_PATH")
     count=$(echo "$patched" | jq '[.hooks.PostToolUse[]? | select(.matcher=="Edit|MultiEdit|Write") | .hooks[]? | select(.command=="'"$POSTTOOLUSE_HOOK_PATH"'")] | length')
-    [ "$count" = "1" ] && pass "installer: hook added once" || fail "installer: expected 1 entry, got $count"
+    if [ "$count" = "1" ]; then pass "installer: hook added once"; else fail "installer: expected 1 entry, got $count"; fi
 
     # --- installer: PreToolUse is byte-identical after patch ---
     pretooluse_before=$(echo "$base" | jq -cS '.hooks.PreToolUse // []')
     pretooluse_after=$(echo "$patched" | jq -cS '.hooks.PreToolUse // []')
-    [ "$pretooluse_before" = "$pretooluse_after" ] && pass "installer: PreToolUse unchanged" || fail "installer: PreToolUse was altered"
+    if [ "$pretooluse_before" = "$pretooluse_after" ]; then pass "installer: PreToolUse unchanged"; else fail "installer: PreToolUse was altered"; fi
 
     # --- installer: idempotency — second patch does not duplicate entry ---
     echo "--- installer: idempotency ---"
     patched2=$(run_patch "$patched" "$POSTTOOLUSE_HOOK_PATH")
     count2=$(echo "$patched2" | jq '[.hooks.PostToolUse[]? | select(.matcher=="Edit|MultiEdit|Write") | .hooks[]? | select(.command=="'"$POSTTOOLUSE_HOOK_PATH"'")] | length')
-    [ "$count2" = "1" ] && pass "installer: idempotent (no duplicate on second run)" || fail "installer: expected 1 entry after second run, got $count2"
+    if [ "$count2" = "1" ]; then pass "installer: idempotent (no duplicate on second run)"; else fail "installer: expected 1 entry after second run, got $count2"; fi
 
     # --- installer: matcher is exactly "Edit|MultiEdit|Write" ---
     echo "--- installer: matcher contract ---"
     matcher=$(echo "$patched" | jq -r '.hooks.PostToolUse[]? | select(.hooks[]?.command=="'"$POSTTOOLUSE_HOOK_PATH"'") | .matcher')
-    [ "$matcher" = "Edit|MultiEdit|Write" ] && pass "installer: matcher is exactly Edit|MultiEdit|Write" || fail "installer: matcher is '$matcher', expected 'Edit|MultiEdit|Write'"
+    if [ "$matcher" = "Edit|MultiEdit|Write" ]; then pass "installer: matcher is exactly Edit|MultiEdit|Write"; else fail "installer: matcher is '$matcher', expected 'Edit|MultiEdit|Write'"; fi
 
     # --- installer: grep -Fxq exact match (not substring) ---
     echo "--- installer: exact-path idempotency guard ---"
     superpath="${POSTTOOLUSE_HOOK_PATH}.bak"
     existing_line="$POSTTOOLUSE_HOOK_PATH"
-    printf '%s\n' "$existing_line" | grep -Fxq "$POSTTOOLUSE_HOOK_PATH" \
-        && pass "installer: Fxq matches exact path" || fail "installer: Fxq failed on exact match"
-    printf '%s\n' "$superpath" | grep -Fxq "$POSTTOOLUSE_HOOK_PATH" \
-        && fail "installer: Fxq matched substring (should not)" || pass "installer: Fxq correctly rejects superstring"
+    if printf '%s\n' "$existing_line" | grep -Fxq "$POSTTOOLUSE_HOOK_PATH"; then
+        pass "installer: Fxq matches exact path"
+    else
+        fail "installer: Fxq failed on exact match"
+    fi
+    if printf '%s\n' "$superpath" | grep -Fxq "$POSTTOOLUSE_HOOK_PATH"; then
+        fail "installer: Fxq matched substring (should not)"
+    else
+        pass "installer: Fxq correctly rejects superstring"
+    fi
 fi
 
 # ---------------------------------------------------------------
