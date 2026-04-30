@@ -35,7 +35,7 @@ This BC owns the workflow choreography for AI-assisted software development: pip
 | **Operator** | Human running Claude Code; sole final decision-maker and author of production code | Full write, merge, approve |
 | **Main Loop** (Sonnet) | Orchestrates all pipeline actions under operator direction | Write authority within repo |
 | **Advisor** (Opus) | Consulted via `advisor()` before substantive work and before declaring done; two calls minimum on nontrivial tasks | Read-only; returns critique, not edits |
-| **Read-only Critic** (subagent) | `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `reliability-reviewer`, `backlog-groomer`, `docs-reviewer` — evaluate artifacts, return markdown reports | Read-only; never writes to filesystem or mutates GitHub |
+| **Read-only Critic** (subagent) | `adr-reviewer`, `domain-reviewer`, `security-reviewer`, `reliability-reviewer`, `backlog-groomer`, `docs-reviewer`, `adversarial-critic` — evaluate artifacts, return markdown reports | Read-only; never writes to filesystem or mutates GitHub |
 | **Author-gateway** (subagent) | `domain-researcher`, `solutions-architect` — invoke write-capable skills for docs artifacts only | Limited write via skill (docs only, not production code) |
 | **Skill** | Slash-command (`/plan`, `/adr`, `/implement`, `/review`, `/feature`, etc.) executing under main-loop authority | Main-loop authority |
 | **GitHub MCP** | MCP server invocable from inside the pipeline; ACL layer over GitHub platform | Pipeline-scoped GitHub API calls |
@@ -163,7 +163,7 @@ Invariants:
 - State machine: `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}` — `disagreed` entered via `RecordTwoVoiceResult(disagreed)`; `deferred` reachable from `pending` (Codex skip) and from `disagreed` (unresolved conflict)
 - Terminal states (`agreed`, `reconciled`, `deferred`) are monotonically stable: no backward transition out of any terminal state.
 - `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` is required for `FeatureRun.dod_state` to reach `done`.
-- `ReviewArtifact` entities of type `claude_review` and `codex_review` are owned by this aggregate. `advisor_critique` type stays in `FeatureRun` — advisor is not part of two-voice review (per `vocabulary.md`, ADR-0020).
+- `ReviewArtifact` entities of type `claude_review` and `codex_review` are owned by this aggregate. `advisor_critique` type stays in `FeatureRun` — advisor is not part of two-voice review (per `vocabulary.md`, ADR-0020). `adversarial-critic` findings are context that enriches `claude_review`; they do NOT constitute a fourth `ReviewArtifact` type. The type set is stable at three: `claude_review`, `codex_review`, `advisor_critique`.
 - `RequestSecurityReview` and `RequestReliabilityReview` commands must **not** be migrated into `TwoVoiceReview` — they are conditional prod-bound gates owned by `FeatureRun` (ADR-0020 Confirmation §5).
 
 ---
@@ -178,6 +178,7 @@ BC-wide flat table (not per-aggregate). Policy trigger ownership follows the own
 | `ADRDrafted` | FeatureRun | Invoke `adr-reviewer` |
 | PR contains prod-bound change | FeatureRun | Invoke `security-reviewer` and `reliability-reviewer` inside `/review` phase |
 | PR touches human-facing docs (`docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md`) | FeatureRun | Invoke `docs-reviewer` inside `/review` phase |
+| Layer 1 passes on any `/review` invocation | FeatureRun | Invoke `adversarial-critic` (unconditional); findings are context for `claude_review` ReviewArtifact, not a new artifact type |
 | `TwoVoiceDisagreed` and unresolved at PR time | TwoVoiceReview | Create deferred-review issue (`type:deferred-review`) |
 | `CommitAttempted` without issue-ref | GovernanceRun | `GovernanceBlocked` |
 | `CommitAttempted` on ADR-significant change without ADR-link | GovernanceRun | `GovernanceBlocked` |

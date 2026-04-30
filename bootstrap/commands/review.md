@@ -47,6 +47,20 @@ Review the diff against the plan, principles, and domain contracts. Return markd
 - **SUGGEST** — improve if trivial, else note in PR
 - **NIT** — optional
 
+## Layer 3 — Adversarial critique (always, after Layer 1)
+
+After Layer 1 passes, the operator invokes `@agent-adversarial-critic` and passes the diff as context. Layer 3 runs independently of Layer 2 — its findings are available as input when Layer 2 executes.
+
+The adversarial-critic scans for LLM lazy patterns (duplicate code, symptom-fix, narrow special-case, copy-paste, truncated files, magic constants, TODO-without-ticket, commented-out code). It loads `docs/anti-patterns.md` at startup. Its findings feed into the `claude_review` artifact — they are not a separate review voice.
+
+**Gate rule:** A BLOCK finding from adversarial-critic must be resolved before merge OR explicitly documented as a conscious compromise in the PR thread (operator signs off, explains why). This mirrors the DoD wording in `docs/principles.md`.
+
+**Sanity check:** Verify that the agent's `**Diff reviewed:** N files, M lines added` matches the actual PR. An APPROVE on an empty or partial diff is not a valid approval.
+
+**Failure handling:** If invocation fails (model error, context overflow) or `docs/anti-patterns.md` is unavailable, re-invoke. If failure persists, document in PR thread as graceful-degradation (analogous to `/codex-review` skip): `adversarial-critic skipped — <reason>`. This does not substitute for a passing review.
+
+**Audit trail:** Append the adversarial-critic findings section verbatim into the `claude_review` artifact (or PR thread), even when verdict is APPROVE, so the scan is visible to future readers.
+
 ## Hard rules
 
 - You do NOT approve "LGTM" without an actual scan. Empty findings is only valid if nothing found AFTER full scan.

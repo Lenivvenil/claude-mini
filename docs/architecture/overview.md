@@ -27,10 +27,10 @@
 │                   /task-to-issue  /issue-to-task  /backlog-review       │
 │                   /project-health  /feature (master orchestrator)       │
 │                                                                          │
-│  Agents (8):                                                            │
+│  Agents (9):                                                            │
 │     adr-reviewer        domain-reviewer        domain-researcher        │
 │     solutions-architect backlog-groomer        security-reviewer        │
-│     docs-reviewer       reliability-reviewer                            │
+│     docs-reviewer       reliability-reviewer   adversarial-critic       │
 │                                                                          │
 │  Skills (3, author tools):                                              │
 │     adr-author   domain-discovery   project-bootstrap                   │
