@@ -1,6 +1,6 @@
 # 0022. Deliver Hypothesis property-based testing into Python pet-projects via `--target` installer template
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-04-29
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)
 * Tags: pipeline, testing, installation, qa, hypothesis
