@@ -145,12 +145,12 @@ Claude сам критикует свой diff по severity.
 
 `docs-reviewer` проверяет читаемость для новичка, исполняемость примеров, корректность диаграмм, отсутствие устаревших разделов. Завершается до перехода к `/codex-review`. Если PR затрагивает и prod-bound пути, и human-facing docs — оба агента вызываются в фазе `/review`, порядок между ними произвольный.
 
-**На каждом PR (unconditional) — после того, как Layer 1 прошёл:**
+**На каждом PR (unconditional) — после того, как детерминированные gate'ы (`verify.sh`) прошли:**
 ```
 @agent-adversarial-critic
 ```
 
-Передать diff как context в разговор. `adversarial-critic` проверяет 8 классов ленивых паттернов LLM (дублирование, symptom-fix, narrow-case, copy-paste, truncated-file, magic constants, TODO-без-тикета, commented-out code) и загружает `docs/anti-patterns.md` в context. Возвращает список находок с severity BLOCK/SUGGEST/NIT. BLOCK-findings блокируют переход к `/codex-review`; SUGGEST/NIT — оператор решает.
+Передай diff в разговор (`git diff HEAD~1..HEAD` или staged diff). `adversarial-critic` проверяет 8 классов ленивых паттернов LLM (дублирование, `symptom-fix-not-root`, `narrow-special-case`, `copy-paste-adjacent-hunk`, `truncated-file`, `magic-constant`, `todo-without-ticket`, `commented-out-code`) и загружает `docs/anti-patterns.md` в context. Возвращает список находок с severity BLOCK/SUGGEST/NIT. BLOCK-findings блокируют переход к `/codex-review` или документируются как осознанный компромисс в PR-треде; SUGGEST/NIT — оператор решает.
 
 ### 7. Codex review (two-voice)
 
