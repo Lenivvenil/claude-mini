@@ -160,6 +160,47 @@ else
     fail "--target cp line missing || die guard"
 fi
 
+# ---- Gap #4 (ADR-0023): --target delivers four new template files ----
+echo ""
+echo "Gap #4: --target delivers ADR-0023 template files (structural + functional)"
+
+for f in "ruff.toml" ".eslintrc.json" ".jscpd.json"; do
+    if grep -q "\"$f\"" "$SETUP" 2>/dev/null || grep -q "/$f" "$SETUP" 2>/dev/null; then
+        pass "--target section references $f"
+    else
+        fail "--target section missing $f"
+    fi
+done
+if grep -q 'llm-antipatterns.yaml' "$SETUP" 2>/dev/null; then
+    pass "--target section references .semgrep/llm-antipatterns.yaml"
+else
+    fail "--target section missing .semgrep/llm-antipatterns.yaml"
+fi
+
+# Functional: run --target against a temp dir and verify all four files land
+_T=$(mktemp -d /tmp/claude-mini-verify-templates-XXXXXX)
+if bash "$SETUP" --target "$_T" >/dev/null 2>&1; then
+    for f in "ruff.toml" ".eslintrc.json" ".jscpd.json" ".semgrep/llm-antipatterns.yaml"; do
+        if [ -f "$_T/$f" ]; then
+            pass "--target functional: $_T/$f created"
+        else
+            fail "--target functional: $_T/$f missing"
+        fi
+    done
+    # Idempotent re-run must report no drift — capture once, grep twice (portable ERE)
+    _rerun_out=$(bash "$SETUP" --target "$_T" 2>&1)
+    if echo "$_rerun_out" | grep -qE "DRIFT=0|no drift"; then
+        pass "--target re-run: no drift"
+    elif ! echo "$_rerun_out" | grep -q "drift:"; then
+        pass "--target re-run: identical skip (no drift output)"
+    else
+        fail "--target re-run: drift reported on second run"
+    fi
+else
+    fail "--target functional run failed (exit non-zero)"
+fi
+rm -rf "$_T"
+
 # ---- implement.md verification step present ----
 echo ""
 echo "AC: implement.md Phase 3 contains verification step"

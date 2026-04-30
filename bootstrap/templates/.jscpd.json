@@ -1,0 +1,18 @@
+{
+  "_comment": "jscpd strict-mode baseline — ADR-0023. min-tokens:50 min-lines:5 mode:strict.",
+  "minTokens": 50,
+  "minLines": 5,
+  "mode": "strict",
+  "reporters": ["console", "sarif"],
+  "output": ".jscpd/",
+  "ignore": [
+    "**/*.min.js",
+    "**/*.min.css",
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/__pycache__/**",
+    "**/.mypy_cache/**"
+  ]
+}

@@ -440,8 +440,9 @@ merges:
    returns no matches in production code paths (test-only stubs may
    exist but must be clearly marked).
 6. **Threshold values present in config files.**
-   `grep -q '"max-complexity"' bootstrap/templates/.eslintrc.json`
-   returns 0 and the configured value is `10`;
+   `grep -q '"complexity"' bootstrap/templates/.eslintrc.json`
+   returns 0 and the configured value is `10` (the eslint rule is named
+   `complexity`, not `max-complexity` — corrected from draft);
    `grep -q '"minTokens"' bootstrap/templates/.jscpd.json` and
    `grep -q '"minLines"' bootstrap/templates/.jscpd.json` return 0
    with values `50` and `5` respectively;

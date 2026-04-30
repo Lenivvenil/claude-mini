@@ -1,0 +1,35 @@
+rules:
+  - id: llm-todo-without-ticket
+    pattern-regex: "(?i)#[^\\n]*\\b(?:TODO|FIXME|HACK|XXX)(?=[\\s:.]|$)(?!.*#\\d+)(?!.*https?://)[^\\n]*"
+    message: |
+      TODO/FIXME/HACK comment without a ticket reference.
+      LLM anti-pattern: deferral without tracking (Principle 4).
+      Fix: add issue reference — e.g. # TODO #123: description
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "*.py"
+        - "*.js"
+        - "*.ts"
+        - "*.tsx"
+        - "*.jsx"
+        - "*.sh"
+        - "*.go"
+        - "*.rs"
+      exclude:
+        - "**/tests/verify/fixtures/**"
+
+  - id: llm-commented-block
+    pattern-regex: "(#[^\\n]*\\n){5,}"
+    message: |
+      Five or more consecutive comment lines detected.
+      This may be commented-out code — LLM anti-pattern per Principle 4.
+      Delete dead code rather than commenting it out.
+      If these are intentional documentation comments, add a per-file semgrep disable comment.
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "*.py"
+        - "*.sh"

@@ -198,30 +198,61 @@ if [ -n "$TARGET_PATH" ]; then
         ok "pipeline-version $PIPELINE_VERSION → $VERSION_DST"
     fi
 
-    # Named exception: bootstrap/templates/conftest.py → <target>/conftest.py (ADR-0022)
-    # This is the only bootstrap/templates/ file delivered into the target repo root.
+    # Named exceptions: bootstrap/templates/ → target repo root (ADR-0022, extended by ADR-0023)
     # By-name, not by-destination: do NOT add a wildcard loop here.
-    CONFTEST_SRC="$REPO_ROOT_T/bootstrap/templates/conftest.py"
-    CONFTEST_DST="$TARGET_DIR/conftest.py"
-    if [ -f "$CONFTEST_SRC" ]; then
-        if [ -f "$CONFTEST_DST" ] && cmp -s "$CONFTEST_SRC" "$CONFTEST_DST"; then
-            ok "conftest.py (identical, skip)"
-        elif [ "$MODE" = "check" ]; then
-            if [ -f "$CONFTEST_DST" ]; then
-                drift "conftest.py (would overwrite with --force)"
+    # Each entry is explicit; adding a new template requires a named block below.
+
+    _copy_template() {
+        local src="$1" dst="$2" label="$3"
+        if [ -f "$src" ]; then
+            if [ -f "$dst" ] && cmp -s "$src" "$dst"; then
+                ok "$label (identical, skip)"
+            elif [ "$MODE" = "check" ]; then
+                if [ -f "$dst" ]; then drift "$label (would overwrite with --force)"
+                else drift "$label (would create)"; fi
+            elif [ -f "$dst" ] && [ "$FORCE" != "1" ]; then
+                drift "$label (exists, differs — use --force)"
+                diff -u "$dst" "$src" 2>/dev/null | head -10 | sed 's/^/    /' || true
             else
-                drift "conftest.py (would create)"
+                [ "$MODE" = "install" ] && mkdir -p "$(dirname "$dst")"
+                cp "$src" "$dst" || die "cp failed: $dst"
+                ok "$label → $(dirname "$dst")/"
             fi
-        elif [ -f "$CONFTEST_DST" ] && [ "$FORCE" != "1" ]; then
-            drift "conftest.py (exists, differs — use --force)"
-            diff -u "$CONFTEST_DST" "$CONFTEST_SRC" 2>/dev/null | head -10 | sed 's/^/    /' || true
         else
-            cp "$CONFTEST_SRC" "$CONFTEST_DST" || die "cp failed: $CONFTEST_DST"
-            ok "conftest.py → $TARGET_DIR/"
+            drift "$src not found in source tree — skipping (re-run after restoring source)"
         fi
-    else
-        drift "bootstrap/templates/conftest.py not found in source tree — skipping (re-run after restoring source)"
-    fi
+    }
+
+    # conftest.py (ADR-0022)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/conftest.py" \
+        "$TARGET_DIR/conftest.py" \
+        "conftest.py"
+
+    # ruff.toml (ADR-0023)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/ruff.toml" \
+        "$TARGET_DIR/ruff.toml" \
+        "ruff.toml"
+
+    # .eslintrc.json (ADR-0023)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/.eslintrc.json" \
+        "$TARGET_DIR/.eslintrc.json" \
+        ".eslintrc.json"
+
+    # .jscpd.json (ADR-0023)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/.jscpd.json" \
+        "$TARGET_DIR/.jscpd.json" \
+        ".jscpd.json"
+
+    # .semgrep/llm-antipatterns.yaml (ADR-0023)
+    # _copy_template handles mkdir -p for the .semgrep/ subdirectory via its install branch.
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/.semgrep/llm-antipatterns.yaml" \
+        "$TARGET_DIR/.semgrep/llm-antipatterns.yaml" \
+        ".semgrep/llm-antipatterns.yaml"
 
     echo ""
     log "Done (target mode, pipeline v$PIPELINE_VERSION)"
