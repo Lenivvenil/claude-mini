@@ -53,4 +53,17 @@ git status         # не забыл ли unstaged
 gh pr list --author @me
 ```
 
+### Stop hook — тесты перед выходом
+
+`stop-hook.sh` автоматически запускается при завершении сессии Claude Code.
+Если тесты не проходят — сессия блокируется с сообщением причины.
+
+**Нормальный выход:** тесты зелёные → Claude закрывается без блокировки.
+
+**Аварийный выход:** при повторной попытке завершения Claude Code устанавливает
+`stop_hook_active: true` в payload, и hook пропускает проверку — сессия закрывается.
+Failing tests при этом остаются — зафиксируй состояние в STATE.md перед detach.
+
+**Логи блокировок:** `~/.claude/hooks/stop.log`
+
 Если в tmux — просто detach (`Ctrl-b d`). Сессия, Claude context, Plex, Transmission продолжают работать на mini.

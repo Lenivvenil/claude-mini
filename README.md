@@ -62,7 +62,7 @@ bootstrap/
 ├── agents/             — read-only критики для ~/.claude/agents/
 ├── skills/             — авторские тулы для ~/.claude/skills/
 ├── commands/           — slash-commands для ~/.claude/commands/
-├── hooks/              — Claude Code hooks (PreToolUse + PostToolUse) для ~/.claude/hooks/
+├── hooks/              — Claude Code hooks (PreToolUse + PostToolUse + Stop) для ~/.claude/hooks/
 ├── scripts/            — утилиты для ~/.claude/scripts/ и ~/bin/
 ├── templates/          — шаблоны (CLAUDE.md, PR template, CI workflows)
 └── universal-setup.sh  — идемпотентный installer
@@ -76,7 +76,7 @@ bootstrap/
 
 **Slash commands (10):** `/plan`, `/implement`, `/adr`, `/review`, `/codex-review`, `/task-to-issue`, `/issue-to-task`, `/backlog-review`, `/project-health`, `/feature` (master orchestrator).
 
-**Hooks (2):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `posttooluse-format.sh` — проверяет форматирование и lint после Edit|MultiEdit|Write и выдаёт предупреждение Claude (PostToolUse, не блокирует).
+**Hooks (3):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `posttooluse-format.sh` — проверяет форматирование и lint после Edit|MultiEdit|Write и выдаёт предупреждение Claude (PostToolUse, не блокирует). `stop-hook.sh` — блокирует завершение сессии если тесты не проходят (Stop); уважает `stop_hook_active` escape-hatch.
 
 **Scripts (5):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`.
 
