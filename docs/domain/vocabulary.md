@@ -94,9 +94,19 @@ Invariants: single issue reference; monotonic `dod_state` (`in_progress → revi
 
 ---
 
+## Format Check Hook
+
+The `posttooluse-format.sh` Claude Code hook registered under `PostToolUse[Edit|MultiEdit|Write]` in `~/.claude/settings.json`. Runs after every file write to check formatting and linting: Python → `ruff format --check` + `ruff check`; JS/TS → `prettier --check` + `eslint` (if config present); Go → `gofmt -l` + `go vet`. Non-blocking (always exits 0). Surfaces findings to Claude via `hookSpecificOutput.additionalContext` so Claude can self-correct in-session. Logs to `~/.claude/hooks/posttooluse.log`.
+
+*Discriminating note:* the Format Check Hook is not the Governance Hook. The Format Check Hook runs on every file write (PostToolUse) and warns only. The Governance Hook runs on commit attempts (PreToolUse) and blocks on rule violations.
+
+---
+
 ## Governance Hook
 
-The `pre-commit-governance.sh` shell hook installed at `.git/hooks/commit-msg`. Enforces Conventional Commits prefix and issue-ref (`#NNN`) on every commit. For ADR-significant changes, also enforces `Implements docs/decisions/NNNN-*.md`. Blocks commit if rules fail (`GovernanceBlocked` event).
+The `pre-commit-governance.sh` shell hook registered under `PreToolUse[Bash]` in `~/.claude/settings.json`. Enforces Conventional Commits prefix and issue-ref (`#NNN`) on every commit attempt made by Claude. For ADR-significant changes, also enforces `Implements docs/decisions/NNNN-*.md`. Blocks commit if rules fail (`GovernanceBlocked` event). A companion script `commit-msg-governance.sh` is installed at `.git/hooks/commit-msg` per project (via `--hook-this-repo`) to enforce the same rules on direct terminal commits.
+
+*Discriminating note:* the Governance Hook is not the Format Check Hook. The Governance Hook blocks on rule violations (PreToolUse, exit 2 = deny). The Format Check Hook warns after file writes (PostToolUse, always exit 0).
 
 ---
 

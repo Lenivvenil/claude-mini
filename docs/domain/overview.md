@@ -94,7 +94,8 @@ Three aggregate roots own commands within this BC (ADR-0020). Commands are organ
 **In scope:**
 - Feature pipeline choreography (stages, ordering, gates)
 - Agent invocation rules (who, when, conditions)
-- Governance hooks (commit-msg enforcement)
+- Governance hooks (commit-msg enforcement, `pre-commit-governance.sh` PreToolUse + `commit-msg-governance.sh` git hook)
+- Format check hook (PostToolUse lint/format warnings, `posttooluse-format.sh`)
 - ADR lifecycle (draft → review → merge)
 - Domain model lifecycle (this BC maintains its own docs/domain/)
 - Definition of Done enforcement
@@ -145,7 +146,7 @@ Invariants:
 
 ### GovernanceRun
 
-**`GovernanceRun`** — one commit-governance episode for a `FeatureRun`. Created by `FeatureRun` on `FeaturePipelineStarted`; one instance per run, shared across all retry attempts. Remains in `pending` state until `AttemptCommit` is called; `GovernanceApproved` transitions it to `approved`. Enforcement artifact: `pre-commit-governance.sh`.
+**`GovernanceRun`** — one commit-governance episode for a `FeatureRun`. Created by `FeatureRun` on `FeaturePipelineStarted`; one instance per run, shared across all retry attempts. Remains in `pending` state until `AttemptCommit` is called; `GovernanceApproved` transitions it to `approved`. Enforcement artifacts: `pre-commit-governance.sh` (Claude Code PreToolUse hook) and `commit-msg-governance.sh` (installed at `.git/hooks/commit-msg` via `--hook-this-repo` for direct terminal commits — ADR-0011).
 
 Invariants:
 - State machine: `pending → approved` (terminal). `GovernanceBlocked` increments the internal retry counter without changing the instance; only `GovernanceApproved` terminates the run.
@@ -365,8 +366,10 @@ Sourced empirically from `bootstrap/scripts/review-codex.sh`, `bootstrap/hooks/p
 
 | Mechanism | Operations | Handled failure modes | Unhandled failure modes |
 |---|---|---|---|
-| **pre-commit governance hook** | Invoked as Claude Code PreToolUse on `git commit`; reads stdin JSON (`tool_input.command`, `cwd`); enforces Conventional Commits (Rule 1), issue-ref (Rule 2), ADR-ref for decision-type staged files (Rule 3), no-commit-to-main (Rule 4). Also installed at `.git/hooks/commit-msg` for terminal commits via `--hook-this-repo` (ADR-0011). | `--amend` → skip strict check; `adr:` prefix → waive issue-ref/ADR-ref; detached HEAD → fail-open; `cd $cwd` fails → fail-open | stdin not valid JSON → `jq` returns empty strings; malformed command string → message extraction may fail; hook file removed or corrupted → no enforcement at either level (see Red Hotspot #8) |
-| **universal-setup.sh** | `--install` (global skills/hooks/scripts); `--target <repo>` (per-project commands + pipeline-version); `--hook-this-repo` (copies staged hook to `.git/hooks/commit-msg`); `--check` (drift report, exits 0 always) | cp failure → `die` (exit 3); post-copy `cmp -s` mismatch → `die`; source file missing → `drift()` counter incremented | `--check` always exits 0 even with drift (use stdout, not exit code, for diagnostics) — see ADR-0019 |
+| **pre-commit governance hook** (`pre-commit-governance.sh`) | Invoked as Claude Code PreToolUse on `git commit`; reads stdin JSON (`tool_input.command`, `cwd`); enforces Conventional Commits (Rule 1), issue-ref (Rule 2), ADR-ref for decision-type staged files (Rule 3), no-commit-to-main (Rule 4). | `--amend` → skip strict check; `adr:` prefix → waive issue-ref/ADR-ref; detached HEAD → fail-open; `cd $cwd` fails → fail-open | stdin not valid JSON → `jq` returns empty strings; malformed command string → message extraction may fail; hook file removed or corrupted → no enforcement (see Red Hotspot #8) |
+| **commit-msg governance hook** (`commit-msg-governance.sh`) | Installed at `.git/hooks/commit-msg` per project via `--hook-this-repo` (ADR-0011); enforces the same rules as `pre-commit-governance.sh` on direct terminal `git commit` calls. | Same handled modes as pre-commit governance hook above | Same unhandled modes; additionally: if `.git/hooks/commit-msg` is missing or not executable, hook is silently absent for terminal commits |
+| **format check hook** (`posttooluse-format.sh`) | Invoked as Claude Code PostToolUse on `Edit\|MultiEdit\|Write`; reads stdin JSON (`tool_input.file_path`); runs ruff/prettier/gofmt/eslint per file extension; emits `additionalContext` to Claude if violations found. Always exits 0 (non-blocking). Logs to `~/.claude/hooks/posttooluse.log`. | Tool not installed → exit 0, log `SKIP tool not found`; file not found → exit 0, log `SKIP file not found`; unknown extension → exit 0, log `SKIP unknown extension` | Log disk full → write may silently fail; `~/.claude/hooks/posttooluse.log` is a directory → `echo >>` fails silently |
+| **universal-setup.sh** | `--install` (global skills/hooks/scripts + PostToolUse settings.json patch); `--target <repo>` (per-project commands + pipeline-version); `--hook-this-repo` (copies staged `commit-msg-governance.sh` to `.git/hooks/commit-msg`); `--check` (drift report, exits 0 always) | cp failure → `die` (exit 3); post-copy `cmp -s` mismatch → `die`; source file missing → `drift()` counter incremented; PostToolUse jq patch post-verify fail → `die` (exit 3) with original settings.json preserved | `--check` always exits 0 even with drift (use stdout, not exit code, for diagnostics) — see ADR-0019 |
 
 ---
 
@@ -374,10 +377,10 @@ Sourced empirically from `bootstrap/scripts/review-codex.sh`, `bootstrap/hooks/p
 
 | Requirement | Measure | Enforcement artifact | Source |
 |---|---|---|---|
-| Every commit carries issue-ref (`#NNN`) and passes Conventional Commits | Commit rejected (exit 2) if any rule fails | `pre-commit-governance.sh` (PreToolUse hook + `.git/hooks/commit-msg`) | ADR-0004, ADR-0011 |
+| Every commit carries issue-ref (`#NNN`) and passes Conventional Commits | Commit rejected (exit 2) if any rule fails | `pre-commit-governance.sh` (PreToolUse hook) + `commit-msg-governance.sh` (`.git/hooks/commit-msg`) | ADR-0004, ADR-0011 |
 | All shell scripts in `bootstrap/` pass ShellCheck with no warnings | CI job exits non-zero on any ShellCheck warning | `.github/workflows/` ShellCheck step | ADR-0012 |
 | Installer exit 0 is an honest success signal — no silent partial failures | Test harness `test-install-verification.sh` — 13 assertions; all must pass | `bootstrap/scripts/test-install-verification.sh` | ADR-0019 |
-| No direct commits to main | Pre-commit-governance.sh Rule 4 blocks `git commit` when branch is `main` | `pre-commit-governance.sh` | ADR-0009 |
+| No direct commits to main | Pre-commit-governance.sh Rule 4 blocks `git commit` when branch is `main` (PreToolUse); `commit-msg-governance.sh` enforces same rule on terminal commits | `pre-commit-governance.sh` + `commit-msg-governance.sh` | ADR-0009 |
 
 Constraints lacking a mechanical check (two-voice review completion, human self-review, `advisor ×2` on nontrivial) appear in the Internal Compliance table with honor-system designation.
 
@@ -401,7 +404,7 @@ Every norm from `docs/principles.md` Definition of Done. **Enforcement type:** `
 | Human-facing docs reviewed by `docs-reviewer` | Agent-triggered (conditional) | `docs-reviewer` invoked inside `/review` | Partial — trigger is honor; review itself is automated once triggered |
 | Reliability reviewed by `reliability-reviewer` on prod-bound PRs | Agent-triggered (conditional) | `reliability-reviewer` invoked inside `/review` | Partial — prod-bound detection is honor; review itself is automated once triggered |
 | CI green on all required jobs | Automated | `.github/workflows/` (ShellCheck, lint-prompts, etc.) | No |
-| Conventional Commits; governance hook passed | Automated | `pre-commit-governance.sh` (PreToolUse + commit-msg) | No |
+| Conventional Commits; governance hook passed | Automated | `pre-commit-governance.sh` (PreToolUse) + `commit-msg-governance.sh` (`.git/hooks/commit-msg`) | No |
 | PR body cross-references issue (`Closes #NNN`) | Honor | PR body convention | Yes |
 | PR body cross-references ADR if one was authored | Automated (partial) | `pre-commit-governance.sh` Rule 3 requires ADR-ref in commit message | Partial — commit is enforced; PR body is honor |
 | `advisor()` called ≥ 2× on nontrivial tasks (per advisor policy, `docs/principles.md` §6 — beyond DoD checklist but included here for completeness) | Honor | None | Yes — no mechanical enforcement; tracked in issue #101 |

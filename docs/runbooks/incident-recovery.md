@@ -98,6 +98,45 @@ jq '.hooks.PreToolUse' ~/.claude/settings.json
 
 **Важно:** `test-governance-hook.sh` тестирует hook binary напрямую. Он не может обнаружить tilde-path проблему (hook вызывается, значит binary рабочий). Если тест прошёл, но плохие коммиты всё равно проходят через Claude — проблема в settings.json, не в hook.
 
+### Format Check Hook не выдаёт предупреждений
+
+**Симптомы:** Claude пишет файлы с lint-ошибками или форматированием, но предупреждение в `additionalContext` не появляется.
+
+**Быстрая диагностика:**
+```bash
+# Проверить что hook прописан в settings.json
+jq '.hooks.PostToolUse[]? | select(.matcher == "Edit|MultiEdit|Write")' ~/.claude/settings.json
+
+# Прогнать тест напрямую
+bash ~/.claude/scripts/test-posttooluse-hook.sh
+# Ожидание: === Results: N passed, 0 failed, N skipped ===
+# (skipped — это нормально: ruff/prettier/gofmt не установлены)
+
+# Проверить лог последнего запуска
+tail -20 ~/.claude/hooks/posttooluse.log
+```
+
+**Причина 1: Hook не прописан в settings.json**
+```bash
+# Переустановить:
+cd ~/projects/claude-mini && ./bootstrap/universal-setup.sh --install
+```
+
+**Причина 2: Инструмент не установлен (ruff / prettier / gofmt)**
+```bash
+# Python: pip install ruff  или  brew install ruff
+# JS/TS:  npm install -g prettier eslint
+# Go:     входит в стандартный дистрибутив Go
+```
+Hook деградирует gracefully (exit 0, запись в лог вида `SKIP ruff not found: /path/to/file.py`). Инструмент не обязателен — но без него hook молчит.
+
+**Причина 3: Tilde-path в settings.json**
+
+
+Та же проблема что у Governance Hook. Hook должен иметь абсолютный путь (`/Users/…`, не `~/…`). Переустанови через `./bootstrap/universal-setup.sh --install`.
+
+**Примечание по доверию:** ESLint загружает плагины и конфигурации из `node_modules` текущего репозитория. При работе с незнакомым репозиторием hook выполняет произвольный JavaScript из его `eslintrc`. Если репозиторий не доверенный — отключи hook до завершения работы: удали запись `PostToolUse` из `~/.claude/settings.json`, затем восстанови через `./bootstrap/universal-setup.sh --install`.
+
 ### MCP server не отвечает
 
 **Симптомы:** `@mcp__github__...` fails, Serena не индексирует.

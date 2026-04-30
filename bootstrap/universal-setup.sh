@@ -522,6 +522,102 @@ if [ -f "$CLAUDE_SETTINGS" ]; then
     fi
 fi
 
+# --- Patch settings.json: PostToolUse hook (posttooluse-format.sh) ---
+POSTTOOLUSE_HOOK_PATH="$CLAUDE_HOME/hooks/posttooluse-format.sh"
+
+if [ -f "$CLAUDE_SETTINGS" ]; then
+    ptu_existing=$(jq -r '.hooks.PostToolUse // [] | .[] | select(.matcher == "Edit|MultiEdit|Write") | .hooks[]?.command' "$CLAUDE_SETTINGS" 2>/dev/null || echo "")
+    if printf '%s\n' "$ptu_existing" | grep -Fxq "$POSTTOOLUSE_HOOK_PATH"; then
+        ok "posttooluse-format hook already in settings.json"
+    else
+        if [ "$MODE" = "check" ]; then
+            drift "posttooluse-format hook NOT in settings.json (would be added)"
+            echo "    Would add to PostToolUse[matcher=Edit|MultiEdit|Write]: $POSTTOOLUSE_HOOK_PATH"
+        else
+            if ! jq -e 'type == "object"' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
+                err "Pre-verify: settings.json is not valid JSON — refusing to patch PostToolUse"
+                exit 3
+            fi
+            # Snapshot PreToolUse before patch to verify it's untouched after
+            pretooluse_before=$(jq -cS '.hooks.PreToolUse // []' "$CLAUDE_SETTINGS" 2>/dev/null || echo "[]")
+            ptu_before_cmds=$(jq -r '.hooks.PostToolUse[]? | select(.matcher=="Edit|MultiEdit|Write") | .hooks[]?.command' "$CLAUDE_SETTINGS" 2>/dev/null | sort -u)
+            tmp=$(mktemp "${CLAUDE_SETTINGS}.tmp.XXXXXX")
+            jq \
+                --arg cmd "$POSTTOOLUSE_HOOK_PATH" \
+                '
+                .hooks = (.hooks // {})
+                | .hooks.PostToolUse = (.hooks.PostToolUse // [])
+                | (
+                    (.hooks.PostToolUse | map(.matcher == "Edit|MultiEdit|Write") | any) as $has_matcher
+                    | if $has_matcher then
+                        .hooks.PostToolUse |= map(
+                            if .matcher == "Edit|MultiEdit|Write" then
+                                if (.hooks // [] | map(select(.type == "command" and .command == $cmd)) | length) == 0 then
+                                    .hooks = ((.hooks // []) + [{"type": "command", "command": $cmd}])
+                                else . end
+                            else . end
+                        )
+                    else
+                        .hooks.PostToolUse += [{
+                            "matcher": "Edit|MultiEdit|Write",
+                            "hooks": [{"type": "command", "command": $cmd}]
+                        }]
+                    end
+                )
+                ' \
+                "$CLAUDE_SETTINGS" > "$tmp"
+            ptu_post_ok=1
+            # Shape check
+            if ! jq -e 'type == "object" and (.hooks.PostToolUse | type == "array")' "$tmp" >/dev/null 2>&1; then
+                err "Post-verify: output is not a valid settings object"
+                ptu_post_ok=0
+            fi
+            # PreToolUse must be byte-identical before and after
+            pretooluse_after=$(jq -cS '.hooks.PreToolUse // []' "$tmp" 2>/dev/null || echo "[]")
+            if [ "$pretooluse_before" != "$pretooluse_after" ]; then
+                err "Post-verify: PreToolUse was altered by PostToolUse patch — refusing"
+                ptu_post_ok=0
+            fi
+            # Pre-existing PostToolUse commands preserved
+            while IFS= read -r cmd; do
+                [ -z "$cmd" ] && continue
+                if ! jq -e --arg c "$cmd" '.hooks.PostToolUse[]? | select(.matcher=="Edit|MultiEdit|Write") | .hooks[]?.command | select(. == $c)' "$tmp" >/dev/null 2>&1; then
+                    err "Post-verify: pre-existing PostToolUse command missing: $cmd"
+                    ptu_post_ok=0
+                fi
+            done <<< "$ptu_before_cmds"
+            # New hook present
+            if ! jq -e --arg h "$POSTTOOLUSE_HOOK_PATH" '.hooks.PostToolUse[]? | select(.matcher=="Edit|MultiEdit|Write") | .hooks[]?.command | select(. == $h)' "$tmp" >/dev/null 2>&1; then
+                err "Post-verify: posttooluse-format hook missing from output"
+                ptu_post_ok=0
+            fi
+            # Non-hooks keys unchanged
+            if ! diff <(jq -S 'del(.hooks)' "$CLAUDE_SETTINGS") <(jq -S 'del(.hooks)' "$tmp") >/dev/null 2>&1; then
+                err "Post-verify: non-hooks settings were altered — settings.json не изменён"
+                ptu_post_ok=0
+            fi
+            if [ "$ptu_post_ok" = "1" ]; then
+                if ! cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak.$(date +%s).$$"; then
+                    err "PostToolUse backup failed — settings.json не изменён"
+                    rm -f "$tmp"
+                    exit 3
+                fi
+                if mv "$tmp" "$CLAUDE_SETTINGS"; then
+                    ok "posttooluse-format hook added to PostToolUse[Edit|MultiEdit|Write]"
+                else
+                    err "PostToolUse mv failed — settings.json не изменён (backup preserved)"
+                    rm -f "$tmp"
+                    exit 3
+                fi
+            else
+                err "PostToolUse jq patch failed post-verification — settings.json не изменён"
+                rm -f "$tmp"
+                exit 3
+            fi
+        fi
+    fi
+fi
+
 # --- Env vars в ~/.zshrc ---
 log "Checking ~/.zshrc env vars..."
 declare -a ENV_LINES=(
