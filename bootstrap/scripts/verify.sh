@@ -23,6 +23,18 @@ set -uo pipefail
 FULL=0
 [ "${1:-}" = "--full" ] && FULL=1
 
+# Gate audit instrumentation (optional — fails silently if lib missing)
+_VERIFY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+_GATE_AUDIT_LIB="$_VERIFY_DIR/gate-audit-lib.sh"
+# Temporarily suspend -u while sourcing to guard against any unset-var reference in the lib.
+# shellcheck source=/dev/null
+if [ -f "$_GATE_AUDIT_LIB" ]; then
+    set +u
+    source "$_GATE_AUDIT_LIB"
+    set -u
+fi
+unset _GATE_AUDIT_LIB _VERIFY_DIR
+
 FAILED=0
 OUT=""
 
@@ -220,8 +232,14 @@ if [ "$FAILED" = "1" ]; then
     echo "LAYER1_FAILED"
     echo ""
     printf "%s" "$OUT"
+    if command -v gate_event_write >/dev/null 2>&1; then
+        gate_event_write "layer1-verify" "blocked" >/dev/null || true
+    fi
 else
     echo "LAYER1_PASSED — all gates green"
+    if command -v gate_event_write >/dev/null 2>&1; then
+        gate_event_write "layer1-verify" "allowed" >/dev/null || true
+    fi
 fi
 
 exit 0
