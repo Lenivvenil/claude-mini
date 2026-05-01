@@ -27,7 +27,7 @@ RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; NC=$'\033[0m'
 FAILURES=0
 
 pass() { printf "  %s✓%s %s\n" "${GREEN}" "${NC}" "$1"; }
-fail() { printf "  %s✗%s %s\n" "${RED}"  "${NC}" "$1"; FAILURES=$((FAILURES + 1)); }
+fail() { printf "  %s✗%s %s\n" "${RED}" "${NC}" "$1"; FAILURES=$((FAILURES + 1)); }
 
 # ── Setup: temp git repo for gate_event_write tests ───────────────────────
 
@@ -71,6 +71,7 @@ assert ev['gate_name'] == 'test-gate', f'gate_name mismatch: {ev}'
 assert ev['outcome'] == 'allowed', f'outcome mismatch: {ev}'
 assert ev['classification'] is None, f'classification should be null: {ev}'
 assert 'event_id' in ev, 'missing event_id'
+assert len(ev['event_id']) == 16 and all(c in '0123456789abcdef' for c in ev['event_id']), f'event_id not 16 hex chars: {ev[\"event_id\"]}'
 assert 'week_iso' in ev, 'missing week_iso'
 " 2>/dev/null; then
     pass "T1.2: appended line is valid JSON with correct fields"
