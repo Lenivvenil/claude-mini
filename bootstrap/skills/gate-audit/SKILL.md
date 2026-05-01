@@ -77,7 +77,7 @@ Human approval is required before removing any gate.
 
 ## Hard rules
 
-- Do NOT automatically remove a gate. Open a PR for human review.
+- Do NOT modify hook files. Do NOT open a PR to remove a gate. A REMOVE recommendation is a signal for the operator — the operator decides and acts. Claude's role ends at surfacing the recommendation.
 - Do NOT treat `INSUFFICIENT_DATA` as KEEP or REMOVE. Wait for more data.
 - Do NOT commit aggregate.jsonl or YYYY-WW.md without first reviewing them for correctness.
 - Events from direct `git commit` (bypassing Claude Code) are not captured. Acknowledge this

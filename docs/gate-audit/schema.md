@@ -79,7 +79,8 @@ roi = real / (real + fp + bypass)
 - Otherwise → `KEEP`
 
 A `REMOVE` recommendation requires **human approval** before the gate is removed. It is a
-signal, not an automatic action.
+signal, not an automatic action. Claude must not modify hook files or open a PR to remove a
+gate — even when asked to "act on the recommendation." The operator decides and acts.
 
 ---
 
