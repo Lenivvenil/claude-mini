@@ -117,7 +117,8 @@ fi
     source "$LIB"
     gate_event_write "test-gate" "blocked"
 )
-if [ $? -eq 0 ]; then
+t15_rc=$?
+if [ "$t15_rc" -eq 0 ]; then
     pass "T1.5: missing gate-audit dir is silent"
 else
     fail "T1.5: missing gate-audit dir caused non-zero exit"
@@ -137,9 +138,8 @@ JSONEOF
 
 # T2.1: known event-id --real sets classification
 (
-    export GATE_AUDIT_EVENTS_FILE="$EVENTS_TEST"
     cd "$TMPDIR_REPO" || exit
-    bash "$FORGE" gate-tag aa0000000000001a --real 2>/dev/null
+    GATE_AUDIT_EVENTS_FILE="$EVENTS_TEST" bash "$FORGE" gate-tag aa0000000000001a --real 2>/dev/null
 )
 result=$(python3 -c "
 import json
@@ -157,9 +157,8 @@ fi
 
 # T2.2: known event-id --false-positive sets classification
 (
-    export GATE_AUDIT_EVENTS_FILE="$EVENTS_TEST"
     cd "$TMPDIR_REPO" || exit
-    bash "$FORGE" gate-tag bb0000000000002b --false-positive 2>/dev/null
+    GATE_AUDIT_EVENTS_FILE="$EVENTS_TEST" bash "$FORGE" gate-tag bb0000000000002b --false-positive 2>/dev/null
 )
 result=$(python3 -c "
 import json
@@ -298,7 +297,7 @@ else
 fi
 
 # T3.5: weekly report file written
-WEEK_FILE=$(ls "$TMPDIR_REPO/docs/gate-audit/"*-W*.md 2>/dev/null | head -1)
+WEEK_FILE=$(find "$TMPDIR_REPO/docs/gate-audit" -name '*-W*.md' 2>/dev/null | head -1)
 if [ -n "$WEEK_FILE" ]; then
     pass "T3.5: weekly report file written ($(basename "$WEEK_FILE"))"
 else
@@ -375,7 +374,7 @@ fi
 # ── Summary ────────────────────────────────────────────────────────────────
 echo ""
 if [ "$FAILURES" -eq 0 ]; then
-    printf "${GREEN}All tests passed.${NC}\n"
+    printf "%bAll tests passed.%b\n" "${GREEN}" "${NC}"
     exit 0
 else
     printf "${RED}%d test(s) failed.${NC}\n" "$FAILURES"
