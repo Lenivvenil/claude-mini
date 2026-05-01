@@ -3,21 +3,38 @@ name: Project board sync
 # Requires secret ADD_TO_PROJECT_TOKEN — a PAT with `project` scope.
 # Create at: github.com/settings/tokens → Classic → project ✓
 # Add as: Settings → Secrets → Actions → ADD_TO_PROJECT_TOKEN
+#
+# Note: permissions: block governs GITHUB_TOKEN only (unused here).
+# Board write access comes from the PAT in ADD_TO_PROJECT_TOKEN.
 
 on:
   issues:
-    types: [opened]
+    types: [opened, transferred]
 
 jobs:
   add-to-board:
     runs-on: ubuntu-latest
-    permissions:
-      issues: read
+    timeout-minutes: 5
+    if: ${{ secrets.ADD_TO_PROJECT_TOKEN != '' }}
+    permissions: {}
+    env:
+      GH_TOKEN: ${{ secrets.ADD_TO_PROJECT_TOKEN }}
+      ISSUE_URL: ${{ github.event.issue.html_url }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      PROJECT_NUMBER: 5
+      PROJECT_OWNER: Lenivvenil
     steps:
-      - name: Add issue to claude-mini project board
+      - name: Add issue to project board
+        run: |
+          gh project item-add "$PROJECT_NUMBER" \
+            --owner "$PROJECT_OWNER" \
+            --url "$ISSUE_URL"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "⚠️ Auto-add to project board failed. Add manually: \`gh project item-add $PROJECT_NUMBER --owner $PROJECT_OWNER --url $ISSUE_URL\`" \
+            --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.ADD_TO_PROJECT_TOKEN }}
-        run: |
-          gh project item-add 5 \
-            --owner Lenivvenil \
-            --url "${{ github.event.issue.html_url }}"

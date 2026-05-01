@@ -248,3 +248,35 @@ git checkout <commit-before-incident>
    ```
 2. Открой issue в claude-mini с `type:bug`
 3. Если специфично для Claude Code — https://github.com/anthropics/claude-code/issues
+
+---
+
+## Project board sync — issue не попал на доску
+
+### Симптомы
+- Новый issue открыт, но отсутствует на project board
+- Workflow `project-board-sync` показывает красный статус в Actions
+
+### Причины и действия
+
+**1. Секрет `ADD_TO_PROJECT_TOKEN` не настроен**
+- Workflow имеет `if: secrets.ADD_TO_PROJECT_TOKEN != ''` — молча пропустит
+- Добавить PAT: repo Settings → Secrets → Actions → `ADD_TO_PROJECT_TOKEN` (scope: `project`)
+
+**2. PAT истёк или не имеет `project` scope**
+- Проверить: `GH_TOKEN=<pat> gh project item-list 5 --owner Lenivvenil --limit 1`
+- Пересоздать PAT: github.com/settings/tokens → Classic → project ✓
+
+**3. Добавить пропущенный issue вручную**
+```bash
+gh project item-add 5 --owner Lenivvenil --url https://github.com/Lenivvenil/claude-mini/issues/<N>
+```
+
+**4. Backfill всех пропущенных issues**
+```bash
+gh issue list --state open --json number,url --limit 100 | \
+  jq -r '.[].url' | \
+  while read url; do
+    gh project item-add 5 --owner Lenivvenil --url "$url" 2>/dev/null && echo "✓ $url" || echo "⚠ $url"
+  done
+```
