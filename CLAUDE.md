@@ -43,6 +43,7 @@
 | внутри `/review` | `docs-reviewer` | PR затрагивает `docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md` — и НЕ только `docs/decisions/` или `docs/domain/` |
 | внутри `/review` (всегда, после Layer 1) | `adversarial-critic` | каждый PR; передать diff как context; BLOCK-findings блокируют merge |
 | еженедельно | `backlog-groomer` | **out-of-band**, не входит в pipeline |
+| еженедельно | `/adr-retirement-audit` | **out-of-band**, CI cron Monday 06:00 UTC — staleness check по всем ADR |
 
 **Оркестратор одной кнопкой:** `/feature <issue-number>` — ведёт по всем стадиям через TodoWrite.
 

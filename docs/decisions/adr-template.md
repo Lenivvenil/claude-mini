@@ -1,6 +1,7 @@
 # NNNN. {Short decision title in imperative mood}
 
-* Status: {proposed | accepted | deprecated | superseded by [NNNN](NNNN-*.md)}
+* Status: {proposed | accepted | deprecated | superseded}
+* Superseded-by: {[NNNN](NNNN-*.md) | ~}
 * Date: {YYYY-MM-DD}
 * Deciders: {list of people involved in the decision}
 * Tags: {comma-separated, e.g. architecture, security, tooling}

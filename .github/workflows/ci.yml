@@ -131,3 +131,77 @@ jobs:
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  adr-retirement-audit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run ADR retirement audit test suite
+        run: bash bootstrap/scripts/test-adr-retirement-audit.sh
+
+  adr-retirement-audit-weekly:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Configure git for bot commit
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+      - name: Run ADR retirement audit
+        run: |
+          bash bootstrap/scripts/adr-retirement-audit.sh \
+            > /tmp/adr-retirement-audit-report.md
+          cat /tmp/adr-retirement-audit-report.md
+      - name: Open PR with weekly report
+        # Opens a PR rather than pushing directly to main, preserving ADR-0009 branch-protection.
+        # Report is human-reviewed; --apply is never called automatically (non-goal: no auto-tagging).
+        run: |
+          WEEK=$(python3 -c "from datetime import date; d=date.today(); print(str(d.isocalendar()[0])+'-W%02d'%d.isocalendar()[1])")
+          REPORT_DIR="docs/adr-audit"
+          mkdir -p "$REPORT_DIR"
+          cp /tmp/adr-retirement-audit-report.md "${REPORT_DIR}/${WEEK}.md"
+          git add "${REPORT_DIR}/"
+          if git diff --cached --quiet; then
+            echo "No change in report — all ADRs unchanged since last run"
+            exit 0
+          fi
+          # Deterministic branch name — one PR per ISO week, no duplicates on re-run
+          BRANCH="chore/adr-audit-${WEEK}"
+          # Fail-closed PR existence check: capture gh exit code separately so auth/API
+          # errors do not masquerade as "no open PR found"
+          existing_pr=$(gh pr list --head "$BRANCH" --state open --json number \
+            --jq '.[0].number' 2>/dev/null) || {
+            echo "gh pr list failed — cannot verify whether a PR already exists; aborting to prevent duplicates" >&2
+            exit 1
+          }
+          if echo "$existing_pr" | grep -qE '^[0-9]+$'; then
+            echo "Open PR already exists (#${existing_pr}) for ${BRANCH} — skipping"
+            exit 0
+          fi
+          git checkout -b "$BRANCH"
+          git commit -m "chore(adr-audit): weekly report ${WEEK}" \
+                     -m "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # Use --force-with-lease to handle the edge case where a prior run pushed
+          # the branch but the PR was closed without deleting the branch
+          git push --force-with-lease origin "$BRANCH"
+          gh pr create \
+            --title "chore(adr-audit): weekly staleness report ${WEEK}" \
+            --body "$(printf 'Automated weekly ADR retirement audit. Review recommendations before applying any.\n\nTo apply a recommendation:\n```\nbash bootstrap/scripts/adr-retirement-audit.sh --apply 0004\n```\n(Use zero-padded 4-digit number or bare integer, e.g. --apply 4)\n\nRun: %s/%s/actions/runs/%s' \
+              "${{ github.server_url }}" "${{ github.repository }}" "${{ github.run_id }}")" \
+            --label "type:bootstrap" \
+            --base main \
+            --head "$BRANCH" \
+          || {
+            echo "PR creation failed — deleting orphan branch"
+            git push origin --delete "$BRANCH" || true
+            exit 1
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
