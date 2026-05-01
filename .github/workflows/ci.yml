@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday 06:00 UTC — weekly gate-audit run
 
 jobs:
   shellcheck:
@@ -58,3 +60,74 @@ jobs:
           use-quiet-mode: 'yes'
           config-file: '.github/markdown-link-check.json'
           folder-path: 'docs, bootstrap'
+
+  gate-audit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Run gate-audit test suite
+        run: bash bootstrap/scripts/test-gate-audit.sh
+      - name: Validate fixture against aggregation (decision-rule smoke test)
+        run: |
+          bash bootstrap/scripts/gate-audit-aggregate.sh \
+            --events-file docs/gate-audit/fixtures/events-4w-sample.jsonl \
+            --output-dir /tmp/gate-audit-smoke \
+            --dry-run
+
+  gate-audit-weekly:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: main
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq python3
+          gh --version
+      - name: Configure git for bot commit
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+      - name: Run gate-audit aggregation
+        run: |
+          bash bootstrap/scripts/gate-audit-aggregate.sh \
+            --events-file docs/gate-audit/events.jsonl \
+            --output-dir docs/gate-audit
+      - name: Open PR with weekly report (preserves branch-protection on main)
+        # Opens a PR rather than pushing directly to main, so ADR-0009 branch-protection
+        # and governance remain intact. The PR is reviewed and merged by a human.
+        # Workflow run URL is embedded in the commit body for auditability.
+        run: |
+          if git diff --quiet; then
+            echo "No changes — events.jsonl may be empty or unchanged"
+            exit 0
+          fi
+          WEEK=$(python3 -c "from datetime import date; d=date.today(); print(str(d.isocalendar()[0])+'-W%02d'%d.isocalendar()[1])")
+          BRANCH="chore/gate-audit-${WEEK}-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add docs/gate-audit/
+          git commit -m "chore(gate-audit): weekly report ${WEEK}" \
+                     -m "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore(gate-audit): weekly report ${WEEK}" \
+            --body "Automated weekly gate-audit report. Review recommendations before merging. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --label "type:bootstrap" \
+            --base main \
+            --head "$BRANCH" \
+          || {
+            echo "PR creation failed — deleting orphan branch to prevent accumulation"
+            git push origin --delete "$BRANCH" || true
+            exit 1
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

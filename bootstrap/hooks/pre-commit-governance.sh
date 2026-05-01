@@ -16,10 +16,24 @@
 
 set -uo pipefail
 
+# --- Gate audit instrumentation (optional — fails silently if lib missing) ---
+_SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+_GATE_AUDIT_LIB="$_SELF_DIR/../scripts/gate-audit-lib.sh"
+# Temporarily suspend -u while sourcing to guard against any unset-var reference in the lib.
+# shellcheck source=/dev/null
+if [ -f "$_GATE_AUDIT_LIB" ]; then
+    set +u
+    source "$_GATE_AUDIT_LIB"
+    set -u
+fi
+unset _GATE_AUDIT_LIB
+
 # --- Helpers ---
 
 json_deny() {
     local reason="${1//\"/\\\"}"
+    # Emit deny payload FIRST to guarantee the hook contract is met regardless of audit-write
+    # duration or failure. Audit write happens after — it cannot block the deny response.
     cat <<JSON
 {
   "hookSpecificOutput": {
@@ -28,6 +42,12 @@ json_deny() {
   }
 }
 JSON
+    # Write blocked event only when we have cd'd to the target repo (_GATE_AUDIT_READY=1).
+    # Early exits (jq missing, malformed stdin) fire before cd — skip there to avoid
+    # writing to whatever repo the hook process was launched from.
+    if [ "${_GATE_AUDIT_READY:-0}" = "1" ] && command -v gate_event_write >/dev/null 2>&1; then
+        gate_event_write "pre-commit-governance" "blocked" >/dev/null || true
+    fi
     exit 2
 }
 
@@ -66,6 +86,7 @@ cd "$cwd" 2>/dev/null || {
     log "cannot cd to $cwd, allowing"
     exit 0
 }
+_GATE_AUDIT_READY=1  # gate_event_write now safe: we are in the correct repo
 
 # --- Extract branch (needed by Rule 4, which runs before message-dependent rules) ---
 
@@ -183,4 +204,7 @@ if [ "$is_decision_change" = "true" ]; then
 fi
 
 log "OK: $msg"
+if [ "${_GATE_AUDIT_READY:-0}" = "1" ] && command -v gate_event_write >/dev/null 2>&1; then
+    gate_event_write "pre-commit-governance" "allowed" >/dev/null || true
+fi
 exit 0

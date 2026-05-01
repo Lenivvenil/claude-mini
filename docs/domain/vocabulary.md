@@ -1,7 +1,7 @@
 # Ubiquitous Language — claude-mini-pipeline
 
-**Version:** 2026-04-28
-**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108); three aggregate roots
+**Version:** 2026-05-01
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122); three aggregate roots
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
@@ -69,6 +69,22 @@ The state in which the second voice of two-voice review could not complete. Repr
 
 ---
 
+## Bypass (gate)
+
+An instance of a gate being deliberately skipped, circumventing its enforcement. Occurs when an operator runs `git commit` directly (bypassing the Claude Code hook) or uses a workaround known to skip a specific gate. Contributes to the `bypasses` field in `GateAuditWeek`. Not automatically detected; must be manually recorded in `events.jsonl`.
+
+*Discriminating note:* a bypass is an intentional skip, not a gate failure or a false positive. A gate that always fires and is always a false positive has `fp > 0`; one that is actively circumvented has `bypasses > 0`.
+
+---
+
+## False Positive (gate)
+
+A gate blocking an action that was, upon operator judgment, a legitimate operation. The gate fired correctly (it detected the pattern it was designed to detect), but the detection was unwarranted in context. Recorded by `bash ~/.claude/scripts/forge.sh gate-tag <event_id> --false-positive` (see `bootstrap/skills/gate-audit/SKILL.md` for full invocation). Contributes to `false_positives` in `GateAuditWeek`. High false-positive rate is the primary signal for `REMOVE`.
+
+*Discriminating note:* a false positive is not a gate bug. A bug fires in error (unexpected path); a false positive fires on a real pattern that happens not to matter here.
+
+---
+
 ## Fan-out
 
 
@@ -99,6 +115,22 @@ Invariants: single issue reference; monotonic `dod_state` (`in_progress → revi
 The `posttooluse-format.sh` Claude Code hook registered under `PostToolUse[Edit|MultiEdit|Write]` in `~/.claude/settings.json`. Runs after every file write to check formatting and linting: Python → `ruff format --check` + `ruff check`; JS/TS → `prettier --check` + `eslint` (if config present); Go → `gofmt -l` + `go vet`. Non-blocking (always exits 0). Surfaces findings to Claude via `hookSpecificOutput.additionalContext` so Claude can self-correct in-session. Logs to `~/.claude/hooks/posttooluse.log`.
 
 *Discriminating note:* the Format Check Hook is not the Governance Hook. The Format Check Hook runs on every file write (PostToolUse) and warns only. The Governance Hook runs on commit attempts (PreToolUse) and blocks on rule violations.
+
+---
+
+## GateAuditWeek
+
+A read-model summary record (not a DDD aggregate root) for gate ROI: one (gate_name, week_iso) pair from `docs/gate-audit/aggregate.jsonl`. Fields: `frequency` (total fires), `real_blocks`, `false_positives`, `bypasses`, `est_cost_min`, `retention_rec`. The `retention_rec` field is computed over the last 4 qualifying `GateAuditWeek` records for a gate, not within a single week. Produced by `gate-audit-aggregate.sh`; not owned by any aggregate root within this BC.
+
+*Discriminating note:* `GateAuditWeek` is a read-model summary record, not a DDD aggregate root. The three aggregate roots of this BC remain `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` (ADR-0020). `GateEvent` is the raw per-fire record.
+
+---
+
+## GateEvent
+
+A single gate fire recorded in `docs/gate-audit/events.jsonl`. Fields: `event_id`, `gate_name`, `timestamp`, `week_iso`, `outcome` ("blocked" | "allowed"), `classification` (null | "real" | "false-positive"), `cost_min`. Written by the hook immediately after the gate decision is made. Tagged post-hoc by the operator via `forge gate-tag`.
+
+*Discriminating note:* `GateEvent` captures one fire, regardless of outcome. `GateAuditWeek` aggregates many `GateEvent` records. Not every `GateEvent` reaches `GateAuditWeek` — unclassified blocked events contribute to `frequency` only.
 
 ---
 
@@ -167,6 +199,22 @@ An agent subtype that reads artifacts and returns a markdown report. Never write
 ## Red Hotspot
 
 An unresolved question or known invariant violation that the domain docs explicitly leave open. Flagged honestly rather than papered over. Current hotspots: see `overview.md#red-hotspots`.
+
+---
+
+## Real Block (gate)
+
+A gate blocking an action that, upon operator judgment, was a genuine violation that the gate was correct to catch. Recorded by `bash ~/.claude/scripts/forge.sh gate-tag <event_id> --real` (see `bootstrap/skills/gate-audit/SKILL.md` for full invocation). Contributes to `real_blocks` in `GateAuditWeek`. A gate with consistently high `real_blocks / (real_blocks + false_positives + bypasses)` ratio has proven ROI and should be kept.
+
+*Discriminating note:* "real block" is the operator's post-hoc judgment, not the gate's output. The gate does not distinguish real from false-positive at fire time.
+
+---
+
+## RetentionRecommendation
+
+The decision-rule output for a gate over a rolling 4-week window: `KEEP`, `REMOVE`, or `INSUFFICIENT_DATA`. Computed by `gate-audit-aggregate.sh` from `GateAuditWeek` records. `REMOVE` means `real / (real + fp + bypass) < 0.2` for all 4 qualifying weeks. Requires human approval before any gate is actually removed — this is a recommendation, not an automatic action.
+
+*Discriminating note:* `REMOVE` is not a verdict; it is a prompt for human review. The gate stays active until a human opens and merges a PR to remove it.
 
 ---
 

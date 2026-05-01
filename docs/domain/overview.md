@@ -1,7 +1,7 @@
 # Bounded Context: claude-mini-pipeline
 
-**Version:** 2026-04-28
-**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108); three aggregate roots: FeatureRun, GovernanceRun, TwoVoiceReview
+**Version:** 2026-05-01
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit operational layer (issue #122); three aggregate roots: FeatureRun, GovernanceRun, TwoVoiceReview
 
 ## Table of Contents
 
@@ -104,6 +104,7 @@ Three aggregate roots own commands within this BC (ADR-0020). Commands are organ
 - Fan-out rules (what is and isn't parallelizable)
 - Issue-first discipline
 - Per-ticket git worktree isolation for sweep operations (ADR-0017; `bootstrap/scripts/sweep-worktree*.sh`)
+- Gate ROI audit operational layer: `GateEvent` append-log (`docs/gate-audit/events.jsonl`), `GateAuditWeek` read-model (`docs/gate-audit/aggregate.jsonl`), weekly aggregation (`gate-audit-aggregate.sh`), operator tagging CLI (`forge gate-tag`). These are **operational tooling read-models**, not DDD aggregate roots. The three aggregate roots of this BC remain `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` (ADR-0020).
 
 **Out of scope:**
 - Source code of downstream projects where claude-mini is installed
