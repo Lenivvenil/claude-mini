@@ -1,0 +1,23 @@
+name: Project board sync
+
+# Requires secret ADD_TO_PROJECT_TOKEN — a PAT with `project` scope.
+# Create at: github.com/settings/tokens → Classic → project ✓
+# Add as: Settings → Secrets → Actions → ADD_TO_PROJECT_TOKEN
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-to-board:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+    steps:
+      - name: Add issue to claude-mini project board
+        env:
+          GH_TOKEN: ${{ secrets.ADD_TO_PROJECT_TOKEN }}
+        run: |
+          gh project item-add 5 \
+            --owner Lenivvenil \
+            --url "${{ github.event.issue.html_url }}"
