@@ -46,7 +46,7 @@ gate_event_write() {
     else
         event_id=$(printf '%s%s' "$(date +%s 2>/dev/null || echo 0)" "${RANDOM:-0}" \
                    | sha256sum 2>/dev/null | head -c 16 \
-                   || printf '%016d' "${RANDOM:-0}")
+                   || printf '%016x' "${RANDOM:-0}")
     fi
 
     local timestamp

@@ -26,8 +26,8 @@ FIXTURE="$REPO_ROOT/docs/gate-audit/fixtures/events-4w-sample.jsonl"
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; NC=$'\033[0m'
 FAILURES=0
 
-pass() { printf "  ${GREEN}✓${NC} %s\n" "$1"; }
-fail() { printf "  ${RED}✗${NC} %s\n" "$1"; FAILURES=$((FAILURES + 1)); }
+pass() { printf "  %s✓%s %s\n" "${GREEN}" "${NC}" "$1"; }
+fail() { printf "  %s✗%s %s\n" "${RED}"  "${NC}" "$1"; FAILURES=$((FAILURES + 1)); }
 
 # ── Setup: temp git repo for gate_event_write tests ───────────────────────
 
@@ -377,6 +377,6 @@ if [ "$FAILURES" -eq 0 ]; then
     printf "%bAll tests passed.%b\n" "${GREEN}" "${NC}"
     exit 0
 else
-    printf "${RED}%d test(s) failed.${NC}\n" "$FAILURES"
+    printf "%s%d test(s) failed.%s\n" "${RED}" "$FAILURES" "${NC}"
     exit 1
 fi

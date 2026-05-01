@@ -9,7 +9,7 @@ description: Weekly gate ROI audit skill. Run weekly to aggregate events.jsonl, 
 
 - Ask Claude: "run gate audit", "check gate ROI", or "gate-audit report"
 - Weekly CI cron job (see `.github/workflows/ci.yml` `gate-audit` job)
-- After manually tagging events with `forge gate-tag` (see below for invocation)
+- After manually tagging events with `bash ~/.claude/scripts/forge.sh gate-tag` (see below for invocation)
 
 ## Prerequisites
 
