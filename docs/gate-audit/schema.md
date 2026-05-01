@@ -22,19 +22,27 @@ Automated recovery is not implemented. "Append-only" means do not silently rewri
 | `timestamp` | string | UTC ISO 8601, e.g. `2026-05-01T09:00:00Z`. |
 | `week_iso` | string | ISO 8601 calendar week, e.g. `2026-W18`. Used for grouping in aggregation. |
 | `outcome` | string | `"blocked"` — gate fired and blocked the action. `"allowed"` — gate fired and allowed through. |
-| `classification` | string or null | Operator post-hoc tag. `null` = unclassified. `"real"` = genuine block. `"false-positive"` = gate was wrong. Set with `forge gate-tag`. |
+| `classification` | string or null | Operator post-hoc tag. `null` = unclassified. `"real"` = genuine block. `"false-positive"` = gate was wrong. `"bypassed"` = gate was deliberately skipped (manual entry only). Set with `bash ~/.claude/scripts/forge.sh gate-tag`. |
 | `cost_min` | number or null | Operator-estimated time cost in minutes for this event. Optional; contributes to `est_cost_min` in aggregated report. |
 
 ### Measurement scope
 
-Events are written by Claude Code hooks only (`pre-commit-governance.sh`, `verify.sh`). Direct
-`git commit` calls that bypass Claude Code are not captured. This creates a **known measurement
-bias**: frequency counts reflect hook-mediated commits only, not raw git operations. Document
-in your analysis if you work with both Claude Code and direct git in the same period.
+Events are written by two instrumented call sites: the `pre-commit-governance.sh` Claude Code
+PreToolUse hook and `bootstrap/scripts/verify.sh` (the Layer 1 verifier, invoked from `/review`).
+Direct `git commit` calls that bypass Claude Code are not captured. This creates a **known
+measurement bias**: frequency counts reflect hook-mediated commits only, not raw git operations.
+Document in your analysis if you work with both Claude Code and direct git in the same period.
 
 LLM-critic gates (adversarial-critic, security-reviewer, etc.) are **not instrumented** in
 this version. Their events require a different mechanism (agent invocation tracking). This is
 deferred to a follow-up issue.
+
+**Blocked-commit event persistence:** When `pre-commit-governance` fires and blocks a commit,
+`gate_event_write` appends the event to `events.jsonl` but does **not** auto-stage the file.
+The event exists only in the working tree until explicitly committed. If you reset the branch
+or run `git checkout -- docs/gate-audit/events.jsonl`, the event is silently lost. To preserve
+blocked-commit events: run `git add docs/gate-audit/events.jsonl` and include it in your next
+successful commit. `forge gate-tag` prints a reminder: `"Hint: commit docs/gate-audit/events.jsonl"`.
 
 ### Bypasses
 

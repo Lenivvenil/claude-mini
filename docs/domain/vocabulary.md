@@ -79,7 +79,7 @@ An instance of a gate being deliberately skipped, circumventing its enforcement.
 
 ## False Positive (gate)
 
-A gate blocking an action that was, upon operator judgment, a legitimate operation. The gate fired correctly (it detected the pattern it was designed to detect), but the detection was unwarranted in context. Recorded by `forge gate-tag <event_id> --false-positive`. Contributes to `false_positives` in `GateAuditWeek`. High false-positive rate is the primary signal for `REMOVE`.
+A gate blocking an action that was, upon operator judgment, a legitimate operation. The gate fired correctly (it detected the pattern it was designed to detect), but the detection was unwarranted in context. Recorded by `bash ~/.claude/scripts/forge.sh gate-tag <event_id> --false-positive` (see `bootstrap/skills/gate-audit/SKILL.md` for full invocation). Contributes to `false_positives` in `GateAuditWeek`. High false-positive rate is the primary signal for `REMOVE`.
 
 *Discriminating note:* a false positive is not a gate bug. A bug fires in error (unexpected path); a false positive fires on a real pattern that happens not to matter here.
 
@@ -204,7 +204,7 @@ An unresolved question or known invariant violation that the domain docs explici
 
 ## Real Block (gate)
 
-A gate blocking an action that, upon operator judgment, was a genuine violation that the gate was correct to catch. Recorded by `forge gate-tag <event_id> --real`. Contributes to `real_blocks` in `GateAuditWeek`. A gate with consistently high `real_blocks / (real_blocks + false_positives + bypasses)` ratio has proven ROI and should be kept.
+A gate blocking an action that, upon operator judgment, was a genuine violation that the gate was correct to catch. Recorded by `bash ~/.claude/scripts/forge.sh gate-tag <event_id> --real` (see `bootstrap/skills/gate-audit/SKILL.md` for full invocation). Contributes to `real_blocks` in `GateAuditWeek`. A gate with consistently high `real_blocks / (real_blocks + false_positives + bypasses)` ratio has proven ROI and should be kept.
 
 *Discriminating note:* "real block" is the operator's post-hoc judgment, not the gate's output. The gate does not distinguish real from false-positive at fire time.
 

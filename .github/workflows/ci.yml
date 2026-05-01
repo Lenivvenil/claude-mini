@@ -123,6 +123,11 @@ jobs:
             --body "Automated weekly gate-audit report. Review recommendations before merging. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --label "type:bootstrap" \
             --base main \
-            --head "$BRANCH"
+            --head "$BRANCH" \
+          || {
+            echo "PR creation failed — deleting orphan branch to prevent accumulation"
+            git push origin --delete "$BRANCH" || true
+            exit 1
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

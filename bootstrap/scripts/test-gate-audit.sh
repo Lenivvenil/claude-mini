@@ -116,7 +116,6 @@ fi
     # shellcheck source=/dev/null
     source "$LIB"
     gate_event_write "test-gate" "blocked"
-    exit 0
 )
 if [ $? -eq 0 ]; then
     pass "T1.5: missing gate-audit dir is silent"
