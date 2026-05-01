@@ -87,8 +87,20 @@ Evidence of why this step is load-bearing: `docs/runbooks/first-feature-session-
 Если более ранний ADR устарел:
 
 1. Новый ADR пишется как обычно
-2. В секции `Status:` нового — `accepted` 
-3. В старом — `superseded by [NNNN](NNNN-*.md)`
+2. В секции `Status:` нового — `accepted`
+3. В старом — `Status: superseded` и `Superseded-by: [NNNN](NNNN-*.md)` (отдельное поле)
 4. В новом — `Supersedes: [MMMM](MMMM-*.md)` в секции Links
 
 Старый ADR НИКОГДА не удаляется. История решений — часть документации.
+
+## ADR retirement audit
+
+Еженедельный CI cron (`adr-retirement-audit-weekly`) запускает `bootstrap/scripts/adr-retirement-audit.sh` и открывает PR с отчётом. Отчёт содержит колонку `Recommendation`:
+
+| Значение | Действие оператора |
+|---|---|
+| `keep` | Ничего не делать |
+| `mark-deprecated` | Проверить вручную → если согласен: `bash bootstrap/scripts/adr-retirement-audit.sh --apply 0004` |
+| `mark-superseded` | Проверить цепочку Superseded-by → если согласен: `bash bootstrap/scripts/adr-retirement-audit.sh --apply 0004` |
+
+`--apply` принимает zero-padded номер (`0004`) или bare integer (`4`). Обновляет только `* Status:` и `* Superseded-by:` — контент ADR не редактируется.
