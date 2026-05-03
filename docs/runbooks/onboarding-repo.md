@@ -25,18 +25,19 @@ cd ~/projects/claude-mini
 ```
 
 Проверь:
+- [ ] Есть ли `AGENTS.md`?
 - [ ] Есть ли `CLAUDE.md`?
 - [ ] Есть ли `docs/decisions/`?
 - [ ] Есть ли `docs/principles.md`?
 - [ ] Настроены ли GitHub labels?
 - [ ] Есть ли PR template?
 
-### 2. Добавить CLAUDE.md
+### 2. Кастомизировать AGENTS.md и CLAUDE.md
 
-```bash
-cp ~/.claude/templates/claude-mini/CLAUDE.md.template CLAUDE.md
-# Отредактируй: замени <PROJECT_NAME>, добавь project-specific правила
-```
+`--target` (шаг 1) доставляет оба файла автоматически. Отредактируй под проект:
+
+- **AGENTS.md** — добавь реальную структуру репо, команды сборки/тестирования, project-specific правила.
+- **CLAUDE.md** — добавь Claude Code-специфику в раздел "Специфика проекта" если нужна.
 
 ### 3. Добавить principles.md
 
