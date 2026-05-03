@@ -1,29 +1,18 @@
-# Project conventions — claude-mini
+@AGENTS.md
 
-Этот файл — карта, а не территория. Перечитывай при старте сессии; не кешируй в memory.
+<!-- Claude Code разворачивает @AGENTS.md автоматически.                    -->
+<!-- Другие инструменты и GitHub читают AGENTS.md напрямую.                 -->
 
-## Source of truth
+> **Vendor-neutral инструкции:** [AGENTS.md](AGENTS.md) — структура репо, workflow, правила, hook, MCP.
 
-- **Backlog, milestones, sprints:** GitHub Issues + Projects v2 (этот репо).
-- **Architecture decisions:** `docs/decisions/` (MADR 4.0). Новые — через `/adr`.
-- **Domain model:** `docs/domain/`. Эволюционирует через `domain-researcher`.
-- **System structure:** `docs/architecture/`.
-- **Principles:** `docs/principles.md`.
-- **Anti-patterns:** `docs/anti-patterns.md` (реестр ленивых решений LLM, Принцип 4).
-- **Runbooks:** `docs/runbooks/`.
+# Claude Code — дополнительная конфигурация
 
-## Hard rules
-
-1. **ADR-PR** обязателен для любого архитектурно-значимого решения. «Мы договорились в чате» — не решение.
-2. **Issue-first** для любой задачи длиннее одной сессии. Промоут через `/task-to-issue`.
-3. **Cross-ref в PR** обязателен: `Closes #NNN` и `Implements docs/decisions/NNNN-*.md` если был ADR.
-4. **Conventional Commits.** `pre-commit-governance.sh` hook проверяет префикс и issue-ref.
-5. **Definition of Done** — см. `docs/principles.md#definition-of-done`. Merge блокируется до выполнения.
-6. **Advisor policy:** `advisor()` вызывается дважды на нетривиальную задачу — перед началом работы (проверка плана) и перед объявлением готовности (поиск багов/несоответствий ADR).
+Этот файл добавляет Claude Code-специфику поверх `AGENTS.md`.
+Перечитывай при старте сессии; не кешируй в memory.
 
 ## Orchestration
 
-**Главный цикл:** `claude --model sonnet` с `/advisor` (Opus 4.7 как консультант).
+**Главный цикл:** `claude --model sonnet` с `advisor()` (Opus 4.7 как консультант).
 
 **Feature pipeline (канонический путь):**
 
@@ -67,16 +56,21 @@ Read-only критики. Вызов: `@agent-<name>`.
 
 ## MCP tooling
 
-- **Serena** — семантическая навигация. Используй вместо grep на больших файлах.
-- **GitHub** — issues/PR/projects/actions. Read-only header `X-MCP-Read-Only: true` для exploratory-сессий.
-- **Context7** — актуальная документация библиотек. Проверяй здесь перед гипотезой «API такой».
+Назначение серверов — в `AGENTS.md §MCP-серверы`. Claude Code-специфика:
 
-## Что в этом репо уникально
+- **GitHub** — для exploratory-сессий добавляй `X-MCP-Read-Only: true` header.
+- **Context7** — проверяй здесь перед любой гипотезой об API библиотеки; training data устаревает.
 
-Этот проект документирует и устанавливает сам себя. Каждое изменение (новый агент, новая команда, новый runbook) проходит через собственный pipeline: issue → plan → (ADR если надо) → implement → review → governance-commit → PR. Это не стайлинг — это дисциплина. Если pipeline не умеет произвести новый артефакт, pipeline сломан.
+## Advisor policy
+
+`advisor()` вызывается **дважды** на нетривиальной задаче:
+1. **Перед реализацией** — проверить план, найти дыры до написания кода.
+2. **Перед объявлением готовности** — проверить diff на баги и несоответствия ADR.
+
+Нетривиальная задача: затрагивает >1 модуля, неочевидные edge cases, конкурирует с похожим кодом, содержит асинхронность. Тривиальное (форматирование, rename, однострочный fix) — без advisor.
 
 ## Что не делать
 
-- **Не редактировать `bootstrap/` напрямую в production `~/.claude/`.** Источник правды — этот репо. Глобальные артефакты (agents, skills, hooks): `./bootstrap/universal-setup.sh --install`. Slash-команды — per-project: `./bootstrap/universal-setup.sh --target <repo>`. Порядок миграции важен: сначала `--target <repo>`, затем `rm ~/.claude/commands/*.md` (не наоборот — иначе останешься без команд). (ADR-0018)
-- **Не коммитить напрямую через терминал минуя `/review` и governance.** Для защиты от себя можно включить git-level commit-msg hook (см. `docs/runbooks/enforcement-extras.md` — TODO).
-- **Не вызывать advisor на тривиальное.** Форматирование, переименование, мусорный refactor — без advisor. Он для содержательных решений.
+- **Не редактировать `bootstrap/` напрямую в production `~/.claude/`.** Источник правды — этот репо. Глобальные артефакты: `./bootstrap/universal-setup.sh --install`. Slash-команды — per-project: `./bootstrap/universal-setup.sh --target <repo>`. Порядок важен: сначала `--target <repo>`, затем `rm ~/.claude/commands/*.md`. (ADR-0018)
+- **Не коммитить напрямую через терминал минуя `/review` и governance.**
+- **Не вызывать advisor на тривиальное.** Форматирование, переименование, мусорный refactor — без advisor.

@@ -80,6 +80,27 @@ bootstrap/
 
 **Scripts (8):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`, `gate-audit-lib.sh` (event-write helper), `gate-audit-aggregate.sh` (weekly aggregation), `forge.sh` (gate-tag CLI).
 
+## AGENTS.md + CLAUDE.md — два файла, два читателя
+
+Репо поддерживает два конфигурационных файла одновременно:
+
+```mermaid
+graph LR
+    A["AGENTS.md\nvendor-neutral"] --> Codex["Codex CLI"]
+    A --> Goose["Goose"]
+    A --> OC["opencode / Aider / Cursor"]
+    C["CLAUDE.md\n@AGENTS.md + специфика"] -- "разворачивает импорт" --> CC["Claude Code"]
+    A -.-> CC
+```
+
+**AGENTS.md** содержит всё vendor-neutral: структуру репо, workflow-стадии, правила, governance hook, MCP-серверы. Написан в формате [AGENTS.md](https://aaif.ai/), совместимом с AAIF-стандартом.
+
+**CLAUDE.md** — тонкий stub. Начинается с `@AGENTS.md` (Claude Code разворачивает импорт автоматически) и добавляет только то, что специфично для Claude Code: slash-команды, таблицу субагентов, advisor policy.
+
+**Если нужно мигрировать на другой инструмент:** большая часть pipeline переносится без усилий. Подробности и пример — `docs/runbooks/vendor-migration.md`.
+
+---
+
 ## Контракт воспроизводимости
 
 - Любой шаг можно пройти повторно без разрушения состояния (`--install` после `--install` ничего не сломает).
