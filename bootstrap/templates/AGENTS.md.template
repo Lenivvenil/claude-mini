@@ -1,4 +1,4 @@
-# AGENTS.md — <PROJECT_NAME>
+# AGENTS.md
 
 > Этот файл читается любым AI-агентом: Claude Code, Codex CLI, Goose, opencode, Aider, Cursor и другими.
 > Содержит только vendor-neutral инструкции.

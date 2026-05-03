@@ -5,7 +5,7 @@
 
 > **Vendor-neutral инструкции:** [AGENTS.md](AGENTS.md) — структура репо, workflow, правила, hook, MCP.
 
-# Claude Code — специфика для <PROJECT_NAME>
+# Claude Code — дополнительная конфигурация
 
 Этот файл добавляет Claude Code-специфику поверх `AGENTS.md`.
 Наследует соглашения `claude-mini`: pipeline, read-only critic agents, governance hook, DoD.

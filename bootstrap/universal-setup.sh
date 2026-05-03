@@ -254,6 +254,18 @@ if [ -n "$TARGET_PATH" ]; then
         "$TARGET_DIR/.semgrep/llm-antipatterns.yaml" \
         ".semgrep/llm-antipatterns.yaml"
 
+    # AGENTS.md (#182: AAIF vendor-neutral template; no ADR — below architectural significance threshold)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/AGENTS.md.template" \
+        "$TARGET_DIR/AGENTS.md" \
+        "AGENTS.md"
+
+    # CLAUDE.md (#182: Claude Code stub that imports AGENTS.md; no ADR — same rationale)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/CLAUDE.md.template" \
+        "$TARGET_DIR/CLAUDE.md" \
+        "CLAUDE.md"
+
     echo ""
     log "Done (target mode, pipeline v$PIPELINE_VERSION)"
     if [ "$DRIFT" -gt 0 ]; then

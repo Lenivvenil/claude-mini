@@ -64,7 +64,7 @@ bootstrap/
 ├── commands/           — slash-commands для ~/.claude/commands/
 ├── hooks/              — Claude Code hooks (PreToolUse + PostToolUse + Stop) для ~/.claude/hooks/
 ├── scripts/            — утилиты для ~/.claude/scripts/ и ~/bin/
-├── templates/          — шаблоны (CLAUDE.md, PR template, CI workflows)
+├── templates/          — шаблоны (AGENTS.md, CLAUDE.md, PR template, CI workflows)
 └── universal-setup.sh  — идемпотентный installer
 ```
 
