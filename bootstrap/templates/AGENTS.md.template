@@ -1,0 +1,82 @@
+# AGENTS.md — <PROJECT_NAME>
+
+> Этот файл читается любым AI-агентом: Claude Code, Codex CLI, Goose, opencode, Aider, Cursor и другими.
+> Содержит только vendor-neutral инструкции.
+> Claude Code-специфика — в `CLAUDE.md`.
+
+## Где живёт знание
+
+| Что | Где |
+|---|---|
+| Задачи, спринты | GitHub Issues + Projects v2 |
+| Архитектурные решения | `docs/decisions/` (MADR 4.0) |
+| Принципы | `docs/principles.md` |
+| Процедуры | `docs/runbooks/` |
+
+## Структура репо
+
+```
+<!-- Опиши структуру своего проекта -->
+src/
+tests/
+docs/
+```
+
+## Как запустить / тестировать
+
+```bash
+# Установить зависимости
+<!-- команда -->
+
+# Запустить тесты
+<!-- команда -->
+
+# Lint + typecheck
+<!-- команда -->
+```
+
+## Как работает пайплайн
+
+```mermaid
+flowchart LR
+    I["GitHub Issue\n#NNN"] --> P["Plan\nplan.md"]
+    P --> AD{"ADR\nнужен?"}
+    AD -- "да" --> ADR["docs/decisions/\nNNNN-*.md"]
+    ADR --> Im
+    AD -- "нет" --> Im["Implement"]
+    Im --> QA["QA\nqa-report.md"]
+    QA --> R["Review\n2 голоса"]
+    R --> C["Commit + PR\nCloses #NNN"]
+```
+
+Наследует pipeline claude-mini: `/plan → /adr? → /implement → /qa → /review → /codex-review → commit → PR`.
+
+## Жёсткие правила
+
+1. **ADR-PR** обязателен для архитектурно-значимых решений.
+2. **Issue-first** для задач длиннее одной сессии.
+3. **Cross-ref в PR:** `Closes #NNN` + `Implements docs/decisions/NNNN-*.md` если был ADR.
+4. **Conventional Commits.** `pre-commit-governance.sh` hook проверяет.
+5. **DoD** блокирует merge — см. `docs/principles.md`.
+
+## Governance hook
+
+`bootstrap/hooks/pre-commit-governance.sh` блокирует коммит без CC-префикса и issue-ref.
+Установить: `./bootstrap/universal-setup.sh --install` (один раз на репо).
+
+## MCP-серверы
+
+| Сервер | Назначение |
+|---|---|
+| Serena | Семантическая навигация по коду |
+| GitHub | Issues, PR, projects |
+| Context7 | Документация библиотек |
+
+## Специфика проекта
+
+<!-- Опиши что отличается от мастер-соглашений claude-mini.
+Примеры:
+  - Проект на Django, см. ADR-0002
+  - Codex review не применяется (Python, покрывается uv pip audit)
+  - Коммиты в staging без PR (низкий риск)
+-->
