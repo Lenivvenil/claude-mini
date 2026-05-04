@@ -199,6 +199,37 @@ assert_allowed \
     "breaking change with '!' + issue ref" \
     'git commit -m "feat!: rename public API (#1)"'
 
+# --- Rule H: hedging-lint integration ---
+# Tests the full chain: staged plan.md with banned term → hook blocks via hedging-lint.
+# Only runs when .semgrep/hedging.yml and hedging-lint.sh are reachable from the hook.
+
+echo ""
+echo "Rule H — hedging-lint integration (requires .semgrep/hedging.yml in repo):"
+
+_REPO_ROOT_FOR_TEST="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)"
+_HEDGING_CONFIG="$_REPO_ROOT_FOR_TEST/.semgrep/hedging.yml"
+
+if [ ! -f "$_HEDGING_CONFIG" ]; then
+    printf "  %sSKIP%s hedging integration — .semgrep/hedging.yml not found (run --target first)\n" "$GREEN" "$NC"
+else
+    # Provide .semgrep/hedging.yml in the temp repo and stage a bad plan.md
+    mkdir -p "$TMPDIR_REPO/.semgrep"
+    cp "$_HEDGING_CONFIG" "$TMPDIR_REPO/.semgrep/hedging.yml"
+
+    printf 'maybe we should do this\n' > "$TMPDIR_REPO/plan.md"
+    git -C "$TMPDIR_REPO" add plan.md
+
+    assert_blocked \
+        "staged plan.md with banned term → Rule H blocks" \
+        'git commit -m "feat: add plan (#1)"' \
+        "Hedging"
+
+    # Unstage plan.md for subsequent tests
+    git -C "$TMPDIR_REPO" restore --staged plan.md 2>/dev/null \
+        || git -C "$TMPDIR_REPO" reset HEAD plan.md 2>/dev/null || true
+fi
+unset _REPO_ROOT_FOR_TEST _HEDGING_CONFIG
+
 # --- Summary ---
 
 echo ""

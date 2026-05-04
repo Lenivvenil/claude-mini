@@ -227,6 +227,53 @@ else
     fi
 fi
 
+# ── Gate 8: hedging-lint — banned terms in pipeline artifacts ─────────────
+# Scans plan.md, STATE.md, docs/decisions/*.md for hedging language (Principle 1).
+# --full: scans all target files; diff mode: scans only changed target files.
+HEDGING_LINT_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/hedging-lint.sh"
+HEDGING_CONFIG=".semgrep/hedging.yml"
+HEDGING_TARGET_RE='^(plan\.md|STATE\.md|docs/decisions/[^/]+\.md)$'
+
+if [ ! -f "$HEDGING_LINT_SCRIPT" ]; then
+    fail "[hedging-lint] $HEDGING_LINT_SCRIPT not found."
+    fail "Run: ./bootstrap/universal-setup.sh --install to refresh scripts."
+    fail ""
+elif [ ! -f "$HEDGING_CONFIG" ]; then
+    fail "[hedging-lint] $HEDGING_CONFIG not found."
+    fail "Run: ./bootstrap/universal-setup.sh --target . to install templates."
+    fail ""
+else
+    hedging_targets=()
+    if [ "$FULL" = "1" ]; then
+        # Full mode: scan all existing target files
+        for hf in plan.md STATE.md; do
+            [ -f "$hf" ] && hedging_targets+=("./$hf")
+        done
+        if [ -d "docs/decisions" ]; then
+            while IFS= read -r hf; do
+                [ -f "$hf" ] && hedging_targets+=("$hf")
+            done < <(find ./docs/decisions -maxdepth 1 -name "*.md" 2>/dev/null)
+        fi
+    elif [ "$GIT_DIFF_OK" = "1" ] && [ -n "$DIFF_FILES" ]; then
+        # Diff mode: only changed files that match target paths
+        while IFS= read -r hf; do
+            [ -z "$hf" ] && continue
+            if echo "$hf" | grep -qE "$HEDGING_TARGET_RE" && [ -f "$hf" ]; then
+                hedging_targets+=("./$hf")
+            fi
+        done <<< "$DIFF_FILES"
+    fi
+
+    if [ "${#hedging_targets[@]}" -gt 0 ]; then
+        hedging_out=$(bash "$HEDGING_LINT_SCRIPT" "${hedging_targets[@]}" 2>&1) && hedging_ok=1 || hedging_ok=0
+        if [ "$hedging_ok" = "0" ]; then
+            fail "[hedging-lint] Hedging language in pipeline artifacts:"
+            fail "$hedging_out"
+            fail ""
+        fi
+    fi
+fi
+
 # ── Final output ───────────────────────────────────────────────────────────
 if [ "$FAILED" = "1" ]; then
     echo "LAYER1_FAILED"

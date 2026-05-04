@@ -203,6 +203,45 @@ if [ "$is_decision_change" = "true" ]; then
     fi
 fi
 
+# --- Rule H: Hedging language in plan.md / STATE.md / docs/decisions/*.md ---
+# Scans staged markdown artifacts for banned hedging terms (Principle 1).
+# Fail-closed: missing wrapper, missing semgrep, or missing config → deny.
+
+_HEDGING_LINT="$_SELF_DIR/../scripts/hedging-lint.sh"
+
+# Use core.quotePath=false + -z so Cyrillic/space filenames are not C-quoted or word-split.
+hedging_staged=()
+while IFS= read -r -d '' f; do
+    [ -z "$f" ] && continue
+    case "$f" in
+        plan.md|STATE.md|docs/decisions/*.md)
+            hedging_staged+=("./$f")
+            ;;
+    esac
+done < <(git -c core.quotePath=false diff --cached --name-only -z 2>/dev/null)
+
+if [ "${#hedging_staged[@]}" -gt 0 ]; then
+    if [ ! -f "$_HEDGING_LINT" ]; then
+        json_deny "pre-commit-governance Rule H: hedging-lint.sh missing at $_HEDGING_LINT. Re-run: ./bootstrap/universal-setup.sh --install"
+    fi
+    hedging_out=$(bash "$_HEDGING_LINT" "${hedging_staged[@]}" 2>&1)
+    hedging_exit=$?
+    if [ "$hedging_exit" -ne 0 ]; then
+        # Strip control chars from semgrep output before JSON interpolation
+        # (json_deny only escapes double-quotes; semgrep findings contain ANSI escapes, backticks)
+        hedging_summary=$(echo "$hedging_out" \
+            | grep -E '(hedging-|depends-without|Blocking|┆)' \
+            | head -5 \
+            | sed 's/[[:cntrl:]]//g; s/\\//g' \
+            | tr '\n' ' ')
+        if [ "$hedging_exit" -eq 2 ]; then
+            json_deny "pre-commit-governance Rule H setup error (semgrep or config missing). Details: $hedging_summary. Re-run: ./bootstrap/universal-setup.sh --install"
+        else
+            json_deny "Hedging language in staged files (Principle 1). Fix or add nosemgrep. See: docs/runbooks/hedging-lint.md. Details: $hedging_summary"
+        fi
+    fi
+fi
+
 log "OK: $msg"
 if [ "${_GATE_AUDIT_READY:-0}" = "1" ] && command -v gate_event_write >/dev/null 2>&1; then
     gate_event_write "pre-commit-governance" "allowed" >/dev/null || true

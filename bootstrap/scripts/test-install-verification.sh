@@ -176,11 +176,16 @@ if grep -q 'llm-antipatterns.yaml' "$SETUP" 2>/dev/null; then
 else
     fail "--target section missing .semgrep/llm-antipatterns.yaml"
 fi
+if grep -q 'hedging.yml' "$SETUP" 2>/dev/null; then
+    pass "--target section references .semgrep/hedging.yml"
+else
+    fail "--target section missing .semgrep/hedging.yml"
+fi
 
-# Functional: run --target against a temp dir and verify all seven files land
+# Functional: run --target against a temp dir and verify all eight files land
 _T=$(mktemp -d /tmp/claude-mini-verify-templates-XXXXXX)
 if bash "$SETUP" --target "$_T" >/dev/null 2>&1; then
-    for f in "ruff.toml" ".eslintrc.json" ".jscpd.json" ".semgrep/llm-antipatterns.yaml" "AGENTS.md" "CLAUDE.md" "STATE.md"; do
+    for f in "ruff.toml" ".eslintrc.json" ".jscpd.json" ".semgrep/llm-antipatterns.yaml" ".semgrep/hedging.yml" "AGENTS.md" "CLAUDE.md" "STATE.md"; do
         if [ -f "$_T/$f" ]; then
             pass "--target functional: $_T/$f created"
         else

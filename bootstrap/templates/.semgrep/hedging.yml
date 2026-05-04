@@ -1,0 +1,38 @@
+rules:
+  # Principle 1: «размытость — нарушение»
+  # Banned hedging words in pipeline artifacts (plan.md, STATE.md, ADR files).
+  # To suppress a false positive: add <!-- nosemgrep: hedging-banned-terms --> on the same line.
+
+  - id: hedging-banned-terms
+    pattern-regex: '\b(maybe|possibly|could|might|perhaps)\b'
+    message: |
+      Hedging language detected (Principle 1: «размытость — нарушение»).
+      Replace with a concrete assertion, or state the branching condition explicitly:
+        «when X then Y, when Z then W».
+      To suppress a legitimate use: add  <!-- nosemgrep: hedging-banned-terms -->  on the same line.
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "plan.md"
+        - "STATE.md"
+        - "**/docs/decisions/*.md"
+
+  - id: hedging-depends-without-branch
+    # 'depends' is only allowed when followed by a branching condition on the same line.
+    # Allowed: "depends when X then Y"  /  "зависит если X то Y"
+    # Blocked: "depends on the context" / "depends on preferences"
+    patterns:
+      - pattern-regex: '\bdepends\b'
+      - pattern-not-regex: 'depends.*(when|если).*(then|то)'
+    message: |
+      'depends' without a branching condition (Principle 1).
+      Rewrite as: «depends when X then Y, when Z then W» — name the branch explicitly.
+      To suppress: add  <!-- nosemgrep: hedging-depends-without-branch -->  on the same line.
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "plan.md"
+        - "STATE.md"
+        - "**/docs/decisions/*.md"
