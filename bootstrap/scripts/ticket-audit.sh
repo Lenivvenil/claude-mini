@@ -26,9 +26,9 @@ RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'; NC=$'\033[0m'
 
 FAILURES=0
 
-pass() { printf "${GREEN}PASS${NC} %-22s %s\n" "$1" "$2"; }
-fail() { printf "${RED}FAIL${NC} %-22s %s\n" "$1" "$2"; FAILURES=$((FAILURES+1)); }
-skip() { printf "${YELLOW}SKIP${NC} %-22s %s\n" "$1" "$2"; }
+pass() { printf '%sPASS%s %-22s %s\n' "$GREEN" "$NC" "$1" "$2"; }
+fail() { printf '%sFAIL%s %-22s %s\n' "$RED" "$NC" "$1" "$2"; FAILURES=$((FAILURES+1)); }
+skip() { printf '%sSKIP%s %-22s %s\n' "$YELLOW" "$NC" "$1" "$2"; }
 
 if [ $# -ne 1 ]; then
     printf "Usage: %s <issue-number|file.md>\n" "$0" >&2
