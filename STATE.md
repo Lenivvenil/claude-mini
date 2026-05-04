@@ -2,21 +2,22 @@
 <!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
 <!-- Five-minute cold-start: read this + latest session-log entry, start in 5 min. (ADR-0024) -->
 
-session_id: 2026-05-03T00:00:00Z
-date_iso: 2026-05-03
-current_branch: feat/session-continuity-state-128
-last_commit_sha: d6c8f37
-active_feature_run_id: #128
+session_id: 2026-05-05T00:00:00Z
+date_iso: 2026-05-05
+current_branch: main
+last_commit_sha: 48069e9
+active_feature_run_id: null
 
 next_3_actions:
-  - Run /qa on the current branch (bootstrap/scripts/test-install-verification.sh + test-stop-hook.sh)
-  - Run /review with security-reviewer and reliability-reviewer (prod-bound paths touched)
-  - Resolve findings, then commit and open PR with "Closes #128"
+  - Pick next issue from backlog (run /backlog-review or check GitHub Issues)
+  - Issue #128 (session-continuity) was the prior active run — verify it merged or is still open
+  - Run /project-health weekly report if not done this week
 
 blocked_on: null
 
 open_questions: []
 
 risk_flags:
-  - stop-hook.sh atomicity: log-first order mitigates but does not eliminate interrupted-write risk
-  - plan-lint.sh regex is conservative; may miss hand-crafted decision prose without standard keywords
+  - mutation.yml is a reference implementation that skips all language blocks on claude-mini itself (no src/); first real signal comes from target pet-projects after --target install
+  - filter-mypy-invalid.py has no integration test (requires live mutmut + mypy); follow-up issue recommended
+  - cargo-mutants outcomes.json format: confirmed "caught"/"missed" outcome values from docs; re-verify if cargo-mutants v27 ships a breaking format change
