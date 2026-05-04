@@ -40,12 +40,13 @@ FAILURES=0
 section_content=""
 in_section=0
 
+SECTION_RE='^## ([34]\.?[[:space:]]|Considered|Chosen)'
 while IFS= read -r line; do
-    if echo "$line" | grep -qiE '^## [34]\.?[[:space:]]'; then
+    if echo "$line" | grep -qiE "$SECTION_RE"; then
         in_section=1
         continue
     fi
-    if echo "$line" | grep -qE '^## [^34]'; then
+    if echo "$line" | grep -qE '^## ' && ! echo "$line" | grep -qiE "$SECTION_RE"; then
         in_section=0
     fi
     if [ "$in_section" -eq 1 ]; then

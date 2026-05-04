@@ -76,7 +76,12 @@ update_handoff() {
     new_branch=$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     new_sha=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
-    # Infer active_feature_run_id from trailing -NNN in branch name
+    # Infer active_feature_run_id from trailing -NNN in branch name.
+    # Convention: feat/slug-NNN → #NNN. Known limitation: a branch with
+    # multiple numeric segments (e.g. feat/fix-v2-for-123-and-456) extracts
+    # the last number, which may not be the intended issue. Operator can
+    # override by setting active_feature_run_id manually in STATE.md before
+    # the session ends — the preservation logic below will keep the manual value.
     new_frid="null"
     if echo "$new_branch" | grep -qE '[-/]([0-9]+)$'; then
         new_frid="#$(echo "$new_branch" | grep -oE '[0-9]+$')"
