@@ -32,9 +32,10 @@ Maximum score = 25. Patterns are listed in descending score order.
 | 2 | `symptom-fix-not-root` | 4 | 4 | 4 | **20** |
 | 3 | `narrow-special-case` | 3 | 4 | 4 | **18** |
 | 4 | `adr-drift` | 3 | 4 | 3 | **17** |
-| 5 | `hedging-in-plan` | 4 | 3 | 3 | **17** |
-| 6 | `todo-without-ticket` | 5 | 2 | 1 | **15** |
-| 7 | `commented-block` | 4 | 2 | 1 | **13** |
+| 5 | `hedging-in-plan` | 4 | 3 | 1 | **15** |
+| 6 | `fail-open-default` | 2 | 4 | 3 | **15** |
+| 7 | `todo-without-ticket` | 5 | 2 | 1 | **15** |
+| 8 | `commented-block` | 4 | 2 | 1 | **13** |
 
 ---
 
@@ -128,13 +129,13 @@ the ADR that governs the current context.
 
 ### hedging-in-plan
 
-**Frequency:** 4 | **Severity:** 3 | **Detectability:** 3 | **Score:** 17
+**Frequency:** 4 | **Severity:** 3 | **Detectability:** 1 | **Score:** 15
 
-**Detector:** `advisor()` pre-check (Principle 1 mandate). No current
-deterministic gate — `lint-prompts.sh` only checks `bootstrap/agents/`,
-`bootstrap/commands/`, `bootstrap/skills/` and does not scan `plan.md`.
-A future `lint-prompts.sh` extension for `plan.md` hedging terms would
-lower Detectability to 1.
+**Detector:** `advisor()` pre-check (Principle 1 mandate) + deterministic gate
+`bootstrap/scripts/hedging-lint.sh` (issue #136): semgrep rules in
+`.semgrep/hedging.yml` block commit when `plan.md`, `STATE.md`, or ADR files
+contain `maybe/possibly/could/might/perhaps` or `depends`-без-ветвления.
+Detectability снижена с 3 до 1 — gate теперь механический.
 
 **Example:**  
 plan.md §4: "The hook could use either `exit 0` or `exit 1` depending on
@@ -146,6 +147,28 @@ Principle 1: no sentence in plan.md ends without a decision. Replace every
 "could/might" with either "(a) correct choice + rationale" or "(b) `not known
 — empirical test needed: <describe test>`." Advisor flags this during
 plan pre-check; fix plan.md before /implement.
+
+---
+
+### fail-open-default
+
+**Frequency:** 2 | **Severity:** 4 | **Detectability:** 3 | **Score:** 15
+
+**Detector:** `reliability-reviewer` и `advisor()` на phase "pre-implementation".
+Нет детерминистического gate — паттерн требует понимания конвенции кодовой базы.
+
+**Example:**
+План говорит «если semgrep не установлен — WARNING и exit 0».
+Существующий код кодовой базы: `jq` не найден → `exit 2` (deny), `verify.sh`
+tool missing → `LAYER1_FAILED` (не exit 0). LLM пишет мягкое поведение там
+где конвенция жёсткая. Reliability-reviewer поймал на `/review`; без него
+missing-wrapper молча bypassed Principle 1 enforcement.
+
+**Fix:**
+Перед реализацией нового gate — прочитать существующие gate'ы и сверить
+fail-mode. В этой кодовой базе: missing required tool = deny/fail, не warn.
+Спросить: «если этот инструмент отсутствует, что делают соседние gate'ы?»
+Скопировать их паттерн, не изобретать свой.
 
 ---
 
