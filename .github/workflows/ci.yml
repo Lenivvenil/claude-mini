@@ -50,6 +50,27 @@ jobs:
             fi
             expected=$((expected + 1))
           done
+      - name: Template drift check (mutation.yml)
+        run: |
+          if [ ! -f .github/workflows/mutation.yml ]; then
+            echo "MISSING: .github/workflows/mutation.yml not found in checkout"
+            exit 1
+          elif [ ! -f bootstrap/templates/mutation.yml ]; then
+            echo "MISSING: bootstrap/templates/mutation.yml not found in checkout"
+            exit 1
+          elif ! cmp -s .github/workflows/mutation.yml bootstrap/templates/mutation.yml; then
+            echo "DRIFT: .github/workflows/mutation.yml differs from bootstrap/templates/mutation.yml"
+            exit 1
+          fi
+      - name: Validate Python scripts syntax (SARIF converters + filter)
+        run: |
+          for f in bootstrap/scripts/mutmut-to-sarif.py \
+                   bootstrap/scripts/filter-mypy-invalid.py \
+                   bootstrap/scripts/cargo-mutants-to-sarif.py; do
+            python3 -m py_compile "$f" || { echo "Syntax error in $f"; exit 1; }
+          done
+      - name: Run mutation-summary unit tests
+        run: bash bootstrap/scripts/test-mutation-summary.sh
 
   markdown-links:
     runs-on: ubuntu-latest

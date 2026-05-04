@@ -1,0 +1,564 @@
+name: Mutation Testing (weekly)
+
+# Runs every Sunday at 00:00 UTC — NOT on every PR.
+# Per-PR mutation testing is an industry anti-pattern (Google arxiv 2102.11378, Pitest author).
+# Weekly cron + --in-diff scoping gives signal without burning CI minutes on every push.
+#
+# ADR-0025: docs/decisions/0025-mutation-testing-tool-selection.md
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'   # Sunday 00:00 UTC
+  workflow_dispatch:        # Manual trigger via GitHub UI or: gh workflow run mutation.yml
+
+permissions:
+  contents: read
+  security-events: write    # Required for SARIF upload to GitHub Code Scanning
+  issues: write             # Required to create the weekly mutation-report issue
+
+jobs:
+  mutation:
+    name: Weekly mutation testing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history for --in-diff)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      # ── Language detection ─────────────────────────────────────────────────
+
+      - name: Detect Python
+        id: detect-python
+        run: |
+          count=$(find . -name "*.py" \
+            -not -path "./.git/*" \
+            -not -path "./bootstrap/templates/*" | wc -l | tr -d ' ')
+          if [ "$count" -gt 0 ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Python source files found: $count"
+
+      - name: Detect TS/JS
+        id: detect-js
+        run: |
+          has_pkg=0
+          has_src=0
+          [ -f "package.json" ] && has_pkg=1
+          count=$(find . \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \) \
+            -not -path "./.git/*" \
+            -not -path "./node_modules/*" \
+            -not -path "./bootstrap/templates/*" | wc -l | tr -d ' ')
+          [ "$count" -gt 0 ] && has_src=1
+          if [ "$has_pkg" -eq 1 ] && [ "$has_src" -eq 1 ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Reason: package.json present=$has_pkg, TS/JS files=$count"
+          fi
+
+      - name: Detect Rust
+        id: detect-rust
+        run: |
+          count=$(find . -name "*.rs" \
+            -not -path "./.git/*" | wc -l | tr -d ' ')
+          if [ "$count" -gt 0 ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Rust source files found: $count"
+
+      # ── Python: mutmut v3+ ─────────────────────────────────────────────────
+
+      - name: Python — install mutmut + mypy
+        id: install-python
+        if: steps.detect-python.outputs.skip != 'true'
+        continue-on-error: true
+        run: pip install mutmut mypy
+
+      - name: Python — run mutmut
+        id: mutmut-run
+        if: steps.detect-python.outputs.skip != 'true'
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          mutmut run --paths-to-mutate src/ 2>&1 | tee /tmp/mutmut-output.txt
+          # Extract results from mutmut's sqlite cache into intermediate JSON
+          python3 - > /tmp/mutmut-raw.json <<'PYEOF'
+          import sqlite3, json, pathlib, sys
+          cache = pathlib.Path(".mutmut-cache")
+          if not cache.exists():
+              print("[]")
+              sys.exit(0)
+          conn = sqlite3.connect(str(cache))
+          cur = conn.execute(
+              "SELECT id, status, filename, line, original, mutation "
+              "FROM mutants WHERE status IN ('survived', 'timeout')"
+          )
+          rows = [
+              {"id": r[0], "status": r[1], "filename": r[2],
+               "line": r[3], "original": r[4] or "", "mutation": r[5] or ""}
+              for r in cur.fetchall()
+          ]
+          conn.close()
+          print(json.dumps(rows, indent=2))
+          PYEOF
+
+      - name: Python — filter mypy-invalid mutants
+        id: mutmut-filter
+        if: steps.detect-python.outputs.skip != 'true'
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          if [ -f /tmp/mutmut-raw.json ]; then
+            python3 bootstrap/scripts/filter-mypy-invalid.py \
+              < /tmp/mutmut-raw.json > /tmp/mutmut-filtered.json
+          else
+            echo "[]" > /tmp/mutmut-filtered.json
+          fi
+
+      - name: Python — convert to SARIF
+        if: steps.detect-python.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          python3 bootstrap/scripts/mutmut-to-sarif.py /tmp/mutmut-filtered.json \
+            > /tmp/mutmut.sarif
+
+      - name: Python — compute score and survivors
+        id: python-score
+        if: steps.detect-python.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          python3 - <<'PYEOF'
+          import sqlite3, json, pathlib, sys, os
+
+          cache = pathlib.Path(".mutmut-cache")
+          if not cache.exists():
+              print("PYTHON_SCORE=0\nPYTHON_KILLED=0\nPYTHON_SURVIVED=0\nPYTHON_TIMEOUT=0",
+                    file=open(os.environ["GITHUB_OUTPUT"], "a"))
+              sys.exit(0)
+
+          conn = sqlite3.connect(str(cache))
+          def count(status):
+              return conn.execute(
+                  "SELECT COUNT(*) FROM mutants WHERE status=?", (status,)
+              ).fetchone()[0]
+
+          killed   = count("killed")
+          survived = count("survived")
+          timeout  = count("timeout")
+          total    = killed + survived  # timeout excluded from score per ADR-0025
+          score    = round(killed * 100 / total) if total > 0 else 0
+          conn.close()
+
+          env_file = os.environ["GITHUB_OUTPUT"]
+          with open(env_file, "a") as f:
+              f.write(f"PYTHON_SCORE={score}\n")
+              f.write(f"PYTHON_KILLED={killed}\n")
+              f.write(f"PYTHON_SURVIVED={survived}\n")
+              f.write(f"PYTHON_TIMEOUT={timeout}\n")
+
+          # Write survivors list for the issue body
+          conn2 = sqlite3.connect(".mutmut-cache")
+          survivors = conn2.execute(
+              "SELECT filename, line, original, mutation FROM mutants WHERE status='survived'"
+          ).fetchall()
+          conn2.close()
+          with open("/tmp/python-survivors.txt", "w") as f:
+              for s in survivors:
+                  f.write(f"{s[0]}:{s[1]} | {s[2].strip()} → {s[3].strip()}\n")
+          PYEOF
+
+      # ── TS/JS: Stryker ─────────────────────────────────────────────────────
+
+      - name: TS/JS — install Stryker
+        id: install-js
+        if: steps.detect-js.outputs.skip != 'true'
+        continue-on-error: true
+        run: npm install --save-dev @stryker-mutator/core @stryker-mutator/jest-runner
+
+      - name: TS/JS — write Stryker config (heredoc, ADR-0025 side decision 8)
+        if: steps.detect-js.outputs.skip != 'true'
+        run: |
+          cat > stryker.conf.json <<'STRYKERCFG'
+          {
+            "testRunner": "jest",
+            "mutate": ["src/**/*.ts", "src/**/*.js", "!src/**/*.test.*", "!src/**/*.spec.*"],
+            "reporters": ["json", "clear-text"],
+            "thresholds": { "break": 50, "low": 60, "high": 80 },
+            "jsonReporter": { "fileName": "stryker-report.json" }
+          }
+          STRYKERCFG
+
+      - name: TS/JS — run Stryker
+        id: stryker-run
+        if: steps.detect-js.outputs.skip != 'true'
+        continue-on-error: true
+        timeout-minutes: 30
+        run: npx stryker run --config stryker.conf.json 2>&1 | tee /tmp/stryker-output.txt
+
+      - name: TS/JS — convert to SARIF
+        if: steps.detect-js.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          python3 - <<'PYEOF'
+          import json, sys, os
+
+          try:
+              with open("stryker-report.json") as f:
+                  report = json.load(f)
+          except (FileNotFoundError, json.JSONDecodeError):
+              report = {}
+
+          files = report.get("files", {})
+          results = []
+          survivors_lines = []
+
+          for filepath, file_data in files.items():
+              for m in file_data.get("mutants", []):
+                  if m.get("status") != "Survived":
+                      continue
+                  loc = m.get("location", {}).get("start", {})
+                  line = loc.get("line", 1)
+                  mutation_type = m.get("mutatorName", "unknown")
+                  original = m.get("replacement", "")
+                  survivors_lines.append(f"{filepath}:{line} | {mutation_type} | {original}")
+                  results.append({
+                      "ruleId": "stryker/survived-mutant",
+                      "level": "warning",
+                      "message": {"text": f"Surviving mutant ({mutation_type}): {original}"},
+                      "locations": [{
+                          "physicalLocation": {
+                              "artifactLocation": {"uri": filepath, "uriBaseId": "%SRCROOT%"},
+                              "region": {"startLine": max(1, int(line))},
+                          }
+                      }],
+                  })
+
+          sarif = {
+              "version": "2.1.0",
+              "runs": [{
+                  "tool": {
+                      "driver": {
+                          "name": "Stryker",
+                          "version": "8",
+                          "informationUri": "https://stryker-mutator.io/",
+                          "rules": [{
+                              "id": "stryker/survived-mutant",
+                              "name": "SurvivedMutant",
+                              "shortDescription": {"text": "Surviving mutant"},
+                          }],
+                      }
+                  },
+                  "results": results,
+              }],
+          }
+          with open("/tmp/stryker.sarif", "w") as f:
+              json.dump(sarif, f, indent=2)
+
+          with open("/tmp/js-survivors.txt", "w") as f:
+              f.write("\n".join(survivors_lines) + "\n" if survivors_lines else "")
+          PYEOF
+
+      - name: TS/JS — compute score
+        id: js-score
+        if: steps.detect-js.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys
+
+          try:
+              with open("stryker-report.json") as f:
+                  report = json.load(f)
+          except (FileNotFoundError, json.JSONDecodeError):
+              report = {}
+
+          killed = survived = timeout = 0
+          for _, file_data in report.get("files", {}).items():
+              for m in file_data.get("mutants", []):
+                  s = m.get("status", "")
+                  if s == "Killed":   killed   += 1
+                  elif s == "Survived": survived += 1
+                  elif s == "Timeout":  timeout  += 1
+
+          total = killed + survived
+          score = round(killed * 100 / total) if total > 0 else 0
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"JS_SCORE={score}\n")
+              f.write(f"JS_KILLED={killed}\n")
+              f.write(f"JS_SURVIVED={survived}\n")
+              f.write(f"JS_TIMEOUT={timeout}\n")
+          PYEOF
+
+      # ── Rust: cargo-mutants ────────────────────────────────────────────────
+
+      - name: Rust — install cargo-mutants
+        if: steps.detect-rust.outputs.skip != 'true'
+        run: cargo install cargo-mutants --locked
+        continue-on-error: true
+
+      - name: Rust — generate weekly diff for --in-diff
+        id: rust-diff
+        if: steps.detect-rust.outputs.skip != 'true'
+        run: |
+          # Find the oldest commit from the past 7 days; fall back to full run if none.
+          BASE_SHA=$(git log --since=7.days.ago --format="%H" | tail -1)
+          if [ -z "$BASE_SHA" ]; then
+            echo "No commits in the last 7 days — skipping Rust mutation run"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            git diff "$BASE_SHA" HEAD > /tmp/week.diff
+            if [ ! -s /tmp/week.diff ]; then
+              echo "Empty diff — no Rust code changed this week"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Rust — run cargo-mutants
+        id: cargo-mutants-run
+        if: >
+          steps.detect-rust.outputs.skip != 'true' &&
+          steps.rust-diff.outputs.skip != 'true'
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          mkdir -p /tmp/mutants-out
+          cargo mutants --in-diff /tmp/week.diff --output /tmp/mutants-out/ 2>&1 \
+            | tee /tmp/cargo-mutants-output.txt
+
+      - name: Rust — convert to SARIF
+        if: >
+          steps.detect-rust.outputs.skip != 'true' &&
+          steps.rust-diff.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          OUTCOMES="/tmp/mutants-out/outcomes.json"
+          if [ -f "$OUTCOMES" ]; then
+            python3 bootstrap/scripts/cargo-mutants-to-sarif.py "$OUTCOMES" \
+              > /tmp/cargo-mutants.sarif
+          fi
+
+      - name: Rust — compute score and survivors
+        id: rust-score
+        if: >
+          steps.detect-rust.outputs.skip != 'true' &&
+          steps.rust-diff.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys
+
+          try:
+              with open("/tmp/mutants-out/outcomes.json") as f:
+                  data = json.load(f)
+              # Handle both top-level list and {"outcomes": [...]} wrapper
+              entries = data if isinstance(data, list) else data.get("outcomes", [])
+          except (FileNotFoundError, json.JSONDecodeError):
+              entries = []
+
+          killed = survived = timeout = 0
+          survivors_lines = []
+
+          for e in entries:
+              outcome = e.get("outcome", "")
+              if outcome == "caught":    # test caught the mutation — good
+                  killed += 1
+              elif outcome == "missed":  # no test caught it — survived
+                  survived += 1
+                  m = e.get("mutant", {})
+                  survivors_lines.append(
+                      f"{m.get('source_file','?')}:{m.get('line','?')} | "
+                      f"{m.get('function_name','?')} | {m.get('mutation_type','?')}"
+                  )
+              elif outcome == "timeout":
+                  timeout += 1
+
+          total = killed + survived
+          score = round(killed * 100 / total) if total > 0 else 0
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"RUST_SCORE={score}\n")
+              f.write(f"RUST_KILLED={killed}\n")
+              f.write(f"RUST_SURVIVED={survived}\n")
+              f.write(f"RUST_TIMEOUT={timeout}\n")
+
+          with open("/tmp/rust-survivors.txt", "w") as f:
+              f.write("\n".join(survivors_lines) + "\n" if survivors_lines else "")
+          PYEOF
+
+      # ── Merge SARIF files ──────────────────────────────────────────────────
+
+      - name: Merge SARIF files
+        id: merge-sarif
+        continue-on-error: true
+        run: |
+          python3 - <<'PYEOF'
+          import json, pathlib
+
+          sarif_files = [
+              "/tmp/mutmut.sarif",
+              "/tmp/stryker.sarif",
+              "/tmp/cargo-mutants.sarif",
+          ]
+
+          all_runs = []
+          for path in sarif_files:
+              p = pathlib.Path(path)
+              if p.exists() and p.stat().st_size > 0:
+                  try:
+                      data = json.loads(p.read_text())
+                      all_runs.extend(data.get("runs", []))
+                  except json.JSONDecodeError:
+                      pass
+
+          combined = {
+              "version": "2.1.0",
+              "$schema": (
+                  "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/"
+                  "sarif-v2.1.0-errata01-os-complete.html"
+              ),
+              "runs": all_runs,
+          }
+          pathlib.Path("/tmp/combined.sarif").write_text(json.dumps(combined, indent=2))
+          print(f"Merged {len(all_runs)} SARIF run(s)")
+          PYEOF
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: steps.merge-sarif.outcome == 'success'
+        uses: github/codeql-action/upload-sarif@14c9a0cbe6373488c2a41f7e75c8dd142bb2aba8 # v3.35.3
+        with:
+          sarif_file: /tmp/combined.sarif
+        continue-on-error: true
+
+      # ── Create weekly issue ────────────────────────────────────────────────
+
+      - name: Check if any language ran
+        id: any-ran
+        run: |
+          py_skip="${{ steps.detect-python.outputs.skip }}"
+          js_skip="${{ steps.detect-js.outputs.skip }}"
+          rs_skip="${{ steps.detect-rust.outputs.skip }}"
+          if [ "$py_skip" = "true" ] && [ "$js_skip" = "true" ] && [ "$rs_skip" = "true" ]; then
+            echo "all_skipped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "all_skipped=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Ensure label exists
+        run: |
+          gh label create "type:mutation-report" \
+            --color "0075ca" \
+            --description "Weekly mutation testing report" \
+          || true   # ignore "already exists" — idempotent without rewriting color every week
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute ISO week and check for duplicate issue
+        id: week-check
+        run: |
+          WEEK=$(python3 -c "
+          from datetime import date
+          d = date.today()
+          iso = d.isocalendar()
+          print(f'{iso[0]}-W{iso[1]:02d}')
+          ")
+          echo "WEEK=$WEEK" >> "$GITHUB_OUTPUT"
+          echo "WEEK=$WEEK" >> "$GITHUB_ENV"
+          # Idempotency: skip issue creation if one already exists for this week
+          existing=$(gh issue list \
+            --label "type:mutation-report" \
+            --search "\"mutation: weekly report $WEEK\" in:title" \
+            --state open \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "$existing" ] && echo "$existing" | grep -qE '^[0-9]+$'; then
+            echo "exists=true"  >> "$GITHUB_OUTPUT"
+            echo "existing_number=$existing" >> "$GITHUB_OUTPUT"
+            echo "Issue #$existing already exists for $WEEK — skipping creation"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate issue body (all skipped)
+        if: steps.any-ran.outputs.all_skipped == 'true'
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          bash bootstrap/scripts/mutation-summary.sh \
+            --week "${{ steps.week-check.outputs.WEEK }}" \
+            --run-url "$RUN_URL" \
+            --no-languages-detected \
+            > /tmp/issue-body.md
+
+      - name: Generate issue body (results)
+        if: steps.any-ran.outputs.all_skipped != 'true'
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          WEEK="${{ steps.week-check.outputs.WEEK }}"
+
+          SUMMARY_ARGS="--week $WEEK --run-url $RUN_URL"
+
+          if [ "${{ steps.detect-python.outputs.skip }}" != "true" ]; then
+            PY_STATUS="${{ steps.python-score.outcome }}"
+            SUMMARY_ARGS="$SUMMARY_ARGS --python-status $PY_STATUS"
+            if [ "$PY_STATUS" = "success" ]; then
+              SUMMARY_ARGS="$SUMMARY_ARGS \
+                --python-score ${{ steps.python-score.outputs.PYTHON_SCORE || 0 }} \
+                --python-killed ${{ steps.python-score.outputs.PYTHON_KILLED || 0 }} \
+                --python-survived ${{ steps.python-score.outputs.PYTHON_SURVIVED || 0 }} \
+                --python-timeout ${{ steps.python-score.outputs.PYTHON_TIMEOUT || 0 }}"
+              [ -f /tmp/python-survivors.txt ] && \
+                SUMMARY_ARGS="$SUMMARY_ARGS --python-survivors-file /tmp/python-survivors.txt"
+            fi
+          fi
+
+          if [ "${{ steps.detect-js.outputs.skip }}" != "true" ]; then
+            JS_STATUS="${{ steps.js-score.outcome }}"
+            SUMMARY_ARGS="$SUMMARY_ARGS --js-status $JS_STATUS"
+            if [ "$JS_STATUS" = "success" ]; then
+              SUMMARY_ARGS="$SUMMARY_ARGS \
+                --js-score ${{ steps.js-score.outputs.JS_SCORE || 0 }} \
+                --js-killed ${{ steps.js-score.outputs.JS_KILLED || 0 }} \
+                --js-survived ${{ steps.js-score.outputs.JS_SURVIVED || 0 }} \
+                --js-timeout ${{ steps.js-score.outputs.JS_TIMEOUT || 0 }}"
+              [ -f /tmp/js-survivors.txt ] && \
+                SUMMARY_ARGS="$SUMMARY_ARGS --js-survivors-file /tmp/js-survivors.txt"
+            fi
+          fi
+
+          if [ "${{ steps.detect-rust.outputs.skip }}" != "true" ] && \
+             [ "${{ steps.rust-diff.outputs.skip }}" != "true" ]; then
+            RS_STATUS="${{ steps.rust-score.outcome }}"
+            SUMMARY_ARGS="$SUMMARY_ARGS --rust-status $RS_STATUS"
+            if [ "$RS_STATUS" = "success" ]; then
+              SUMMARY_ARGS="$SUMMARY_ARGS \
+                --rust-score ${{ steps.rust-score.outputs.RUST_SCORE || 0 }} \
+                --rust-killed ${{ steps.rust-score.outputs.RUST_KILLED || 0 }} \
+                --rust-survived ${{ steps.rust-score.outputs.RUST_SURVIVED || 0 }} \
+                --rust-timeout ${{ steps.rust-score.outputs.RUST_TIMEOUT || 0 }}"
+              [ -f /tmp/rust-survivors.txt ] && \
+                SUMMARY_ARGS="$SUMMARY_ARGS --rust-survivors-file /tmp/rust-survivors.txt"
+            fi
+          fi
+
+          # shellcheck disable=SC2086
+          bash bootstrap/scripts/mutation-summary.sh $SUMMARY_ARGS > /tmp/issue-body.md
+
+      - name: Create weekly mutation-report issue
+        if: steps.week-check.outputs.exists != 'true'
+        run: |
+          gh issue create \
+            --title "mutation: weekly report ${{ env.WEEK }}" \
+            --body-file /tmp/issue-body.md \
+            --label "type:mutation-report"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
