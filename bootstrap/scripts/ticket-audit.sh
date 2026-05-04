@@ -49,11 +49,14 @@ if [[ "$ARG" =~ ^[0-9]+$ ]]; then
     if ! command -v gh >/dev/null 2>&1; then
         printf "ERROR: gh CLI not found\n" >&2; exit 1
     fi
-    if ! gh_json=$(gh issue view "$ARG" --json title,body,labels 2>&1); then
-        printf "ERROR: gh issue view %s failed:\n%s\n" "$ARG" "$gh_json" >&2; exit 1
+    gh_err=$(mktemp)
+    if ! gh_json=$(gh issue view "$ARG" --json title,body,labels 2>"$gh_err"); then
+        printf "ERROR: gh issue view %s failed:\n%s\n" "$ARG" "$(cat "$gh_err")" >&2
+        rm -f "$gh_err"; exit 1
     fi
-    TITLE=$(printf '%s' "$gh_json" | jq -r '.title')
-    BODY=$(printf '%s' "$gh_json" | jq -r '.body')
+    rm -f "$gh_err"
+    TITLE=$(printf '%s' "$gh_json" | jq -r '.title // ""')
+    BODY=$(printf '%s' "$gh_json" | jq -r '.body // ""')
     LABEL_COUNT=$(printf '%s' "$gh_json" | jq '.labels | length // 0')
 else
     # File mode: extract title from first # heading; labels are unavailable
@@ -133,7 +136,7 @@ if ! section_exists "Acceptance criteria"; then
     fail "acceptance-criteria" "## Acceptance criteria section missing"
 else
     ac_content=$(section_content "Acceptance criteria")
-    ac_count=$(printf '%s\n' "$ac_content" | grep -cE '^- \[ \]' || true)
+    ac_count=$(printf '%s\n' "$ac_content" | grep -cE '^[[:space:]]*- \[ \]' || true)
     if [ "${ac_count:-0}" -ge 3 ]; then
         pass "acceptance-criteria" "$ac_count item(s)"
     else
