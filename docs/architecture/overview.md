@@ -23,9 +23,10 @@
 │                     │  /advisor                                         │
 │                     └────────────────▶ Opus 4.7 sub-inference           │
 │                                                                          │
-│  Commands (10):   /plan  /implement  /adr  /review  /codex-review       │
-│                   /task-to-issue  /issue-to-task  /backlog-review       │
-│                   /project-health  /feature (master orchestrator)       │
+│  Commands (11):   /plan  /implement  /adr  /review  /codex-review       │
+│                   /intent-check  /task-to-issue  /issue-to-task        │
+│                   /backlog-review  /project-health                      │
+│                   /feature (master orchestrator)                        │
 │                                                                          │
 │  Agents (9):                                                            │
 │     adr-reviewer        domain-reviewer        domain-researcher        │
@@ -109,6 +110,13 @@ Issue (GH)
    │    пишет код
    │
    ▼
+/intent-check ─── AC alignment: каждый AC item → covered|partial|missing
+   │    (unrelated-changes — отдельным блоком); advisory; operator resolves
+   │
+   ▼
+/qa ─── test coverage + docs currency → qa-report.md
+   │
+   ▼
 /review ─── Claude critique staged diff
    │
    ▼
@@ -139,6 +147,7 @@ human approval + merge
    │    └─ [ ] If yes: /adr and wait for merge
    ├─ [ ] Advisor call #1 on plan
    ├─ [ ] /implement (advisor #2 before declaring done)
+   ├─ [ ] /intent-check (AC alignment — after implement, before review; advisory)
    ├─ [ ] /review
    ├─ [ ] /codex-review
    ├─ [ ] git commit with governance

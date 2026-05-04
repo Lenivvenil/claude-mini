@@ -40,6 +40,7 @@ Review the diff against the plan, principles, and domain contracts. Return markd
 - **Tests** — present, meaningful, covering edge cases?
 - **Plan/ADR deviation** — any implicit drift from written artefacts?
 - **Domain invariants** — does the diff violate any `FeatureRun` invariant or contradict a row in the Policies table from `docs/domain/overview.md`? Check: single issue-ref per run, monotonic DoD checklist, two-voice state machine, advisor ≥ 2 on nontrivial tasks. If the diff does not touch pipeline-contract files, state "N/A — diff does not affect pipeline contracts" and move on.
+- **AC alignment** — run `/intent-check <issue-number>` (or invoke inline if issue number is available from plan.md or branch name). For each AC item, classify as `covered | partial | missing`; diff hunks without a matching AC item are reported in a separate "Unrelated changes" block. Output the result table. If any item is `missing`, flag as SUGGEST unless operator has already documented it as a conscious scope gap in the PR thread.
 
 ## Severity convention
 

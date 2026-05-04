@@ -114,7 +114,17 @@ Claude:
 
 Дождись APPROVE перед `/review`.
 
-### 5c. QA check
+### 5c. Проверка intent
+
+```
+/intent-check <номер-issue>
+```
+
+Сравнивает каждый AC item из issue с текущим диффом (`git diff main...HEAD`). Выводит markdown-таблицу с колонками: `covered | partial | missing` для каждого AC item плюс отдельный блок «Unrelated changes» для хунков без соответствующего AC.
+
+Результат advisory: находки `missing` выводятся для решения оператора; pipeline не блокируется. Вставь таблицу в тело PR на шаге 11. Если решил оставить AC item как `missing` (сознательный scope gap) — зафикси решение в треде PR. Если AC item не найдены (нет `- [ ]` чекбоксов и нет секции `## Acceptance criteria`) — вывод «No AC items found»; добавь AC в issue и перезапусти.
+
+### 5d. QA check
 
 ```
 /qa
@@ -205,6 +215,7 @@ PR body должен включать:
 - `Implements docs/decisions/NNNN-*.md` если был ADR
 - DoD checklist из `.github/pull_request_template.md`
 - `## QA` секцию из `qa-report.md`
+- AC alignment таблицу из `/intent-check` (шаг 5c); если items `missing` — пояснение решения (fix / scope gap / defer)
 - Known gaps/follow-ups если были задокументированные компромиссы
 
 ### 12. Forge lock-in surface
@@ -216,7 +227,7 @@ The following GitHub-specific commands and files are used in this pipeline. This
 | `gh pr create` | Step 11 above; `bootstrap/commands/feature.md` step 11 | Creates PR from feature branch |
 | `gh pr merge` | Operator post-review; `docs/decisions/0009-feature-branch-pr-flow.md` | Merges PR to main |
 | `gh pr view` | `/review` skill, `/codex-review` skill | Reads PR metadata and diff |
-| `gh issue view` | `bootstrap/commands/feature.md` line 11 | Loads issue JSON for `/feature` |
+| `gh issue view` | `bootstrap/commands/feature.md` line 11; `bootstrap/commands/intent-check.md` | Loads issue JSON for `/feature`; loads issue body for AC extraction in `/intent-check` |
 | `.github/pull_request_template.md` | `.github/pull_request_template.md` | PR body DoD checklist |
 | `.github/workflows/ci.yml` | `.github/workflows/ci.yml` | CI gate for required checks |
 

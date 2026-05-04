@@ -1,9 +1,17 @@
 # Ubiquitous Language — claude-mini-pipeline
 
-**Version:** 2026-05-03
-**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122) + ADR-0024 (Session Continuity BC, issue #128); four aggregate roots across two BCs
+**Version:** 2026-05-04
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122) + ADR-0024 (Session Continuity BC, issue #128) + IntentCheck/AC alignment (#133); four aggregate roots across two BCs
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
+
+---
+
+## AC alignment
+
+The property of a feature branch diff where every acceptance criterion in the linked issue is addressed by at least one code, test, or doc change. Verified by the `/intent-check` skill, which classifies each AC item as `covered | partial | missing | unrelated-changes`. The check is advisory — `missing` findings surface for operator decision, not automatic pipeline block.
+
+*Discriminating note:* AC alignment is not the same as test coverage. A branch can have 100% test coverage while still missing an AC item (the tests cover the wrong behavior). `/intent-check` checks semantic intent; `verify.sh` and test runners check code correctness.
 
 ---
 
@@ -195,6 +203,14 @@ The contract by which a session transfers state to its successor: `STATE.md` (sn
 The acceptance criterion for Session Continuity: an operator (or a fresh agent) given only `STATE.md` and the latest `session-log` entry can identify the next concrete action and begin work within five minutes. The five-minute budget is a sustained design constraint, not a stopwatch metric per session.
 
 *Discriminating note:* the Human Resume Test is the BC's primary NFR, not a unit test. It is verified by periodic operator drill (see `docs/runbooks/resume-drill.md`) or by post-mortem after a real resume. It is not mechanically measured per session.
+
+---
+
+## IntentCheck (skill)
+
+The `/intent-check` skill that compares acceptance criteria from a GitHub issue against `git diff main...HEAD` for a feature branch. Outputs a per-AC-item table with statuses `covered | partial | missing | unrelated-changes` and an evidence file:line pointer for each claim. Runs at two points in the pipeline: after `/implement` (step 5c in `/feature`) and inside `/review` Layer 2 as the `**AC alignment**` subsection.
+
+*Discriminating note:* IntentCheck is a skill, not an agent — it is invoked by the operator (or by `/feature` checklist nudge), not autonomously by the pipeline. It does not block merge; its output is advisory and operator-resolved.
 
 ---
 

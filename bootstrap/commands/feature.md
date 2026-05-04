@@ -77,6 +77,8 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 [ ]    5a. (inside /implement) Call advisor() before declaring done — MANDATORY for non-trivial
 [ ]    5b. Only if docs/domain/ was modified during /implement:
 [ ]        invoke @agent-domain-reviewer; wait for APPROVE verdict
+[ ]    5c. Run /intent-check $ARGUMENTS — verify each AC item is covered; paste output table
+[ ]        into PR body; operator decides action on any "missing" items (advisory, not a gate)
 [ ] 6. Run /qa
 [ ]    6a. Review qa-report.md; resolve test gaps or confirm escape hatch accepted
 [ ]    6b. Copy ## QA section from qa-report.md — paste into PR body at step 11
