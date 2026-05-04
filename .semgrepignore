@@ -1,0 +1,14 @@
+# .semgrepignore — hedging-lint false-positive exclusions (Principle 1)
+#
+# Format:
+#   path/to/file  # reason: <why this file legitimately contains hedging words>
+#
+# Per-line suppression is preferred over whole-file exclusion.
+# Use  <!-- nosemgrep: hedging-banned-terms -->  inline to suppress a single occurrence.
+# Add whole-file entries here only when an entire file is a known exception
+# (e.g. a file that quotes banned terms as examples in test fixtures).
+#
+# Example:
+#   bootstrap/scripts/test-hedging-lint.sh  # reason: test fixtures contain banned terms by design
+
+docs/runbooks/hedging-lint.md  # reason: runbook quotes banned terms and nosemgrep examples by design

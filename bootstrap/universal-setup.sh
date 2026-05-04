@@ -254,6 +254,12 @@ if [ -n "$TARGET_PATH" ]; then
         "$TARGET_DIR/.semgrep/llm-antipatterns.yaml" \
         ".semgrep/llm-antipatterns.yaml"
 
+    # .semgrep/hedging.yml (#136: banned hedging terms in plan.md/STATE.md/ADR files)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/.semgrep/hedging.yml" \
+        "$TARGET_DIR/.semgrep/hedging.yml" \
+        ".semgrep/hedging.yml"
+
     # AGENTS.md (#182: AAIF vendor-neutral template; no ADR — below architectural significance threshold)
     _copy_template \
         "$REPO_ROOT_T/bootstrap/templates/AGENTS.md.template" \
