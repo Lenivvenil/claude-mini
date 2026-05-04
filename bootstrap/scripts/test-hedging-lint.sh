@@ -16,23 +16,23 @@ CONFIG="$REPO_ROOT/.semgrep/hedging.yml"
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; NC=$'\033[0m'
 FAILURES=0
 
-pass() { printf "  ${GREEN}✓${NC} %s\n" "$1"; }
-fail() { printf "  ${RED}✗${NC} %s\n" "$1"; FAILURES=$((FAILURES+1)); }
+pass() { printf '  %s✓%s %s\n' "$GREEN" "$NC" "$1"; }
+fail() { printf '  %s✗%s %s\n' "$RED"   "$NC" "$1"; FAILURES=$((FAILURES+1)); }
 
 # --- Preflight ---
 
 if [ ! -x "$SCRIPT" ]; then
-    printf "${RED}FATAL:${NC} script not found or not executable: %s\n" "$SCRIPT" >&2
+    printf '%sFATAL:%s script not found or not executable: %s\n' "$RED" "$NC" "$SCRIPT" >&2
     exit 1
 fi
 
 if ! command -v semgrep >/dev/null 2>&1; then
-    printf "${RED}FATAL:${NC} semgrep not installed\n" >&2
+    printf '%sFATAL:%s semgrep not installed\n' "$RED" "$NC" >&2
     exit 1
 fi
 
 if [ ! -f "$CONFIG" ]; then
-    printf "${RED}FATAL:${NC} config not found: %s\n" "$CONFIG" >&2
+    printf '%sFATAL:%s config not found: %s\n' "$RED" "$NC" "$CONFIG" >&2
     exit 1
 fi
 
@@ -55,90 +55,75 @@ run_lint() {
     echo $?
 }
 
+assert_exit() {
+    local label="$1" expected="$2" actual="$3"
+    if [ "$actual" = "$expected" ]; then
+        pass "$label"
+    else
+        fail "$label — expected exit $expected, got $actual"
+    fi
+}
+
 # --- Tests ---
 
 echo "Banned-terms rule (hedging-banned-terms):"
 
 echo "maybe we should" > "$TDIR/plan.md"
-[ "$(run_lint plan.md)" = "1" ] \
-    && pass "plan.md with banned term → exit 1" \
-    || fail "plan.md with banned term — expected exit 1"
+assert_exit "plan.md with banned term → exit 1" "1" "$(run_lint plan.md)"
 
 echo "clean content here" > "$TDIR/plan.md"
-[ "$(run_lint plan.md)" = "0" ] \
-    && pass "plan.md without hedging → exit 0" \
-    || fail "plan.md without hedging — expected exit 0"
+assert_exit "plan.md without hedging → exit 0" "0" "$(run_lint plan.md)"
 
 echo "we might want to do this" > "$TDIR/STATE.md"
-[ "$(run_lint STATE.md)" = "1" ] \
-    && pass "STATE.md with banned term → exit 1" \
-    || fail "STATE.md with banned term — expected exit 1"
+assert_exit "STATE.md with banned term → exit 1" "1" "$(run_lint STATE.md)"
 
 echo "perhaps we should reconsider" > "$TDIR/docs/decisions/0042-foo.md"
-[ "$(run_lint docs/decisions/0042-foo.md)" = "1" ] \
-    && pass "docs/decisions/*.md with banned term → exit 1" \
-    || fail "docs/decisions/*.md with banned term — expected exit 1"
+assert_exit "docs/decisions/*.md with banned term → exit 1" "1" "$(run_lint docs/decisions/0042-foo.md)"
 
 echo "maybe we should" > "$TDIR/AGENTS.md"
-[ "$(run_lint AGENTS.md)" = "0" ] \
-    && pass "AGENTS.md (non-target) with banned term → exit 0 (ignored)" \
-    || fail "AGENTS.md (non-target) — expected exit 0 (not scanned)"
+assert_exit "AGENTS.md (non-target) with banned term → exit 0 (ignored)" "0" "$(run_lint AGENTS.md)"
 
 echo ""
 echo "Inline nosemgrep suppression:"
 
 echo "inline suppressed <!-- nosemgrep: hedging-banned-terms --> maybe" > "$TDIR/plan.md"
-[ "$(run_lint plan.md)" = "0" ] \
-    && pass "nosemgrep inline on plan.md → exit 0" \
-    || fail "nosemgrep inline — expected exit 0"
+assert_exit "nosemgrep inline on plan.md → exit 0" "0" "$(run_lint plan.md)"
 
 echo ""
 echo "depends-without-branch rule (hedging-depends-without-branch):"
 
 echo "this depends on context" > "$TDIR/plan.md"
-[ "$(run_lint plan.md)" = "1" ] \
-    && pass "'depends' without branch → exit 1" \
-    || fail "'depends' without branch — expected exit 1"
+assert_exit "'depends' without branch → exit 1" "1" "$(run_lint plan.md)"
 
 echo "this depends when X then Y, when Z then W" > "$TDIR/plan.md"
-[ "$(run_lint plan.md)" = "0" ] \
-    && pass "'depends when X then Y' → exit 0 (allowed)" \
-    || fail "'depends when X then Y' — expected exit 0"
+assert_exit "'depends when X then Y' → exit 0 (allowed)" "0" "$(run_lint plan.md)"
 
 echo "this depends если X то Y otherwise Z" > "$TDIR/plan.md"
-[ "$(run_lint plan.md)" = "0" ] \
-    && pass "'depends если X то Y' → exit 0 (allowed)" \
-    || fail "'depends если X то Y' — expected exit 0"
+assert_exit "'depends если X то Y' → exit 0 (allowed)" "0" "$(run_lint plan.md)"
 
 echo ""
 echo "Setup-error cases (fail-closed):"
 
 echo "clean content" > "$TDIR/plan.md"
-# Test missing config
 TDIR2=$(mktemp -d)
 cp "$TDIR/plan.md" "$TDIR2/plan.md"
-# No .semgrep/ in TDIR2 — config missing
 lint_exit=$(cd "$TDIR2" && bash "$SCRIPT" ./plan.md > /dev/null 2>&1; echo $?)
-[ "$lint_exit" = "2" ] \
-    && pass "missing config → exit 2 (fail-closed)" \
-    || fail "missing config — expected exit 2, got $lint_exit"
+assert_exit "missing config → exit 2 (fail-closed)" "2" "$lint_exit"
 rm -rf "$TDIR2"
 
 echo ""
 echo "Empty input:"
 
 result=$(cd "$TDIR" && bash "$SCRIPT" > /dev/null 2>&1; echo $?)
-[ "$result" = "0" ] \
-    && pass "no args → exit 0 (nothing to scan)" \
-    || fail "no args — expected exit 0, got $result"
+assert_exit "no args → exit 0 (nothing to scan)" "0" "$result"
 
 # --- Summary ---
 
 echo ""
 if [ "$FAILURES" -eq 0 ]; then
-    printf "${GREEN}PASS${NC} hedging-lint: all tests passed\n"
+    printf '%sPASS%s hedging-lint: all tests passed\n' "$GREEN" "$NC"
     exit 0
 else
-    printf "${RED}FAIL${NC} hedging-lint: %d test(s) failed\n" "$FAILURES"
+    printf '%sFAIL%s hedging-lint: %d test(s) failed\n' "$RED" "$NC" "$FAILURES"
     exit 1
 fi
