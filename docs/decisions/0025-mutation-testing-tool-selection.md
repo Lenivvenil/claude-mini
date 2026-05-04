@@ -705,5 +705,5 @@ Reconsider this decision when **any** of the following becomes true:
 * External: cargo-mutants v27 documentation —
   `--in-diff DIFF_FILE` (PATH argument, not boolean flag).
 * External: SARIF 2.1.0 schema —
-  https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
+  https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/sarif-v2.1.0-errata01-os-complete.html
   (target output format for GitHub Code Scanning integration).
