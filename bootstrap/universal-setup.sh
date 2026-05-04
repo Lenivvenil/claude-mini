@@ -278,6 +278,14 @@ if [ -n "$TARGET_PATH" ]; then
         "$TARGET_DIR/STATE.md" \
         "STATE.md"
 
+    # mutation.yml (#134: weekly mutation testing cron; ADR-0025)
+    # Destination is .github/workflows/ — first template targeting this sub-path.
+    [ "$MODE" = "install" ] && mkdir -p "$TARGET_DIR/.github/workflows"
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/mutation.yml" \
+        "$TARGET_DIR/.github/workflows/mutation.yml" \
+        "mutation.yml"
+
     echo ""
     log "Done (target mode, pipeline v$PIPELINE_VERSION)"
     if [ "$DRIFT" -gt 0 ]; then

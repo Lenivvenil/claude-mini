@@ -1,6 +1,6 @@
 # 0025. Adopt mutation testing on weekly cron with mutmut / Stryker / cargo-mutants
 
-* Status: proposed
+* Status: accepted
 * Date: 2026-05-04
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)
 * Tags: pipeline, verifier, testing, mutation-testing, ci, principle-3, principle-8
