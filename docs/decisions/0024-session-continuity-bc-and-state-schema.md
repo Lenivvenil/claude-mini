@@ -204,7 +204,7 @@ Session Continuity holds `active_feature_run_id` as a reference-only
 pointer into `claude-mini-pipeline`. Concretely:
 
 * When `STATE.md` is written, `active_feature_run_id` records the GitHub
-  issue number of the in-flight `FeatureRun` (or `null`).
+  issue ref (e.g. `#128`) of the in-flight `FeatureRun` (or `null`).
 * When `STATE.md` is read by a resuming session, the reader resolves the
   reference by reading the issue and (if needed) the live `FeatureRun`
   state in `docs/domain/` — Session Continuity does not duplicate

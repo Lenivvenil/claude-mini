@@ -1,90 +1,23 @@
-# STATE — <PROJECT_NAME>
+# STATE.md — session continuity snapshot
+<!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
+<!-- Five-minute cold-start: a fresh operator/agent reads this + latest session-log entry  -->
+<!-- and reaches the first concrete action within 5 minutes. (Human Resume Test, ADR-0024) -->
+<!-- Mechanical fields are updated by stop-hook.sh. Operator-asserted fields: fill before  -->
+<!-- ending the session. TODO-placeholders cause a WARNING in stop.log, not a hard block.  -->
 
-<!-- Principle 9 hand-off artifact. Update at every meaningful pause. -->
-<!-- Five-minute cold-start: anyone should be able to read this and know exactly -->
-<!-- where to pick up without asking the author a single question. -->
+session_id: TODO              # stop-hook sets: UTC ISO-8601 e.g. 2026-05-03T14:32:00Z
+date_iso: TODO                # stop-hook sets: UTC date e.g. 2026-05-03
+current_branch: TODO          # stop-hook sets: git rev-parse --abbrev-ref HEAD
+last_commit_sha: TODO         # stop-hook sets: git rev-parse --short HEAD
+active_feature_run_id: null   # stop-hook sets: open GitHub issue ref e.g. #128, or null
 
-**Last updated:** YYYY-MM-DD HH:MM
+next_3_actions:               # OPERATOR: exactly 3 ordered imperatives
+  - TODO
+  - TODO
+  - TODO
 
----
+blocked_on: null              # OPERATOR: single concrete blocker, or null
 
-## Where I am
+open_questions: []            # OPERATOR: questions next session needs answered
 
-<!-- One sentence: what stage of the pipeline are you in right now? -->
-<!-- Example: "In /implement for issue #42, just finished the data layer, -->
-<!--           about to write the service layer tests." -->
-
-Stage: ___
-
-Issue/PR: ___
-
-Branch: ___
-
----
-
-## What I just did
-
-<!-- Two to four bullet points. Enough to re-read the diff mentally. -->
-<!-- Example: "Added UserRepository with find_by_email. Wrote unit tests. -->
-<!--           Skipped integration test — TODO #43." -->
-
--
--
-
----
-
-## What's next
-
-<!-- The single next concrete step, named precisely. -->
-<!-- Example: "Run /qa to check coverage, then open PR." -->
-
-Next step: ___
-
-Why this step: ___
-
----
-
-## Open decisions / blockers
-
-<!-- Anything the next person (or future-you) needs to know before proceeding. -->
-<!-- Leave empty if nothing is blocking. -->
-
-- [ ] _(none)_
-
----
-
-## Session-end checklist
-
-The Stop hook (`~/.claude/hooks/stop-hook.sh`) runs automatically and blocks
-session close if tests are failing. You should see no block if all tests pass.
-
-If you need to close the session despite failing tests (emergency / work in
-progress), Claude Code will let you proceed after the hook blocks once — it
-sets `stop_hook_active: true` on the second stop attempt, and the hook exits
-without blocking.
-
-Manual check before closing:
-```bash
-# Verify tests pass (npm)
-npm test --silent
-
-# Verify tests pass (python)
-python3 -m pytest --quiet
-
-# Check for uncommitted changes
-git status
-
-# Confirm PR is open if work is in-progress
-gh pr list --author @me
-```
-
----
-
-## Session log (audit trail)
-
-<!-- Append entries chronologically. Do not delete. -->
-<!-- Format: YYYY-MM-DD HH:MM — what happened, what was decided, why. -->
-
-| Timestamp | Event |
-|---|---|
-| YYYY-MM-DD HH:MM | Session started |
+risk_flags: []                # OPERATOR: soft warnings (not blockers)
