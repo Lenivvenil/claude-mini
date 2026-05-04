@@ -96,13 +96,16 @@ update_handoff() {
     fi
 
     # Step 1: Append session-log entry (log-first per ADR-0024 sub-decision 4)
-    local log_dir="$cwd/session-log/$(date -u '+%Y/%m')"
-    local log_file="$log_dir/$(date -u '+%Y-%m-%d').md"
+    local log_dir log_file
+    log_dir="$cwd/session-log/$(date -u '+%Y/%m')"
+    log_file="$log_dir/$(date -u '+%Y-%m-%d').md"
     if mkdir -p "$log_dir" 2>/dev/null; then
-        printf '\n## Session %s\n\n- branch: %s\n- commit: %s\n- runner: %s (%s)\n- active_feature_run_id: %s\n- event: session-end\n' \
-            "$new_sid" "$new_branch" "$new_sha" "${runner:-none}" "$reason" "$new_frid" >> "$log_file" 2>/dev/null \
-            && log_entry "OK session-log appended: $log_file" \
-            || log_entry "WARN session-log write failed: $log_file"
+        if printf '\n## Session %s\n\n- branch: %s\n- commit: %s\n- runner: %s (%s)\n- active_feature_run_id: %s\n- event: session-end\n' \
+            "$new_sid" "$new_branch" "$new_sha" "${runner:-none}" "$reason" "$new_frid" >> "$log_file" 2>/dev/null; then
+            log_entry "OK session-log appended: $log_file"
+        else
+            log_entry "WARN session-log write failed: $log_file"
+        fi
     else
         log_entry "WARN session-log dir unavailable: $log_dir"
     fi
@@ -111,16 +114,18 @@ update_handoff() {
     if [ -f "$state_file" ]; then
         # sed in-place via temp file (macOS sed -i requires backup suffix — avoid portability issue)
         local tmp
-        tmp=$(mktemp) && \
-        sed \
+        tmp=$(mktemp)
+        if sed \
             -e "s|^session_id:.*|session_id: $new_sid|" \
             -e "s|^date_iso:.*|date_iso: $new_date|" \
             -e "s|^current_branch:.*|current_branch: $new_branch|" \
             -e "s|^last_commit_sha:.*|last_commit_sha: $new_sha|" \
             -e "s|^active_feature_run_id:.*|active_feature_run_id: $new_frid|" \
-            "$state_file" > "$tmp" && mv "$tmp" "$state_file" \
-            && log_entry "OK STATE.md updated: session_id=$new_sid branch=$new_branch sha=$new_sha" \
-            || log_entry "WARN STATE.md update failed"
+            "$state_file" > "$tmp" && mv "$tmp" "$state_file"; then
+            log_entry "OK STATE.md updated: session_id=$new_sid branch=$new_branch sha=$new_sha"
+        else
+            log_entry "WARN STATE.md update failed"
+        fi
     else
         # Create minimal STATE.md from scratch
         cat > "$state_file" <<STEOF
