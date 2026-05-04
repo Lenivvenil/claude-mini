@@ -87,7 +87,9 @@ update_handoff() {
     if [ -f "$state_file" ]; then
         local existing_frid
         existing_frid=$(grep -E '^active_feature_run_id:' "$state_file" 2>/dev/null | head -1 \
-            | sed 's/^active_feature_run_id:[[:space:]]*//' | sed 's/[[:space:]]\{1,\}#.*//' | tr -d '[:space:]')
+            | sed 's/^active_feature_run_id:[[:space:]]*//' | sed -E 's/[[:space:]]+#.*//' | tr -d '[:space:]')
+        # Validate extracted format — only #NNN or null are valid refs; discard anything else
+        if ! echo "$existing_frid" | grep -qE '^(#[0-9]+|null)$'; then existing_frid=""; fi
         if [ -n "$existing_frid" ] && [ "$existing_frid" != "null" ] && [ "$existing_frid" != "TODO" ]; then
             new_frid="$existing_frid"
         fi
