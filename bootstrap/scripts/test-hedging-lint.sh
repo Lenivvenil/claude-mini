@@ -52,7 +52,7 @@ cp "$CONFIG" "$TDIR/.semgrep/hedging.yml"
 run_lint() {
     local file="$1"
     (cd "$TDIR" && bash "$SCRIPT" "./$file" > /dev/null 2>&1)
-    echo $?
+    printf '%s\n' "$?"
 }
 
 assert_exit() {
