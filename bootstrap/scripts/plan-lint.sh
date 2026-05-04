@@ -30,7 +30,7 @@ PLAN="${1:-plan.md}"
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'; NC=$'\033[0m'
 
 if [ ! -f "$PLAN" ]; then
-    printf "${YELLOW}SKIP${NC} plan-lint: %s not found (no active plan)\n" "$PLAN"
+    printf '%sSKIP%s plan-lint: %s not found (no active plan)\n' "$YELLOW" "$NC" "$PLAN"
     exit 0
 fi
 
@@ -56,22 +56,22 @@ done < "$PLAN"
 
 # --- Check 1: §3 exists ---
 if ! grep -qiE '^## [3]\.?[[:space:]]' "$PLAN" && ! grep -qiE '^## Considered' "$PLAN"; then
-    printf "${RED}FAIL${NC} plan-lint: §3 (Considered approaches) missing in %s\n" "$PLAN"
+    printf '%sFAIL%s plan-lint: §3 (Considered approaches) missing in %s\n' "$RED" "$NC" "$PLAN"
     printf "     Every plan.md must have §3 with ≥2 options.\n"
     FAILURES=$((FAILURES+1))
 fi
 
 # --- Check 2: §4 exists ---
 if ! grep -qiE '^## [4]\.?[[:space:]]' "$PLAN" && ! grep -qiE '^## Chosen' "$PLAN"; then
-    printf "${RED}FAIL${NC} plan-lint: §4 (Chosen approach) missing in %s\n" "$PLAN"
+    printf '%sFAIL%s plan-lint: §4 (Chosen approach) missing in %s\n' "$RED" "$NC" "$PLAN"
     printf "     Every plan.md must have §4 (Chosen approach).\n"
     FAILURES=$((FAILURES+1))
 fi
 
 if [ -z "$section_content" ]; then
-    printf "${RED}FAIL${NC} plan-lint: §3 or §4 content is empty in %s\n" "$PLAN"
+    printf '%sFAIL%s plan-lint: §3 or §4 content is empty in %s\n' "$RED" "$NC" "$PLAN"
     FAILURES=$((FAILURES+1))
-    printf "${RED}FAIL${NC} plan-lint: %d issue(s)\n" "$FAILURES"
+    printf '%sFAIL%s plan-lint: %d issue(s)\n' "$RED" "$NC" "$FAILURES"
     exit 1
 fi
 
@@ -87,7 +87,7 @@ EXEMPTION_RE='(no ADR|no adr|without ADR|без ADR|[Оо]тклон|[Rr]eject)'
 while IFS= read -r line; do
     [ -z "$line" ] && continue
     # Skip headings, separators, and blank-equivalent lines
-    echo "$line" | grep -qE '^(#{1,4}[[:space:]]|---|[[:space:]]*$)' && continue
+    if echo "$line" | grep -qE '^(#{1,4}[[:space:]]|---|[[:space:]]*$)'; then continue; fi
 
     if echo "$line" | grep -qiE "$ASSERTION_RE"; then
         if echo "$line" | grep -qiE "$ADRREF_RE"; then
@@ -95,7 +95,7 @@ while IFS= read -r line; do
         elif echo "$line" | grep -qiE "$EXEMPTION_RE"; then
             : # explicit exemption — OK
         else
-            printf "${RED}FAIL${NC} plan-lint: design assertion without ADR-ref or exemption:\n"
+            printf '%sFAIL%s plan-lint: design assertion without ADR-ref or exemption:\n' "$RED" "$NC"
             printf "     %s\n" "$line"
             FAILURES=$((FAILURES+1))
         fi
@@ -104,10 +104,10 @@ done <<< "$section_content"
 
 # Summary
 if [ "$FAILURES" -eq 0 ]; then
-    printf "${GREEN}PASS${NC} plan-lint: %s — §3 and §4 present; all assertions have ADR-refs or exemptions\n" "$PLAN"
+    printf '%sPASS%s plan-lint: %s — §3 and §4 present; all assertions have ADR-refs or exemptions\n' "$GREEN" "$NC" "$PLAN"
     exit 0
 else
-    printf "${RED}FAIL${NC} plan-lint: %d issue(s) in %s\n" "$FAILURES" "$PLAN"
+    printf '%sFAIL%s plan-lint: %d issue(s) in %s\n' "$RED" "$NC" "$FAILURES" "$PLAN"
     printf "     Add ADR-ref (docs/decisions/NNNN-*.md or sub-decision N), or exemption (\"no ADR — justification: ...\").\n"
     exit 1
 fi
