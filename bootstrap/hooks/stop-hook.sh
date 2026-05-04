@@ -62,6 +62,98 @@ run_timed() {
     fi
 }
 
+# --- Hand-off: session-log append + STATE.md mechanical-field update (ADR-0024) ---
+# Called on OK and SKIP paths only (not on BLOCK — session is not ending cleanly).
+# Log-first order: if interrupted between steps, log entry exists but STATE.md untouched;
+# next run re-updates STATE.md. Reverse order loses log entry with no recovery path.
+update_handoff() {
+    local reason="${1:-ok}"
+
+    # Mechanical values
+    local new_sid new_date new_branch new_sha new_frid
+    new_sid=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown")
+    new_date=$(date -u '+%Y-%m-%d' 2>/dev/null || echo "unknown")
+    new_branch=$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    new_sha=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+    # Infer active_feature_run_id from trailing -NNN in branch name
+    new_frid="null"
+    if echo "$new_branch" | grep -qE '[-/]([0-9]+)$'; then
+        new_frid="#$(echo "$new_branch" | grep -oE '[0-9]+$')"
+    fi
+
+    # Preserve non-null, non-TODO active_feature_run_id from existing STATE.md
+    local state_file="$cwd/STATE.md"
+    if [ -f "$state_file" ]; then
+        local existing_frid
+        existing_frid=$(grep -E '^active_feature_run_id:' "$state_file" 2>/dev/null | head -1 \
+            | sed 's/^active_feature_run_id:[[:space:]]*//' | sed 's/[[:space:]]*#.*//' | tr -d '[:space:]')
+        if [ -n "$existing_frid" ] && [ "$existing_frid" != "null" ] && [ "$existing_frid" != "TODO" ]; then
+            new_frid="$existing_frid"
+        fi
+    fi
+
+    # Step 1: Append session-log entry (log-first per ADR-0024 sub-decision 4)
+    local log_dir="$cwd/session-log/$(date -u '+%Y/%m')"
+    local log_file="$log_dir/$(date -u '+%Y-%m-%d').md"
+    if mkdir -p "$log_dir" 2>/dev/null; then
+        printf '\n## Session %s\n\n- branch: %s\n- commit: %s\n- runner: %s (%s)\n- active_feature_run_id: %s\n- event: session-end\n' \
+            "$new_sid" "$new_branch" "$new_sha" "${runner:-none}" "$reason" "$new_frid" >> "$log_file" 2>/dev/null \
+            && log_entry "OK session-log appended: $log_file" \
+            || log_entry "WARN session-log write failed: $log_file"
+    else
+        log_entry "WARN session-log dir unavailable: $log_dir"
+    fi
+
+    # Step 2: Update mechanical fields in STATE.md
+    if [ -f "$state_file" ]; then
+        # sed in-place via temp file (macOS sed -i requires backup suffix — avoid portability issue)
+        local tmp
+        tmp=$(mktemp) && \
+        sed \
+            -e "s|^session_id:.*|session_id: $new_sid|" \
+            -e "s|^date_iso:.*|date_iso: $new_date|" \
+            -e "s|^current_branch:.*|current_branch: $new_branch|" \
+            -e "s|^last_commit_sha:.*|last_commit_sha: $new_sha|" \
+            -e "s|^active_feature_run_id:.*|active_feature_run_id: $new_frid|" \
+            "$state_file" > "$tmp" && mv "$tmp" "$state_file" \
+            && log_entry "OK STATE.md updated: session_id=$new_sid branch=$new_branch sha=$new_sha" \
+            || log_entry "WARN STATE.md update failed"
+    else
+        # Create minimal STATE.md from scratch
+        cat > "$state_file" <<STEOF
+# STATE.md — session continuity snapshot
+<!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
+<!-- Five-minute cold-start: read this + latest session-log entry, start in 5 min. (ADR-0024) -->
+
+session_id: $new_sid
+date_iso: $new_date
+current_branch: $new_branch
+last_commit_sha: $new_sha
+active_feature_run_id: $new_frid
+
+next_3_actions:
+  - TODO
+  - TODO
+  - TODO
+
+blocked_on: null
+
+open_questions: []
+
+risk_flags: []
+STEOF
+        log_entry "OK STATE.md created: session_id=$new_sid branch=$new_branch sha=$new_sha"
+    fi
+
+    # Step 3: Warn if operator-asserted fields still contain TODO-placeholders
+    local todo_count
+    todo_count=$(grep -c 'TODO' "$state_file" 2>/dev/null || echo "0")
+    if [ "$todo_count" -gt 0 ]; then
+        log_entry "WARN STATE.md has ${todo_count} TODO placeholder(s) in operator-asserted fields — Human Resume Test may fail"
+    fi
+}
+
 # --- Parse stdin payload ---
 input=$(cat)
 stop_hook_active=$(echo "$input" | jq -r '.stop_hook_active // false' 2>/dev/null || echo "false")
@@ -71,6 +163,7 @@ SESSION_ID=$(echo "$input" | jq -r '.session_id // "unknown"' 2>/dev/null || ech
 # --- Escape hatch: Claude Code sets stop_hook_active=true to prevent infinite loops ---
 if [ "$stop_hook_active" = "true" ]; then
     log_entry "SKIP stop_hook_active=true"
+    update_handoff "skip-escape-hatch"
     exit 0
 fi
 
@@ -113,6 +206,7 @@ fi
 
 if [ -z "$runner" ]; then
     log_entry "SKIP no test runner detected in $cwd"
+    update_handoff "skip-no-runner"
     exit 0
 fi
 
@@ -129,6 +223,7 @@ test_rc=$?
 case "$test_rc" in
     0)
         log_entry "OK $runner tests passed in $cwd"
+        update_handoff "ok"
         ;;
     124)
         emit_block "$runner test suite exceeded 300s in $cwd — fix hang or use stop_hook_active escape"

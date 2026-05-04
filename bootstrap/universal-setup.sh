@@ -266,6 +266,12 @@ if [ -n "$TARGET_PATH" ]; then
         "$TARGET_DIR/CLAUDE.md" \
         "CLAUDE.md"
 
+    # STATE.md (#128: Session Continuity BC aggregate root; ADR-0024)
+    _copy_template \
+        "$REPO_ROOT_T/bootstrap/templates/STATE.md.template" \
+        "$TARGET_DIR/STATE.md" \
+        "STATE.md"
+
     echo ""
     log "Done (target mode, pipeline v$PIPELINE_VERSION)"
     if [ "$DRIFT" -gt 0 ]; then

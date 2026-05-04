@@ -242,6 +242,105 @@ STOP_HOOK_LOG="$novel_log" bash "$HOOK" <<< "$(mk_payload "$tmpdir")" >/dev/null
 if [ -f "$novel_log" ]; then pass "log: created if dir missing"; else fail "log: not created"; fi
 
 # ---------------------------------------------------------------
+# TEST: STATE.md created on SKIP (no runner), mechanical fields set
+# ---------------------------------------------------------------
+echo "--- handoff: STATE.md created on SKIP (no runner) ---"
+tmpdir=$(mktemp -d -p "$TMPDIR_BASE")
+git -C "$tmpdir" init -q
+git -C "$tmpdir" config user.email "test@example.com"
+git -C "$tmpdir" config user.name "Test"
+echo "init" > "$tmpdir/file.txt"
+git -C "$tmpdir" add .
+git -C "$tmpdir" commit -q -m "test: initial #1" 2>/dev/null
+tmplog=$(mktemp -p "$TMPDIR_BASE")
+run_hook "$(mk_payload "$tmpdir")" "$tmplog" >/dev/null 2>&1
+state="$tmpdir/STATE.md"
+if [ -f "$state" ]; then
+    pass "handoff: STATE.md created on SKIP"
+    if grep -qE '^session_id: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z' "$state"; then
+        pass "handoff: session_id is UTC ISO-8601 timestamp"
+    else
+        fail "handoff: session_id format wrong or missing: $(grep 'session_id' "$state" 2>/dev/null)"
+    fi
+    expected_sha=$(git -C "$tmpdir" rev-parse --short HEAD 2>/dev/null)
+    if grep -q "last_commit_sha: $expected_sha" "$state"; then
+        pass "handoff: last_commit_sha correct ($expected_sha)"
+    else
+        fail "handoff: last_commit_sha wrong (expected $expected_sha); got: $(grep 'last_commit_sha' "$state" 2>/dev/null)"
+    fi
+else
+    fail "handoff: STATE.md not created on SKIP"
+fi
+
+# ---------------------------------------------------------------
+# TEST: STATE.md idempotency — operator-asserted fields preserved, mechanical fields updated
+# ---------------------------------------------------------------
+echo "--- handoff: idempotency (operator fields preserved, mechanical updated) ---"
+tmpdir=$(mktemp -d -p "$TMPDIR_BASE")
+git -C "$tmpdir" init -q
+git -C "$tmpdir" config user.email "test@example.com"
+git -C "$tmpdir" config user.name "Test"
+echo "init" > "$tmpdir/file.txt"
+git -C "$tmpdir" add .
+git -C "$tmpdir" commit -q -m "test: first commit #1" 2>/dev/null
+tmplog=$(mktemp -p "$TMPDIR_BASE")
+# First hook run: creates STATE.md with TODO placeholders
+run_hook "$(mk_payload "$tmpdir")" "$tmplog" >/dev/null 2>&1
+state="$tmpdir/STATE.md"
+sha1=$(git -C "$tmpdir" rev-parse --short HEAD 2>/dev/null)
+if [ -f "$state" ]; then
+    # Simulate operator filling in next_3_actions (replace first TODO)
+    sed 's/  - TODO/  - Run \/qa/' "$state" > "${state}.tmp" && mv "${state}.tmp" "$state" 2>/dev/null || true
+    # Advance the repo by one commit
+    echo "change" >> "$tmpdir/file.txt"
+    git -C "$tmpdir" add .
+    git -C "$tmpdir" commit -q -m "test: second commit #1" 2>/dev/null
+    sha2=$(git -C "$tmpdir" rev-parse --short HEAD 2>/dev/null)
+    # Second hook run: mechanical fields should advance, operator field should survive
+    run_hook "$(mk_payload "$tmpdir")" "$tmplog" >/dev/null 2>&1
+    if grep -q "last_commit_sha: $sha2" "$state" && [ "$sha2" != "$sha1" ]; then
+        pass "handoff idempotent: last_commit_sha advanced from $sha1 to $sha2"
+    elif grep -q "last_commit_sha: $sha2" "$state"; then
+        pass "handoff idempotent: last_commit_sha set to $sha2"
+    else
+        fail "handoff idempotent: last_commit_sha not updated (expected $sha2); got: $(grep 'last_commit_sha' "$state" 2>/dev/null)"
+    fi
+    if grep -q "Run /qa" "$state"; then
+        pass "handoff idempotent: operator-asserted next_3_actions preserved"
+    else
+        fail "handoff idempotent: operator-asserted next_3_actions lost"
+    fi
+else
+    fail "handoff idempotent: STATE.md missing after first run"
+fi
+
+# ---------------------------------------------------------------
+# TEST: session-log entry created on SKIP (no runner)
+# ---------------------------------------------------------------
+echo "--- handoff: session-log entry appended on SKIP ---"
+tmpdir=$(mktemp -d -p "$TMPDIR_BASE")
+git -C "$tmpdir" init -q
+git -C "$tmpdir" config user.email "test@example.com"
+git -C "$tmpdir" config user.name "Test"
+echo "init" > "$tmpdir/file.txt"
+git -C "$tmpdir" add .
+git -C "$tmpdir" commit -q -m "test: initial #1" 2>/dev/null
+tmplog=$(mktemp -p "$TMPDIR_BASE")
+run_hook "$(mk_payload "$tmpdir")" "$tmplog" >/dev/null 2>&1
+today_path=$(date -u '+%Y/%m/%Y-%m-%d')
+log_file="$tmpdir/session-log/${today_path}.md"
+if [ -f "$log_file" ]; then
+    pass "handoff: session-log file created ($log_file)"
+    if grep -qE '^## Session [0-9]{4}-[0-9]{2}-[0-9]{2}T' "$log_file"; then
+        pass "handoff: session-log entry has ISO-8601 session header"
+    else
+        fail "handoff: session-log entry missing Session header"
+    fi
+else
+    fail "handoff: session-log file not created (expected $log_file)"
+fi
+
+# ---------------------------------------------------------------
 # INSTALLER TESTS: Stop hook jq patch (inline, no real ~/.claude/)
 # ---------------------------------------------------------------
 echo "--- installer: Stop hook jq patching ---"

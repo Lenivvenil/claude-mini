@@ -1,7 +1,7 @@
 # Ubiquitous Language — claude-mini-pipeline
 
-**Version:** 2026-05-01
-**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122); three aggregate roots
+**Version:** 2026-05-03
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122) + ADR-0024 (Session Continuity BC, issue #128); four aggregate roots across two BCs
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
@@ -12,6 +12,14 @@ Terms are listed alphabetically. Each entry: one-sentence definition, then discr
 A MADR 4.0 document in `docs/decisions/NNNN-*.md` recording a decision that meets at least one trigger in `docs/principles.md#что-значит-архитектурно-значимо`. Required before implementation; merged via canonical pipeline.
 
 *Discriminating note:* a plan is not an ADR. If no trigger fires, use `/plan`, not `/adr`.
+
+---
+
+## active_feature_run_id
+
+The `STATE.md` field holding a reference (issue number, e.g., `#128`) to the `FeatureRun` currently in progress, or `null` if no run is active. Read-only pointer across the BC boundary into `claude-mini-pipeline`; resolves to a `FeatureRun` aggregate that Session Continuity does not own.
+
+*Discriminating note:* this is a reference, not an embedded copy of `FeatureRun` state. Session Continuity reads `FeatureRun.dod_state` by ID at snapshot time; it does not mirror or cache it (ADR-0020 cross-aggregate communication pattern, ADR-0024 sub-decision 2).
 
 ---
 
@@ -45,6 +53,14 @@ The documented sequence in `CLAUDE.md:27-34`: `task-to-issue → plan → adr (i
 
 ---
 
+## Continuity (property)
+
+The property that work-in-progress survives the boundary between LLM sessions: any next session can read `STATE.md` + the most recent `session-log` entry and resume meaningful work without interrogating the operator. Continuity is the goal; the Session Continuity BC owns the artifacts that maintain it.
+
+*Discriminating note:* continuity is not the same as persistence. Persistence is "data still exists on disk." Continuity is "a new session can act on that data without ramp-up."
+
+---
+
 ## dod_state
 
 The `FeatureRun` attribute tracking pipeline progress. Valid transitions: `in_progress → review_pending → done` (monotonic; never reversed within a run). Driven by pipeline stage completion events.
@@ -66,6 +82,14 @@ The checklist in `docs/principles.md#definition-of-done` that every change must 
 The state in which the second voice of two-voice review could not complete. Represented as a GitHub issue of type `type:deferred-review` (the artifact). Created when `/codex-review` is skipped (e.g., Plus OAuth quota exhausted, corporate repo gate). Satisfies the DoD graceful-degradation clause. Does not substitute for a passing review.
 
 *Naming note:* "Deferred Review" is the concept/state. "deferred-review issue" is the GitHub artifact. `DeferredReviewIssueCreated` is the domain event. Three forms, one concept.
+
+---
+
+## blocked_on
+
+A `STATE.md` field naming the single concrete obstacle preventing forward progress, or `null` if not blocked. Phrased as a noun-phrase referencing a person, ticket, decision, or external system ("waiting on operator decision re: ADR-0021", not "lots of stuff to think about").
+
+*Discriminating note:* `blocked_on` is operator-asserted at snapshot time; no agent infers it. Distinct from `risk_flags` — `blocked_on` is a hard stop right now; `risk_flags` are warnings about possible future stops.
 
 ---
 
@@ -158,6 +182,22 @@ A commit rejected by the governance hook. Not a failure state — it is the hook
 
 ---
 
+## Hand-off (triple)
+
+The contract by which a session transfers state to its successor: `STATE.md` (snapshot, replaces) + `session-log/YYYY/MM/YYYY-MM-DD.md` (history, appends) + `plan.md` linter pass (decision discipline, gates). Called "triple" because all three artifacts must be in their valid post-hand-off state simultaneously for the hand-off to be considered complete.
+
+*Discriminating note:* a hand-off is not a commit. A commit changes the repo; a hand-off prepares for session change. They often coincide but are not the same — a session can hand off without committing (e.g., end-of-day with WIP), and a commit can happen without a hand-off (mid-session progress commit).
+
+---
+
+## Human Resume Test
+
+The acceptance criterion for Session Continuity: an operator (or a fresh agent) given only `STATE.md` and the latest `session-log` entry can identify the next concrete action and begin work within five minutes. The five-minute budget is a sustained design constraint, not a stopwatch metric per session.
+
+*Discriminating note:* the Human Resume Test is the BC's primary NFR, not a unit test. It is verified by periodic operator drill (see `docs/runbooks/resume-drill.md`) or by post-mortem after a real resume. It is not mechanically measured per session.
+
+---
+
 ## Issue-first
 
 The rule that any task longer than one session must have a GitHub issue before work starts. Enforced by the governance hook (commit-msg requires `#NNN`). Issues created via `/task-to-issue`.
@@ -178,6 +218,14 @@ The Sonnet model instance that orchestrates all pipeline actions within a sessio
 
 ---
 
+## open_questions
+
+A `STATE.md` field listing zero or more unresolved questions the current session encountered that the next session needs answers for before progressing. Each entry is one line, phrased as a question with enough context that a reader who was not present can understand what is being asked.
+
+*Discriminating note:* `open_questions` is not the same as `Red Hotspot`. `Red Hotspot` is a BC-level invariant tension surfaced in `overview.md#red-hotspots` and may persist for sprints. `open_questions` is per-session and short-lived — resolved within hours/days or escalated to a Red Hotspot or GitHub issue. Lifecycle, scope, and audience differ.
+
+---
+
 ## Operator
 
 The human running Claude Code. Sole author of production code. Final decision-maker on all architectural choices. Claude is a "soul-crushing partner, not an expert" (Principle 2) — the operator is the expert.
@@ -187,6 +235,14 @@ The human running Claude Code. Sole author of production code. Final decision-ma
 ## Pipeline Stage
 
 A named step within the Feature Pipeline: `/plan`, `/adr`, `/implement`, `/review`, `/codex-review`, governance commit, `gh pr create`. Stages are ordered and gated; skipping a stage requires explicit justification.
+
+---
+
+## plan.md Linter
+
+A grep-based bash script (`bootstrap/scripts/plan-lint.sh`) that scans the current `plan.md` and verifies every entry in §3 ("Approaches considered") and §4 ("Selected approach") that asserts a design decision carries an `ADR-ref` (`docs/decisions/NNNN-*.md`) or an explicit exemption (`"no ADR — justification: ..."`). Run as part of the hand-off contract; failure blocks the hand-off from being declared complete. No LLM dependency — bash and grep only (Principle 3).
+
+*Discriminating note:* the plan.md linter enforces ADR-discipline on plan content, which is a `claude-mini-pipeline` concern, but is invoked from the hand-off contract, which is a Session Continuity concern. This BC owns the *invocation* (when to run); `claude-mini-pipeline` owns the *rule definition* (what counts as a design decision).
 
 ---
 
@@ -210,6 +266,22 @@ A gate blocking an action that, upon operator judgment, was a genuine violation 
 
 ---
 
+## Resume
+
+The act of a new session reading the hand-off artifacts and beginning meaningful work on the previous session's outstanding context. Distinct from "starting fresh" (no prior STATE.md) and from "continuing within a session" (no session boundary crossed).
+
+*Discriminating note:* a resume succeeds when the first action a new session takes matches one of the prior session's `next_3_actions` (or explicitly supersedes one with justification). A resume that re-plans from scratch is a continuity failure, not a successful resume.
+
+---
+
+## risk_flags
+
+A `STATE.md` field listing zero or more known risks the next session should be aware of: pending external dependencies, suspected bugs not yet investigated, drift between docs and code, etc. Each flag is one line; `risk_flags: []` is a valid (and common) state.
+
+*Discriminating note:* `risk_flags` are warnings, not blockers — work can proceed despite them. `blocked_on` is a single hard stop; `risk_flags` is a list of soft warnings.
+
+---
+
 ## RetentionRecommendation
 
 The decision-rule output for a gate over a rolling 4-week window: `KEEP`, `REMOVE`, or `INSUFFICIENT_DATA`. Computed by `gate-audit-aggregate.sh` from `GateAuditWeek` records. `REMOVE` means `real / (real + fp + bypass) < 0.2` for all 4 qualifying weeks. Requires human approval before any gate is actually removed — this is a recommendation, not an automatic action.
@@ -218,11 +290,45 @@ The decision-rule output for a gate over a rolling 4-week window: `KEEP`, `REMOV
 
 ---
 
+## Session
+
+A continuous interval of LLM (Claude Code) operation under a single operator presence, bounded on each side by a session-end event (operator closes the client, advisor times out, machine sleeps, day rolls over). Identified by `session_id` in `STATE.md`. The unit of work that hand-offs occur between.
+
+*Discriminating note:* a session is not a `FeatureRun`. A single session may span zero, one, or several `FeatureRun`s; a single `FeatureRun` typically spans several sessions. They are orthogonal lifecycles.
+
+---
+
+## session-log
+
+The append-only daily log file at `session-log/YYYY/MM/YYYY-MM-DD.md` recording per-session entries: session boundaries, significant decisions, advisor calls, hand-off events. One file per UTC day; entries are appended chronologically (newest-at-bottom) and never edited or deleted.
+
+*Discriminating note:* session-log is not the same family as `docs/gate-audit/events.jsonl`. Both are append-only logs, but session-log is human-readable narrative for resume; `events.jsonl` is structured machine data for ROI analysis. They serve different consumers and are not unified by design (ADR-0024, sub-decision 8).
+
+---
+
+## session_id
+
+A `STATE.md` field uniquely identifying the session that wrote the current snapshot. Format: UTC ISO-8601 timestamp (e.g., `2026-05-03T14:32:00Z`) — human-readable, sortable, no external dependencies (ADR-0024, sub-decision 3).
+
+*Discriminating note:* `session_id` identifies the *writer* of the snapshot, not the `FeatureRun`. The `active_feature_run_id` field is a separate reference into a different BC.
+
+---
+
 ## Skill
 
 A slash-command (`/plan`, `/adr`, `/implement`, `/review`, `/feature`, etc.) that executes under main-loop authority. Has full write capability (subject to permissions). Distinct from agents, which are subagents with constrained toolsets.
 
 *Discriminating note:* a skill is not an agent. Skills run inside the main loop. Agents are separate Claude Code subagents. This distinction is normative in ADR 0007 and subtle in practice.
+
+---
+
+## STATE.md
+
+The repo-root snapshot file (≤200 lines) with nine fields recording the current resumable state of work: `session_id`, `date_iso`, `current_branch`, `last_commit_sha`, `active_feature_run_id`, `next_3_actions`, `blocked_on`, `open_questions`, `risk_flags`. The aggregate root of the Session Continuity BC. Replaced (not appended) on each hand-off; the prior state moves to `session-log` history.
+
+Invariants (ADR-0024): ≤200 lines; all nine fields present (empty values `null`/`[]` are valid; missing keys are not); replaced not appended on each hand-off; `active_feature_run_id` is a reference only — Session Continuity does not duplicate `FeatureRun` state.
+
+*Discriminating note:* `STATE.md` is not a backlog and not a runbook. It is a thin snapshot whose only job is to satisfy the Human Resume Test. Anything that does not contribute to a five-minute resume should not be in STATE.md.
 
 ---
 
@@ -243,6 +349,14 @@ A row in the Interface Contracts section of a BC overview specifying: interface 
 ## Internal Compliance
 
 The section of a BC overview mapping each Definition of Done norm to its enforcement type (`automated | agent-triggered | honor`), the concrete artifact enforcing it, and whether a honor-system gap exists. Distinct from NFR: NFR states what the system must do; Internal Compliance states how each DoD norm is actually enforced (or not).
+
+---
+
+## next_3_actions
+
+A `STATE.md` field listing exactly three ordered, concrete next actions, written as imperatives (e.g., "Run /implement on plan.md §3"). Cardinality is fixed at three: fewer signals premature stop, more signals lack of focus. The field is `[]` only when `blocked_on != null` or all work is complete.
+
+*Discriminating note:* `next_3_actions` describes the immediate plan, not the full backlog. The full backlog lives in GitHub issues; `next_3_actions` is the slice the next session executes first.
 
 ---
 
@@ -272,6 +386,14 @@ A domain entity representing the output of a review step. Three types, two owner
 The split is intentional: advisor is not part of two-voice review. `claude_review` and `codex_review` form the two-voice pair; `advisor_critique` is pre-work validation outside that pair.
 
 *Discriminating note:* a ReviewArtifact is not the same as the act of reviewing. It is the *persisted output* of a review step. The type-discriminator determines which aggregate owns the instance.
+
+---
+
+## Triple Hand-off Contract
+
+The combined precondition that all three hand-off artifacts (STATE.md updated and ≤200 lines; session-log entry appended for today; plan.md linter passing) are simultaneously valid. The contract is binary: all three pass, or hand-off is incomplete. Partial hand-offs are not a recognised state.
+
+*Discriminating note:* "triple" is normative, not descriptive. It enforces that snapshot-without-history (STATE.md changes but no log entry) and history-without-snapshot (log entry but stale STATE.md) are both equally broken. The plan.md linter as the third leg is a Session Continuity design choice (ADR-0024).
 
 ---
 

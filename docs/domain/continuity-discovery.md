@@ -35,7 +35,7 @@ Existing terms (`FeatureRun`, `GovernanceRun`, `TwoVoiceReview`, `Operator`, `Ma
 
 ### active_feature_run_id
 
-The one of the nine `STATE.md` fields holding a reference (issue number, e.g., `#128`) to the `FeatureRun` currently in progress, or `null` if no run is active. Read-only pointer across the BC boundary into `claude-mini-pipeline`; resolves to a `FeatureRun` aggregate that Session Continuity does not own.
+One of the nine `STATE.md` fields holding a reference (issue ref, e.g., `#128`) to the `FeatureRun` currently in progress, or `null` if no run is active. Read-only pointer across the BC boundary into `claude-mini-pipeline`; resolves to a `FeatureRun` aggregate that Session Continuity does not own.
 
 *Discriminating note:* this is a reference, not an embedded copy of `FeatureRun` state. Session Continuity reads `FeatureRun.dod_state` by ID at snapshot time; it does not mirror or cache it (ADR-0020 cross-aggregate communication pattern).
 
@@ -131,7 +131,7 @@ The append-only daily log file at `session-log/YYYY/MM/YYYY-MM-DD.md` recording 
 
 ### session_id
 
-A `STATE.md` field uniquely identifying the session that wrote the current snapshot. Format and generation rule are not yet decided (see hotspot #3) — candidates include UTC timestamp, ULID, or git-style short hash.
+A `STATE.md` field uniquely identifying the session that wrote the current snapshot. Format: UTC ISO-8601 timestamp (e.g., `2026-05-03T14:32:00Z`), set by `stop-hook.sh` via `date -u`. See ADR-0024 sub-decision 4.
 
 *Discriminating note:* `session_id` identifies the *writer* of the snapshot, not the *FeatureRun*. The `active_feature_run_id` field is a separate reference into a different BC.
 
@@ -264,16 +264,13 @@ These are explicit unresolved questions, flagged honestly per `vocabulary.md#Red
 
 1. **plan.md linter ownership seam.** The linter enforces `claude-mini-pipeline`'s ADR-discipline rule but is invoked from Session Continuity's hand-off contract. Two defensible placements: (a) linter lives in pipeline BC, hand-off contract simply *consumes* its result; (b) linter lives in Session Continuity, pipeline owns only the rule definition. Issue #128 bundles all three artifacts under "triple hand-off"; domain-wise, leg three may belong elsewhere. Needs operator decision before implementation.
 
-2. **Is `Session` an aggregate root, or is `STATE.md` a projection of `Session`?** Two models:
-   - `STATE.md` is the aggregate root; `Session` is just an attribute (`session_id`).
-   - `Session` is the aggregate root; `STATE.md` is its current-state projection and `session-log` entries are its event stream.
-   The second model maps cleanly onto event-sourcing; the first is simpler. No decision yet.
+2. ~~**Is `Session` an aggregate root, or is `STATE.md` a projection of `Session`?**~~ **Resolved by ADR-0024 (sub-decision 2):** `STATE.md` is the aggregate root; `Session` is an attribute (`session_id`). Document-model chosen over event-sourcing per Principle 8. Approach B1 chosen; B2 (event-sourced `Session`) rejected.
 
-3. **`session_id` generation rule undefined.** Candidates: UTC timestamp (`2026-05-03T14:32:00Z`), ULID, short git-style hash, or operator-typed string. Each has trade-offs (sortability vs collision-resistance vs human-readability). Not decided.
+3. ~~**`session_id` generation rule undefined.**~~ **Resolved by ADR-0024 (sub-decision 4):** UTC ISO-8601 timestamp (e.g., `2026-05-03T14:32:00Z`). Rationale: human-readable, sortable, no external dependency. ULID, git-style hash, and operator-typed string rejected.
 
 4. **Relationship between `session-log` and `events.jsonl` (gate-audit).** Both are append-only logs in the repo; both record events with timestamps. Are they the same family with different schemas, or genuinely separate? Current draft says "separate" (different consumers, different formats), but a unified event log is a defensible alternative. Not yet ADR-discussed.
 
-5. **Chronological order in session-log entries.** Newest-at-top (more journal-like, fast read) vs newest-at-bottom (true append, never re-renders the file). Append-only invariant slightly favours bottom; readability favours top. Not decided.
+5. ~~**Chronological order in session-log entries.**~~ **Resolved by ADR-0024 (sub-decision 5):** newest-at-bottom. True append; a pre-commit check can verify by `diff --unified=0` that only trailing additions exist. Newest-at-top rejected (rewrites file head, breaking mechanical append-only enforcement).
 
 6. **Session boundary detection.** A session ends when… the client closes? An hour of inactivity? A new operator types `/resume`? The definition affects when `HandoffRequested` should fire automatically vs require operator command. Currently assumed operator-explicit; auto-detection deferred.
 

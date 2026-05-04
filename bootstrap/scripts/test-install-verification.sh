@@ -164,7 +164,7 @@ fi
 echo ""
 echo "Gap #4: --target delivers template files (structural + functional)"
 
-for f in "ruff.toml" ".eslintrc.json" ".jscpd.json" "AGENTS.md" "CLAUDE.md"; do
+for f in "ruff.toml" ".eslintrc.json" ".jscpd.json" "AGENTS.md" "CLAUDE.md" "STATE.md"; do
     if grep -q "\"$f\"" "$SETUP" 2>/dev/null || grep -q "/$f" "$SETUP" 2>/dev/null; then
         pass "--target section references $f"
     else
@@ -177,10 +177,10 @@ else
     fail "--target section missing .semgrep/llm-antipatterns.yaml"
 fi
 
-# Functional: run --target against a temp dir and verify all six files land
+# Functional: run --target against a temp dir and verify all seven files land
 _T=$(mktemp -d /tmp/claude-mini-verify-templates-XXXXXX)
 if bash "$SETUP" --target "$_T" >/dev/null 2>&1; then
-    for f in "ruff.toml" ".eslintrc.json" ".jscpd.json" ".semgrep/llm-antipatterns.yaml" "AGENTS.md" "CLAUDE.md"; do
+    for f in "ruff.toml" ".eslintrc.json" ".jscpd.json" ".semgrep/llm-antipatterns.yaml" "AGENTS.md" "CLAUDE.md" "STATE.md"; do
         if [ -f "$_T/$f" ]; then
             pass "--target functional: $_T/$f created"
         else
