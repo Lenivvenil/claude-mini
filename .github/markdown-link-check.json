@@ -1,6 +1,7 @@
 {
   "ignorePatterns": [
     { "pattern": "\\*" },
-    { "pattern": "^https://github\\.com/Lenivvenil/claude-mini/" }
+    { "pattern": "^https://github\\.com/Lenivvenil/claude-mini/" },
+    { "pattern": "^https://docs\\.oasis-open\\.org/" }
   ]
 }
