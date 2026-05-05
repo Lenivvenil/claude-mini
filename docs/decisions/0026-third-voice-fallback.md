@@ -16,9 +16,11 @@ Trigger #4 named a falsifiable threshold: "if `type:deferred-review`
 issues exceed 20% of PRs."
 
 That trigger has fired. **18 deferred-review issues / 71 lifetime PRs
-= 25.4%**, distributed evenly: 14 in April 2026, 4 in May 2026. Codex
-Plus-OAuth flake is no longer occasional — it is systemic at this
-threshold.
+= 25.4%**, concentrated in April 2026 (14 issues) with 4 in May 2026
+— the full life of the project. The distribution is not seasonal: the
+flake rate was high from the project's first PRs and persisted into the
+current month. Codex Plus-OAuth flake is no longer occasional — it is
+systemic at this threshold.
 
 Issue #132 frames the response as "third voice" (Kimi K2.6,
 Qwen3-Coder-Next-80B-A3B, via OpenRouter or Ollama local). That framing
@@ -225,6 +227,23 @@ gh issue list --label 'type:deferred-review' --state closed | wc -l
 
 If `open / total ≤ 0.4`, Option A. Else Option D.
 
+**Note on threshold terminology.** Two distinct thresholds appear in
+this ADR; they measure different things and must not be confused:
+
+* **40%** (`open_deferred / total_deferred`) — the triage-state check
+  above. Answers: "of all deferred-review issues ever opened, how many
+  are still unresolved?" If ≥40% are open and accumulating, the graceful-
+  degradation mechanism is producing a growing backlog of un-reviewed
+  code, and Option D is warranted.
+* **35%** (`deferred_prs / all_prs`) — the amended Re-visit Trigger #4
+  threshold. Answers: "what fraction of lifetime PRs never got a second
+  voice at all?" Currently 25.4%; this ADR raises the tolerable ceiling
+  from 20% to 35%.
+* **50%** (`deferred_prs / all_prs`) — the structural ceiling. If
+  deferred-review rate reaches 50%, half of merged PRs ship without
+  two-voice; the mechanism is structurally broken regardless of backlog
+  state. The 35% threshold sits below this ceiling with headroom.
+
 **Rationale for Option A as the default recommendation:**
 
 1. **Cross-family diversity is already satisfied (Panickssery 2024).**
@@ -256,11 +275,13 @@ If `open / total ≤ 0.4`, Option A. Else Option D.
 backlog:**
 
 * Local Qwen2.5-Coder-7B-Instruct at Q4_K_M quantization runs at
-  ~10-15 tok/s on a 2018 Intel i7 with 32 GB RAM (last-known
-  llama.cpp benchmarks for 7B Q4 on that hardware class). For a
-  short diff (≤500 lines, ~2K input tokens, ~500 output tokens),
-  that is 30-50 seconds per review — slower than Codex Plus, but
-  finite and offline.
+  ~10-15 tok/s on a 2018 Intel i7 with 32 GB RAM (**estimate** from
+  last-known llama.cpp community benchmarks for 7B Q4 on comparable
+  hardware; not measured on this machine). For a short diff (≤500
+  lines, ~2K input tokens, ~500 output tokens), estimated 30-50s per
+  review. Operator must run `ollama pull qwen2.5-coder:7b-instruct-q4_K_M
+  && time ollama run qwen2.5-coder:7b-instruct-q4_K_M "hello"` to
+  verify before adopting Option D.
 * Principle 7 (vendor-neutral) is satisfied: Qwen2.5-Coder is
   open-weight (Apache-2.0); Ollama is open-source. No vendor in the
   critical path.
@@ -397,9 +418,9 @@ the count below is seven Bad to seven Good.
   would have provided an offline path.
 * **`plan.md` in the repository root is now stale.** It was written
   for a third-voice implementation that this ADR closes without code.
-  It must be removed before the next `/plan` run; left in place it
-  will mislead a future session into implementing what this ADR
-  decided not to implement.
+  `plan.md` is gitignored and cannot be part of this commit; the
+  operator must clear it locally before the next `/plan` run to
+  avoid misleading a future session.
 
 ### Neutral
 
@@ -714,9 +735,9 @@ Reconsider this decision (or the ADR-0005 amendment it carries) when
   Option A. ADR-0005's chosen option (Two-voice with graceful
   degradation) stands. ADR-0005's file is **not edited**; this
   ADR's Decision Outcome is the binding amendment record.
-* Implements: issue #132 — feat(review): third-voice fallback. The
+* Resolves: issue #132 — feat(review): third-voice fallback. The
   issue's framing is re-interpreted per this ADR's Context section;
-  AC changes per Decision Outcome.
+  AC superseded by Decision Outcome (Option A closes without implementation).
 * Related: ADR-0021 (nine-principle hardened revision) — invokes
   Principle 1 (no vague trade-offs, three permitted answer forms;
   no bare numbers — see threshold derivation), Principle 7
