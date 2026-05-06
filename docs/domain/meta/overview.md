@@ -173,16 +173,17 @@ Invariants:
 
 ### RunbookExecution
 
-**status: draft — requires Event Storming session with operator before invariants are finalized (ADR-0027; tracked in issue #200)**
+**`RunbookExecution`** — один запуск задокументированной процедуры из `docs/runbooks/`. Независимый агрегатный корень; не вложен в `FeatureRun` — может существовать полностью вне feature-pipeline (drill, cron, manual recovery).
 
-**`RunbookExecution`** — one invocation of a documented procedure from `docs/runbooks/` (e.g., `resume-drill.md`, `incident-recovery.md`). Models the lifecycle of an out-of-band procedure that runs outside the feature-pipeline, has steps with measurable postconditions, and may leave artifacts in `session-log` or as GitHub issues.
-
-Provisional invariants (require verification):
-- One `RunbookExecution` per runbook document per invocation; repeat runs create separate instances.
-- State machine (provisional): `pending → in_progress → completed | aborted`.
-- `RunbookExecution` does not own `FeatureRun`, `GovernanceRun`, or `TwoVoiceReview` and does not spawn them.
-
-Open questions (Event Storming required): Is `RunbookExecution` a true aggregate root or an entity inside `FeatureRun` for runbooks called from within a pipeline run? What commands and events make up its state machine? Who emits the start event? See `vocabulary.md#RunbookExecution` for full list of open questions.
+Инварианты:
+- Один `RunbookExecution` — один runbook-документ, одна инвокация; повторный запуск = новый экземпляр
+- State machine: `pending → in_progress → completed | aborted | failed`
+  - `completed` — оператор объявил завершение или автоматический запуск завершился без ошибок
+  - `aborted` — оператор остановил до конца
+  - `failed` — автоматический запуск завершился с ошибкой
+- `trigger` ∈ `{manual, scheduled, hook}` — определяет кто инициировал
+- Каждый `RunbookExecution` оставляет минимум одну запись в `session-log`
+- `RunbookExecution` не владеет и не порождает `FeatureRun`, `GovernanceRun`, `TwoVoiceReview`
 
 ---
 

@@ -396,13 +396,27 @@ A `STATE.md` field listing zero or more known risks the next session should be a
 
 ## RunbookExecution
 
-**status: draft — requires Event Storming session with operator before invariants are finalized (ADR-0027 red hotspot; tracked in issue #200)**
+**Агрегатный корень в `meta-pipeline BC`.** Один запуск задокументированной процедуры из `docs/runbooks/`. Любой цифровой след важен — каждое исполнение процедуры фиксируется как экземпляр агрегата.
 
-An aggregate root within `meta-pipeline BC` (provisional). One invocation of a documented procedure from `docs/runbooks/` — e.g., `resume-drill.md`, `incident-recovery.md`. Models the lifecycle of an out-of-band procedure that runs outside the feature-pipeline (not bound to one `FeatureRun`), has steps with measurable postconditions, and may leave artifacts (report, GitHub issue, entry in `session-log`).
+**Атрибуты:** `runbook_ref` (ссылка на процедуру), `trigger` (enum: `manual | scheduled | hook`), `state` (enum), `started_at`, `ended_at`, `artifact_refs` (ссылки на артефакты — session-log entry, GitHub issue, отчёт).
 
-Предполагаемые инварианты (требуют верификации): один `RunbookExecution` — один runbook-документ, одна инвокация; state machine предположительно `pending → in_progress → completed | aborted`; `RunbookExecution` не владеет `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` и не порождает их.
+**State machine:** `pending → in_progress → completed | aborted | failed`
+- `completed` — оператор явно объявил завершение или автоматический запуск завершился без ошибок
+- `aborted` — оператор остановил выполнение до конца
+- `failed` — автоматический запуск завершился с ошибкой
 
-*Discriminating note:* `RunbookExecution` is not the runbook document. The document is the procedure specification (static markdown). `RunbookExecution` is a concrete lifecycle instance. Open question: is it a true aggregate root, or an entity inside `FeatureRun` for runbooks called from within a pipeline run? Resolution requires Event Storming.
+**Инварианты:**
+- Один `RunbookExecution` — один runbook-документ, одна инвокация; повторный запуск = новый экземпляр
+- `RunbookExecution` является независимым агрегатным корнем — не вложен в `FeatureRun`; может существовать вне feature-pipeline (drill, cron, manual recovery)
+- Каждый `RunbookExecution` оставляет минимум одну запись в `session-log`
+- `RunbookExecution` не владеет `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` и не порождает их
+
+**Примеры по trigger:**
+- `manual`: оператор запускает `resume-drill.md` или `incident-recovery.md`
+- `scheduled`: cron запускает `/adr-retirement-audit` weekly, mutation testing weekly
+- `hook`: stop-hook триггерит recovery-процедуру при падении тестов
+
+*Discriminating note:* `RunbookExecution` — не runbook-документ. Документ — спецификация процедуры (статичный markdown). `RunbookExecution` — конкретный lifecycle-экземпляр выполнения. Cron-исполнения (`adr-retirement-audit`, mutation testing) — тот же концепт с `trigger: scheduled`, не отдельный тип.
 
 ---
 
