@@ -158,13 +158,13 @@ echo "Exit: $?"  # 0 = OK, 1 = blocked
 
 Репо использует три MCP-сервера. MCP (Model Context Protocol) — открытый стандарт, поддерживается Goose, opencode, Cursor и другими клиентами.
 
-| Сервер | Назначение | Когда использовать |
-|---|---|---|
-| **Serena** | Семантическая навигация по коду: поиск символов, их references, структура файла | Вместо grep на больших файлах |
-| **GitHub** | Чтение и запись issues, PR, projects, actions | Для работы с бэклогом и PR |
-| **Context7** | Актуальная документация библиотек (не из training data) | Перед любой гипотезой об API библиотеки |
+| Сервер | Transport | Pinned version | Назначение | Когда использовать |
+|---|---|---|---|---|
+| **Serena** | stdio | `v1.2.0` | Семантическая навигация по коду: поиск символов, их references, структура файла | Вместо grep на больших файлах |
+| **GitHub** | HTTP (allowlisted) | GitHub API | Чтение и запись issues, PR, projects, actions | Для работы с бэклогом и PR |
+| **Context7** | stdio | `2.2.4` | Актуальная документация библиотек (не из training data) | Перед любой гипотезой об API библиотеки |
 
-Конфигурация серверов — в `~/.claude/settings.json` (Claude Code) или в аналогичном config-файле твоего инструмента.
+Конфигурация серверов — в `.mcp.json` (repo root, `--scope project`, committable). Транспортная политика: ADR-0028 (`docs/decisions/0028-mcp-transport-security.md`). CI lint: `bootstrap/scripts/check-mcp-config.sh`.
 
 ---
 

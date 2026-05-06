@@ -98,6 +98,19 @@ jobs:
       - name: Run install verification test harness
         run: bash bootstrap/scripts/test-install-verification.sh
 
+  mcp-config-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Lint .mcp.json against ADR-0028 transport security policy
+        run: bash bootstrap/scripts/check-mcp-config.sh .mcp.json
+      - name: Run check-mcp-config unit tests
+        run: bash bootstrap/scripts/test-check-mcp-config.sh
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
