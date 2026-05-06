@@ -84,6 +84,24 @@ bootstrap/
 
 **Scripts (8):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`, `gate-audit-lib.sh` (event-write helper), `gate-audit-aggregate.sh` (weekly aggregation), `forge.sh` (gate-tag CLI).
 
+## MCP Servers
+
+Три сервера, подключаемых через `.mcp.json` (repo-tracked, `--scope project`):
+
+| Сервер | Transport | Pinned version | Назначение |
+|---|---|---|---|
+| `serena` | stdio | `v1.2.0` | Семантическая навигация по коду (find symbol, references) |
+| `context7` | stdio | `2.2.4` | Актуальная документация библиотек (не из training data) |
+| `github` | HTTP (allowlisted) | — (stable API) | Issues, PR, projects, actions |
+
+**Транспортная политика ([ADR-0028](docs/decisions/0028-mcp-transport-security.md)):** stdio — дефолт для локальных серверов; HTTP — только для эндпоинтов из явного allowlist (`api.githubcopilot.com/mcp/`). Нет unauthenticated local HTTP MCP. stdio-серверы пинированы по semver/git-tag — CI блокирует merge без `@<version>` pin. HTTP-серверы (GitHub) контролируются allowlist, а не версией (стабильный API-эндпоинт).
+
+**Примечание по `context7`:** `@upstash/context7-mcp` запускается как локальный npm-процесс (stdio). Он по-прежнему обращается к Upstash backend по HTTPS. stdio закрывает Claude↔local-process вектор; от Upstash изоляция не является целью.
+
+**Quarterly review:** [docs/runbooks/mcp-quarterly-review.md](docs/runbooks/mcp-quarterly-review.md) — CVE check, pin staleness, allowlist status (Q: январь, апрель, июль, октябрь).
+
+**При добавлении нового HTTP сервера:** нужен ADR-0028 amendment. Новые stdio серверы — добавить в `.mcp.json` с явным pin.
+
 ## AGENTS.md + CLAUDE.md — два файла, два читателя
 
 Репо поддерживает два конфигурационных файла одновременно:

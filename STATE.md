@@ -2,29 +2,31 @@
 <!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
 <!-- Five-minute cold-start: read this + latest session-log entry, start in 5 min. (ADR-0024) -->
 
-session_id: 2026-05-06T10:00:00Z
+session_id: 2026-05-06T20:13:24Z
 date_iso: 2026-05-06
-current_branch: main
-last_commit_sha: PR #206 merged
-active_feature_run_id: null
+current_branch: feat/mcp-transport-hardening-137
+last_commit_sha: ca2e5f4
+active_feature_run_id: #137
 
 completed_this_session:
-  - "#135 merged (PR #206): DoD compliance table — prune honor-only norms, automate"
-  - "3 new CI jobs added: install-verification, secret-scan, pr-body-check"
-  - "4 P2 tickets created: #202 #203 #204 #205"
-  - "gate-audit weekly report now includes DoD compliance snapshot section"
-  - "Internal Compliance table corrected: enforcer column added, 4 norms upgraded"
+  - "ADR-0028 drafted, reviewed (APPROVE), merged as PR #207"
+  - "#137 implement in progress on feat/mcp-transport-hardening-137"
+  - ".mcp.json created with pinned serena@v1.2.0, context7@2.2.4, github allowlisted"
+  - "bootstrap/scripts/check-mcp-config.sh — linter (11 tests, ShellCheck clean)"
+  - "CI job mcp-config-lint added to .github/workflows/ci.yml"
+  - "docs/runbooks/mcp-quarterly-review.md created"
+  - "README.md + AGENTS.md updated with MCP policy section"
 
 next_3_actions:
-  - Pick next issue from backlog (run /backlog-review or check GitHub Issues)
-  - Consider #202-#205 (P2 DoD mechanization) for next sprint
-  - Run /project-health weekly report if not done this week
+  - Run /qa on feat/mcp-transport-hardening-137
+  - Run /review (prod-bound: security-reviewer + reliability-reviewer + adversarial-critic)
+  - Run /codex-review, then gh pr create Closes #137
 
 blocked_on: null
 
 open_questions: []
 
 risk_flags:
-  - pr-body-check fires on [opened, synchronize, reopened] but NOT on PR body edits — known gap, tracked in comment on #203; fix requires adding `edited` to pull_request trigger types
-  - secret-scan regex 20-char threshold excludes short API keys (e.g. 16-char tokens); acceptable for this pure-shell/markdown repo type
-  - mutation.yml is a reference implementation that skips all language blocks on claude-mini itself (no src/); first real signal comes from target pet-projects after --target install
+  - Context7 stdio smoke test pending — switch from HTTP-remote to stdio may change toolset/latency
+  - Plugin marketplace duplicates: serena/context7 may still have user-scope entries → run dedup step from mcp-quarterly-review.md before first session after merge
+  - Quarterly review is honor-only (no mechanical gate); follow-up ticket to be created after #137 merge
