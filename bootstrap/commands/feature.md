@@ -64,7 +64,7 @@ You are an **orchestrator**, not an executor. You do not run `/plan`, `/implemen
 \`\`\`
 [ ] 1. Read issue #$ARGUMENTS acceptance criteria
 [ ]    1b. Only if docs/domain/ is empty, or the issue scope obviously diverges
-[ ]        from docs/domain/vocabulary.md: invoke @agent-domain-researcher
+[ ]        from docs/domain/meta/vocabulary.md: invoke @agent-domain-researcher
 [ ]        (run after reading the issue so you know whether the domain is in scope)
 [ ] 2. Run /plan $ARGUMENTS
 [ ] 3. Call advisor() to critique plan

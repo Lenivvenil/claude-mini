@@ -1,9 +1,7 @@
-# Bounded Context: claude-mini-pipeline
+# Bounded Context: meta-pipeline BC
 
-> **DEPRECATED as of ADR-0027 (2026-05-06).** This file has been migrated to `docs/domain/meta/overview.md`. The canonical BC overview for `meta-pipeline BC` lives there. This file is kept for historical ADR cross-reference integrity. Do not edit; do not use as source of truth.
-
-**Version:** 2026-05-01
-**Status:** superseded by `docs/domain/meta/overview.md` (ADR-0027, issue #130)
+**Version:** 2026-05-06
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit operational layer (issue #122) + ADR-0027 (Domain Inversion: meta vs target BC, issue #130); four aggregate roots: FeatureRun, GovernanceRun, TwoVoiceReview, RunbookExecution (draft)
 
 ## Table of Contents
 
@@ -47,7 +45,7 @@ This BC owns the workflow choreography for AI-assisted software development: pip
 
 ## Commands and Domain Events
 
-Three aggregate roots own commands within this BC (ADR-0020). Commands are organized by owning aggregate. All 17 in-BC commands are accounted for within the three aggregate roots — none removed, none duplicated. (`PromoteTaskToIssue` is out-of-band and excluded from this count.)
+Four aggregate roots own commands within this BC (ADR-0020 + ADR-0027). Commands are organized by owning aggregate. All 17 in-BC commands are accounted for within the four aggregate roots — none removed, none duplicated. `RunbookExecution` commands are TBD (Event Storming pending). (`PromoteTaskToIssue` is out-of-band and excluded from this count.)
 
 ### FeatureRun commands (pipeline orchestration)
 
@@ -106,9 +104,10 @@ Three aggregate roots own commands within this BC (ADR-0020). Commands are organ
 - Fan-out rules (what is and isn't parallelizable)
 - Issue-first discipline
 - Per-ticket git worktree isolation for sweep operations (ADR-0017; `bootstrap/scripts/sweep-worktree*.sh`)
-- Gate ROI audit operational layer: `GateEvent` append-log (`docs/gate-audit/events.jsonl`), `GateAuditWeek` read-model (`docs/gate-audit/aggregate.jsonl`), weekly aggregation (`gate-audit-aggregate.sh`), operator tagging CLI (`forge gate-tag`). These are **operational tooling read-models**, not DDD aggregate roots. The three aggregate roots of this BC remain `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` (ADR-0020).
+- Gate ROI audit operational layer: `GateEvent` append-log (`docs/gate-audit/events.jsonl`), `GateAuditWeek` read-model (`docs/gate-audit/aggregate.jsonl`), weekly aggregation (`gate-audit-aggregate.sh`), operator tagging CLI (`forge gate-tag`). These are **operational tooling read-models**, not DDD aggregate roots. The four aggregate roots of this BC are `FeatureRun`, `GovernanceRun`, `TwoVoiceReview`, `RunbookExecution` (ADR-0020 + ADR-0027).
 
 **Out of scope:**
+- **Domain models of target BCs** — aggregate names, invariants, and vocabulary of any pet-project (archi2likec4, digest, etc.) are unknown to this BC. meta-pipeline BC knows only that "a target artifact exists and conforms to meta-schema"; it never reads target-domain terms as domain concepts (ADR-0027, Domain Inversion).
 - Source code of downstream projects where claude-mini is installed
 - Claude Code engine internals (tool dispatch, context window management)
 - GitHub platform internals (Actions runner mechanics, PR merge algorithms)
@@ -129,7 +128,7 @@ Three aggregate roots own commands within this BC (ADR-0020). Commands are organ
 
 ## Aggregate Root
 
-Three aggregate roots within `claude-mini-pipeline` BC, per ADR-0020 (`docs/decisions/0020-god-aggregate-sub-aggregate-extraction.md`).
+Four aggregate roots within `meta-pipeline BC`, per ADR-0020 + ADR-0027 (`docs/decisions/0020-god-aggregate-sub-aggregate-extraction.md`, `docs/decisions/0027-domain-inversion-meta-vs-target-bc.md`).
 
 ### FeatureRun
 
@@ -142,6 +141,7 @@ Invariants:
 - `dod_state` monotonic: `in_progress → review_pending → done`; never reversed within a run
 - `dod_state` may transition to `done` only when both: `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` AND `GovernanceRun.state = approved` — cross-aggregate query, not embedded state (ADR-0020 §Cross-aggregate-communication)
 - `advisor()` called ≥ 2 times when task is nontrivial (per `docs/principles.md`)
+- `FeatureRun` does not read target BC domain data directly — all target artifacts enter meta through ACL (ADR-0027)
 
 **Note:** `BacklogGroomed` belongs to a separate out-of-band aggregate (`BacklogGroomRun`). It is not part of `FeatureRun`.
 
@@ -171,6 +171,22 @@ Invariants:
 
 ---
 
+### RunbookExecution
+
+**`RunbookExecution`** — один запуск задокументированной процедуры из `docs/runbooks/`. Независимый агрегатный корень; не вложен в `FeatureRun` — может существовать полностью вне feature-pipeline (drill, cron, manual recovery).
+
+Инварианты:
+- Один `RunbookExecution` — один runbook-документ, одна инвокация; повторный запуск = новый экземпляр
+- State machine: `pending → in_progress → completed | aborted | failed`
+  - `completed` — оператор объявил завершение или автоматический запуск завершился без ошибок
+  - `aborted` — оператор остановил до конца
+  - `failed` — автоматический запуск завершился с ошибкой
+- `trigger` ∈ `{manual, scheduled, hook}` — определяет кто инициировал
+- Каждый `RunbookExecution` оставляет минимум одну запись в `session-log`
+- `RunbookExecution` не владеет и не порождает `FeatureRun`, `GovernanceRun`, `TwoVoiceReview`
+
+---
+
 ## Policies
 
 BC-wide flat table (not per-aggregate). Policy trigger ownership follows the owning aggregate — triggers from `GovernanceRun` and `TwoVoiceReview` are listed here for centralized reference (ADR-0020 Confirmation §8).
@@ -192,6 +208,7 @@ BC-wide flat table (not per-aggregate). Policy trigger ownership follows the own
 
 | External BC | DDD Pattern | Notes |
 |---|---|---|
+| **target BC** (each pet-project) | AACL (Conformist downstream + ACL upstream) | target conforms to meta-pipeline BC schema (pipeline stages, governance rules, artifact format). meta validates incoming target artifacts through ACL. meta never reads target-domain terms as domain concepts. Full diagram: `docs/domain/context-map.md`. |
 | **GitHub platform** (Issues, PRs, Projects, Actions) | Customer/Supplier + Open Host Service | Pipeline is customer. ACL via GitHub MCP server + `gh` CLI. Translates GitHub model into domain terms (issue-ref, PR body contract). |
 | **ChatGPT Plus / Codex CLI** | Conformist | Pipeline takes device-auth OAuth output as-is; no translation layer. Corporate repo restriction is an operator access-gate, not a DDD pattern. |
 | **Git hook system** | Customer/Supplier | `.git/hooks/` is the physical installation boundary per Principle 5. Pipeline supplies the hook; git is the consumer. |
@@ -316,7 +333,7 @@ No storage schema. Attributes reflect domain invariants only.
 
 ### Entities
 
-Per ADR-0020, entities are distributed across three aggregate roots.
+Per ADR-0020 + ADR-0027, entities are distributed across four aggregate roots.
 
 | Entity | Owned by | Key Attributes | Valid States |
 |---|---|---|---|
@@ -337,6 +354,7 @@ Per ADR-0020, entities are distributed across three aggregate roots.
 | `dod_state` monotonic: `in_progress → review_pending → done`; driven by `DoDSatisfied` (→ done); never reversed | Honor system — no artifact enforces the transition sequence |
 | `dod_state = done` requires TwoVoiceReview.state ∈ {agreed, reconciled, deferred} AND GovernanceRun.state = approved | Honor system — cross-aggregate reads are operator judgment at DoD evaluation time |
 | `advisor_call_count ≥ 2` on nontrivial tasks | Honor system — no artifact; see Internal Compliance table |
+| `FeatureRun` does not read target BC domain data directly; all target artifacts enter through ACL | Honor system + ACL enforcement artifacts (`plan-lint.sh`, `pre-commit-governance.sh`, `@agent-domain-reviewer`) |
 
 ### TwoVoiceReview invariant enforcement
 

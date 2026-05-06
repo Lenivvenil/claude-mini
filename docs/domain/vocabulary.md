@@ -1,7 +1,9 @@
 # Ubiquitous Language — claude-mini-pipeline
 
+> **DEPRECATED as of ADR-0027 (2026-05-06).** This file has been migrated to `docs/domain/meta/vocabulary.md`. The canonical vocabulary for `meta-pipeline BC` lives there. This file is kept for historical ADR cross-reference integrity. Do not edit; do not use as source of truth.
+
 **Version:** 2026-05-04
-**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122) + ADR-0024 (Session Continuity BC, issue #128) + IntentCheck/AC alignment (#133); four aggregate roots across two BCs
+**Status:** superseded by `docs/domain/meta/vocabulary.md` (ADR-0027, issue #130)
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 

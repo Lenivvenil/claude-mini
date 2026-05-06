@@ -2,11 +2,11 @@
 <!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
 <!-- Five-minute cold-start: read this + latest session-log entry, start in 5 min. (ADR-0024) -->
 
-session_id: 2026-05-05T00:00:00Z
-date_iso: 2026-05-05
-current_branch: main
-last_commit_sha: 48069e9
-active_feature_run_id: null
+session_id: 2026-05-06T06:21:53Z
+date_iso: 2026-05-06
+current_branch: feat/domain-inversion-meta-target-130
+last_commit_sha: 25f9db5
+active_feature_run_id: #130
 
 next_3_actions:
   - Pick next issue from backlog (run /backlog-review or check GitHub Issues)

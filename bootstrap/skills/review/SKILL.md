@@ -16,7 +16,7 @@ description: Two-layer code review of staged diff against plan.md and docs/princ
 
 - `plan.md` present in repo root
 - `~/.claude/scripts/verify.sh` installed (via `./bootstrap/universal-setup.sh --install`) — Layer 1 gate
-- `docs/principles.md` and `docs/domain/overview.md` present
+- `docs/principles.md` and `docs/domain/meta/overview.md` present
 
 ## Steps
 
@@ -25,7 +25,7 @@ Diff: `git diff --cached HEAD 2>/dev/null || git diff HEAD 2>/dev/null || git sh
 Plan: @plan.md
 Principles: @docs/principles.md
 ADRs: `ls docs/decisions/ 2>/dev/null`
-Domain contracts: @docs/domain/overview.md
+Domain contracts: @docs/domain/meta/overview.md
 
 ### LAYER 1 GATE RULE — READ THIS FIRST
 
@@ -56,7 +56,7 @@ Review the diff against the plan, principles, and domain contracts. Return markd
 - **Style** — consistent with existing codebase patterns?
 - **Tests** — present, meaningful, covering edge cases?
 - **Plan/ADR deviation** — any implicit drift from written artefacts?
-- **Domain invariants** — does the diff violate any `FeatureRun` invariant or contradict a row in the Policies table from `docs/domain/overview.md`? Check: single issue-ref per run, monotonic DoD checklist, two-voice state machine, advisor ≥ 2 on nontrivial tasks. If the diff does not touch pipeline-contract files, state "N/A — diff does not affect pipeline contracts" and move on.
+- **Domain invariants** — does the diff violate any `FeatureRun` invariant or contradict a row in the Policies table from `docs/domain/meta/overview.md`? Check: single issue-ref per run, monotonic DoD checklist, two-voice state machine, advisor ≥ 2 on nontrivial tasks. If the diff does not touch pipeline-contract files, state "N/A — diff does not affect pipeline contracts" and move on.
 - **AC alignment** — run `/intent-check <issue-number>` (or invoke inline if issue number is available from plan.md or branch name). For each AC item, classify as `covered | partial | missing`; diff hunks without a matching AC item are reported in a separate "Unrelated changes" block. Output the result table. If any item is `missing`, flag as SUGGEST unless operator has already documented it as a conscious scope gap in the PR thread.
 
 ### Severity convention

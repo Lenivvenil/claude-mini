@@ -18,12 +18,16 @@
 
 ### 0. Domain check (после чтения issue, до /plan)
 
-После того как прочитал issue — убедись что `docs/domain/` актуален:
+После того как прочитал issue — убедись что domain-документация актуальна. После ADR-0027 структура следующая:
+
 ```bash
-ls docs/domain/  # должен содержать overview.md + vocabulary.md
+ls docs/domain/meta/   # должен содержать overview.md + vocabulary.md (meta-pipeline BC)
+ls docs/domain/        # также context-map.md, session-continuity/, deprecated stubs
 ```
 
-Если пуст или данные явно устарели — сначала:
+**Если работаешь в pet-проекте** (не в claude-mini): domain docs находятся в репо самого проекта (`docs/domain/<bc-name>/overview.md`). Если их нет — сначала выполни `docs/runbooks/setup-target-domain.md`.
+
+Если meta-docs пусты или явно устарели — сначала:
 ```
 @agent-domain-researcher
 ```

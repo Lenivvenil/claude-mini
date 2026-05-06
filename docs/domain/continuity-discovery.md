@@ -4,13 +4,13 @@
 **Date:** 2026-05-03
 **Author:** `domain-researcher`
 **Scope:** propose a Ubiquitous Language extension and a Bounded Context Canvas sketch for a new "Session Continuity" bounded context. **Not** a vocabulary.md edit — that is for the operator to merge after review.
-**Relationship to `claude-mini-pipeline`:** sibling BC, not a sub-aggregate. Session Continuity *observes* `FeatureRun` (read-only reference via `active_feature_run_id`); it does not own pipeline orchestration. See "Boundary tensions" red hotspot below for the two unresolved seams.
+**Relationship to `meta-pipeline BC`:** sibling BC, not a sub-aggregate. Session Continuity *observes* `FeatureRun` (read-only reference via `active_feature_run_id`); it does not own pipeline orchestration. See "Boundary tensions" red hotspot below for the two unresolved seams.
 
 ---
 
 ## Why a new BC
 
-`claude-mini-pipeline` owns *one feature delivery* end-to-end (`FeatureRun` lifecycle: issue → plan → ADR → implement → review → PR → merge). It does not own *what happens between LLM sessions* — the moment the session ends and a new operator (or the same operator on a new day) tries to pick up where things stopped.
+`meta-pipeline BC` owns *one feature delivery* end-to-end (`FeatureRun` lifecycle: issue → plan → ADR → implement → review → PR → merge). It does not own *what happens between LLM sessions* — the moment the session ends and a new operator (or the same operator on a new day) tries to pick up where things stopped.
 
 Issue #128 introduces three artifacts whose collective purpose is "the next session can resume in ≤5 minutes":
 - `STATE.md` — snapshot (≤200 lines)
@@ -35,7 +35,7 @@ Existing terms (`FeatureRun`, `GovernanceRun`, `TwoVoiceReview`, `Operator`, `Ma
 
 ### active_feature_run_id
 
-One of the nine `STATE.md` fields holding a reference (issue ref, e.g., `#128`) to the `FeatureRun` currently in progress, or `null` if no run is active. Read-only pointer across the BC boundary into `claude-mini-pipeline`; resolves to a `FeatureRun` aggregate that Session Continuity does not own.
+One of the nine `STATE.md` fields holding a reference (issue ref, e.g., `#128`) to the `FeatureRun` currently in progress, or `null` if no run is active. Read-only pointer across the BC boundary into `meta-pipeline BC`; resolves to a `FeatureRun` aggregate that Session Continuity does not own.
 
 *Discriminating note:* this is a reference, not an embedded copy of `FeatureRun` state. Session Continuity reads `FeatureRun.dod_state` by ID at snapshot time; it does not mirror or cache it (ADR-0020 cross-aggregate communication pattern).
 
@@ -93,7 +93,7 @@ A `STATE.md` field listing zero or more unresolved questions the current session
 
 A check that scans the current `plan.md` and verifies every entry under §4 ("Selected approach") and §3 ("Approaches considered") that asserts a design decision carries an `ADR-ref` (`docs/decisions/NNNN-*.md` or explicit "no ADR — justification: ..."). Run as part of the hand-off contract; failure blocks the hand-off from being declared complete.
 
-*Discriminating note:* the plan.md linter enforces ADR-discipline on plan content, which is `claude-mini-pipeline` concern, but is invoked from the hand-off contract, which is Session Continuity concern. This BC owns the *invocation* (when to run); `claude-mini-pipeline` owns the *rule definition* (what counts as a design decision). See hotspot #1.
+*Discriminating note:* the plan.md linter enforces ADR-discipline on plan content, which is `meta-pipeline BC` concern, but is invoked from the hand-off contract, which is Session Continuity concern. This BC owns the *invocation* (when to run); `meta-pipeline BC` owns the *rule definition* (what counts as a design decision). See hotspot #1.
 
 ---
 
@@ -160,12 +160,12 @@ The combined precondition that all three hand-off artifacts (STATE.md updated an
 | `STATE.md` | New aggregate root candidate in Session Continuity BC; references `FeatureRun` by `active_feature_run_id` |
 | `session-log` | New entity in Session Continuity BC; append-only; not owned by any `FeatureRun` |
 | `Session` | New aggregate root candidate in Session Continuity BC; lifecycle orthogonal to `FeatureRun` |
-| `Hand-off` | New process/event concept in Session Continuity BC; triggers cross to `claude-mini-pipeline` only via plan.md linter |
+| `Hand-off` | New process/event concept in Session Continuity BC; triggers cross to `meta-pipeline BC` only via plan.md linter |
 | `Continuity`, `Resume`, `Human Resume Test` | Properties / acceptance criteria of Session Continuity BC |
 | `next_3_actions`, `blocked_on`, `risk_flags`, `open_questions`, `session_id`, `active_feature_run_id` | Attributes of the `STATE.md` aggregate |
-| `plan.md Linter` | **Cross-BC seam** — owned by Session Continuity (invocation), enforces a `claude-mini-pipeline` rule (ADR-discipline). See hotspot #1 |
+| `plan.md Linter` | **Cross-BC seam** — owned by Session Continuity (invocation), enforces a `meta-pipeline BC` rule (ADR-discipline). See hotspot #1 |
 
-`FeatureRun` is **not modified** by this BC. Session Continuity holds a reference (`active_feature_run_id`) and may read `FeatureRun.dod_state`, `FeatureRun.issue_ref` for snapshot content, but emits no commands into `claude-mini-pipeline`.
+`FeatureRun` is **not modified** by this BC. Session Continuity holds a reference (`active_feature_run_id`) and may read `FeatureRun.dod_state`, `FeatureRun.issue_ref` for snapshot content, but emits no commands into `meta-pipeline BC`.
 
 Plain attributes `date_iso`, `current_branch`, `last_commit_sha` are STATE.md fields but are intentionally not promoted to UL terms (see "Intentional exclusions" note at top of UL section).
 
@@ -205,7 +205,7 @@ Maintain a triple hand-off contract (STATE.md + session-log + plan.md linter) su
 
 ### Strategic classification
 
-- **Core / Supporting / Generic:** Supporting. Continuity is critical to operator trust but does not differentiate the pipeline; it serves the core (`claude-mini-pipeline`).
+- **Core / Supporting / Generic:** Supporting. Continuity is critical to operator trust but does not differentiate the pipeline; it serves the core (`meta-pipeline BC`).
 - **Domain role:** observability + resumability layer over feature work.
 
 ### Responsibilities
@@ -217,17 +217,17 @@ Maintain a triple hand-off contract (STATE.md + session-log + plan.md linter) su
 
 ### Not responsibilities (out of scope)
 
-- Owning or mutating `FeatureRun`, `GovernanceRun`, or `TwoVoiceReview` state — they remain in `claude-mini-pipeline`.
-- Defining what counts as a "design decision" in plan.md — that rule belongs to `claude-mini-pipeline` (the linter only enforces it).
+- Owning or mutating `FeatureRun`, `GovernanceRun`, or `TwoVoiceReview` state — they remain in `meta-pipeline BC`.
+- Defining what counts as a "design decision" in plan.md — that rule belongs to `meta-pipeline BC` (the linter only enforces it).
 - Storing pipeline events or governance decisions — `events.jsonl` (gate-audit) and ADRs are separate audit trails.
 
 ### Inbound events (consumed)
 
 | Event | Source BC | Reaction |
 |---|---|---|
-| `FeaturePipelineStarted` | claude-mini-pipeline | Update `STATE.md.active_feature_run_id` |
-| `DoDSatisfied` | claude-mini-pipeline | Update `STATE.md.next_3_actions` (likely "open PR" or move to next ticket); append session-log note |
-| `AdvisorReturned` | claude-mini-pipeline | Append session-log entry referencing critique |
+| `FeaturePipelineStarted` | meta-pipeline BC | Update `STATE.md.active_feature_run_id` |
+| `DoDSatisfied` | meta-pipeline BC | Update `STATE.md.next_3_actions` (likely "open PR" or move to next ticket); append session-log note |
+| `AdvisorReturned` | meta-pipeline BC | Append session-log entry referencing critique |
 | `SessionStarted` (operator action) | self | Read prior STATE.md; append session-log start marker |
 | `HandoffRequested` (operator command) | self | Run plan.md linter; refresh STATE.md; append session-log; emit `HandoffPrepared` or `HandoffBlocked` |
 
@@ -243,7 +243,7 @@ Maintain a triple hand-off contract (STATE.md + session-log + plan.md linter) su
 
 ### Collaborators
 
-- **`claude-mini-pipeline` (upstream):** Session Continuity reads `FeatureRun` state by reference; relationship pattern = **Customer/Supplier** (we are customer, pipeline is supplier of run state). Reference-only reads via `active_feature_run_id` follow the ADR-0020 cross-aggregate communication pattern. (House style note: existing `overview.md` reserves explicit ACL labelling for external systems like GitHub; for an internal upstream, plain Customer/Supplier with reference-only reads is closer to current convention. Operator may tighten this.)
+- **`meta-pipeline BC` (upstream):** Session Continuity reads `FeatureRun` state by reference; relationship pattern = **Customer/Supplier** (we are customer, pipeline is supplier of run state). Reference-only reads via `active_feature_run_id` follow the ADR-0020 cross-aggregate communication pattern. (House style note: existing `overview.md` reserves explicit ACL labelling for external systems like GitHub; for an internal upstream, plain Customer/Supplier with reference-only reads is closer to current convention. Operator may tighten this.)
 - **Operator:** the only actor that triggers `HandoffRequested` and `SessionStarted`. Also the sole human consumer of `STATE.md` content.
 - **Git / filesystem:** the durability layer. STATE.md and session-log live in the repo; their persistence is git's responsibility.
 - **`adversarial-critic` and `domain-reviewer` (potential future):** may consume hand-off artifacts to verify continuity quality. Not currently designed.
@@ -254,7 +254,7 @@ All terms in the "Ubiquitous Language extension" section above must be used cons
 
 ### Distance from core
 
-One hop from `claude-mini-pipeline` (its primary collaborator). Two hops from GitHub (via pipeline). No direct integration with Anthropic API, Codex CLI, or external services.
+One hop from `meta-pipeline BC` (its primary collaborator). Two hops from GitHub (via pipeline). No direct integration with Anthropic API, Codex CLI, or external services.
 
 ---
 
@@ -262,7 +262,7 @@ One hop from `claude-mini-pipeline` (its primary collaborator). Two hops from Gi
 
 These are explicit unresolved questions, flagged honestly per `vocabulary.md#Red Hotspot` discipline.
 
-1. **plan.md linter ownership seam.** The linter enforces `claude-mini-pipeline`'s ADR-discipline rule but is invoked from Session Continuity's hand-off contract. Two defensible placements: (a) linter lives in pipeline BC, hand-off contract simply *consumes* its result; (b) linter lives in Session Continuity, pipeline owns only the rule definition. Issue #128 bundles all three artifacts under "triple hand-off"; domain-wise, leg three may belong elsewhere. Needs operator decision before implementation.
+1. **plan.md linter ownership seam.** The linter enforces `meta-pipeline BC`'s ADR-discipline rule but is invoked from Session Continuity's hand-off contract. Two defensible placements: (a) linter lives in pipeline BC, hand-off contract simply *consumes* its result; (b) linter lives in Session Continuity, pipeline owns only the rule definition. Issue #128 bundles all three artifacts under "triple hand-off"; domain-wise, leg three may belong elsewhere. Needs operator decision before implementation.
 
 2. ~~**Is `Session` an aggregate root, or is `STATE.md` a projection of `Session`?**~~ **Resolved by ADR-0024 (sub-decision 2):** `STATE.md` is the aggregate root; `Session` is an attribute (`session_id`). Document-model chosen over event-sourcing per Principle 8. Approach B1 chosen; B2 (event-sourced `Session`) rejected.
 
@@ -287,7 +287,7 @@ These are explicit unresolved questions, flagged honestly per `vocabulary.md#Red
 ## Hand-off to next stage
 
 This discovery doc is intended for:
-1. **Operator review** — confirm or revise the BC boundary call (sibling vs sub-aggregate of `claude-mini-pipeline`), resolve red hotspots #1 and #2, decide `session_id` rule.
+1. **Operator review** — confirm or revise the BC boundary call (sibling vs sub-aggregate of `meta-pipeline BC`), resolve red hotspots #1 and #2, decide `session_id` rule.
 2. **`domain-reviewer`** — verify no vocabulary drift against existing `vocabulary.md`, check that proposed terms do not collide with existing terms (especially `open_questions` vs `Red Hotspot`), validate cross-aggregate reference pattern matches ADR-0020.
 3. **`/plan 128`** — once boundary is confirmed and term set is approved, plan can proceed knowing the language and aggregate placement.
 

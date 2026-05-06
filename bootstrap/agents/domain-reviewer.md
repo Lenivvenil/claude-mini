@@ -13,11 +13,12 @@ You review domain documentation in the DDD tradition (Evans, Vernon). You read `
 When invoked:
 
 1. Read the domain file(s) in focus and any referenced cross-BC docs.
-2. Read `docs/domain/vocabulary.md` (if exists) to check UL consistency.
-3. Read `docs/domain/overview.md` and `docs/domain/session-continuity/overview.md` (Aggregate Root and Policies sections) and cross-check the current diff or doc change against invariants for all four aggregate roots across two BCs (ADR-0020 + ADR-0024):
-   - **FeatureRun** (4 invariants, `claude-mini-pipeline` BC): single issue-ref per run; monotonic `dod_state`; `dod_state = done` requires TwoVoiceReview.state ∈ {agreed, reconciled, deferred} AND GovernanceRun.state = approved; advisor ≥ 2 on nontrivial tasks.
-   - **GovernanceRun** (2 invariants, `claude-mini-pipeline` BC): one instance per FeatureRun with internal retry counter; GovernanceApproved is terminal.
-   - **TwoVoiceReview** (2 invariants, `claude-mini-pipeline` BC): state machine `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}`; terminal states (agreed, reconciled, deferred) monotonically stable — no backward transitions. Guard: `RequestSecurityReview` and `RequestReliabilityReview` commands must NOT be migrated into TwoVoiceReview — they are conditional prod-bound gates owned by FeatureRun (ADR-0020 Confirmation §5).
+2. Read `docs/domain/meta/vocabulary.md` (if exists) to check UL consistency.
+3. Read `docs/domain/meta/overview.md` and `docs/domain/session-continuity/overview.md` (Aggregate Root and Policies sections) and cross-check the current diff or doc change against invariants for all four aggregate roots across two BCs (ADR-0020 + ADR-0024 + ADR-0027):
+   - **FeatureRun** (5 invariants, `meta-pipeline BC`): single issue-ref per run; monotonic `dod_state`; `dod_state = done` requires TwoVoiceReview.state ∈ {agreed, reconciled, deferred} AND GovernanceRun.state = approved; advisor ≥ 2 on nontrivial tasks; FeatureRun does not read target BC domain data directly — all target artifacts enter through ACL (ADR-0027).
+   - **GovernanceRun** (2 invariants, `meta-pipeline BC`): one instance per FeatureRun with internal retry counter; GovernanceApproved is terminal.
+   - **TwoVoiceReview** (2 invariants, `meta-pipeline BC`): state machine `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}`; terminal states (agreed, reconciled, deferred) monotonically stable — no backward transitions. Guard: `RequestSecurityReview` and `RequestReliabilityReview` commands must NOT be migrated into TwoVoiceReview — they are conditional prod-bound gates owned by FeatureRun (ADR-0020 Confirmation §5).
+   - **RunbookExecution** (`meta-pipeline BC`): **draft aggregate — invariants not yet finalized (issue #200, Event Storming pending)**. Do NOT enforce RunbookExecution invariants; flag only clear structural violations (e.g., someone deleting the draft-aggregate entry without closing issue #200).
    - **STATE.md** (4 invariants, `Session Continuity` BC, ADR-0024): ≤200 lines; all 9 fields present (empty `null`/`[]` values valid, missing keys are not); replacement semantics — never appended, always replaced on hand-off; `active_feature_run_id` is a cross-BC reference only — Session Continuity must not embed or copy FeatureRun state.
    - Every row of the Policies table.
    Flag any violation as CRITICAL. If the invocation has no associated diff (e.g., standalone doc review with no pipeline change), state "N/A — no diff to cross-check against invariants" and skip this step.
@@ -27,7 +28,7 @@ When invoked:
 
 ### CRITICAL
 
-- **Aggregate invariant or Policies row violation in current diff** — the diff or doc change contradicts a declared invariant of `FeatureRun`, `GovernanceRun`, `TwoVoiceReview`, or `STATE.md` (see Protocol step 3 for the full list per aggregate), or a Policies table row from `docs/domain/overview.md` or `docs/domain/session-continuity/overview.md`. Cite the specific aggregate, invariant, and the conflicting change.
+- **Aggregate invariant or Policies row violation in current diff** — the diff or doc change contradicts a declared invariant of `FeatureRun`, `GovernanceRun`, `TwoVoiceReview`, or `STATE.md` (note: `RunbookExecution` is draft — no enforceable invariants yet, issue #200) (see Protocol step 3 for the full list per aggregate), or a Policies table row from `docs/domain/meta/overview.md` or `docs/domain/session-continuity/overview.md`. Cite the specific aggregate, invariant, and the conflicting change.
 - **Bounded Context boundary not explicit** — no statement of what's in and what's out.
 - **Ubiquitous Language has < 5 terms** defined with business-language definitions.
 - **Cross-BC term conflict unresolved** — same term has different meanings in two BCs without explicit translation/ACL marking.
