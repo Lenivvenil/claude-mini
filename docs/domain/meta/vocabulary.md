@@ -219,7 +219,7 @@ The contract by which a session transfers state to its successor: `STATE.md` (sn
 
 ## Honor-System Gap
 
-A norm in the Internal Compliance table that has no mechanical enforcement artifact — it depends on operator discipline alone. Labeled explicitly in the `Honor-system gap?` column as "Yes." The existence of a gap does not mean the norm is optional; it means there is no automated gate preventing violation.
+A norm in the Internal Compliance table that has no mechanical enforcement artifact — it depends on operator discipline alone. Labeled in the `Remaining gap?` column with "Yes" or a description of the gap. The existence of a gap does not mean the norm is optional; it means there is no automated gate preventing violation.
 
 *Discriminating note:* a partial-automation gap (e.g., "agent-triggered but trigger detection is human judgment") is different from a full honor-system gap. Both are documented, but full gaps carry higher regression risk.
 

@@ -412,26 +412,28 @@ Constraints lacking a mechanical check (two-voice review completion, human self-
 
 Every norm from `docs/principles.md` Definition of Done. **Enforcement type:** `automated` = script/CI always runs without human action; `agent-triggered` = agent invoked when condition met; `honor` = human commitment, no artifact enforces it.
 
-| Norm | Enforcement type | Artifact | Honor-system gap? |
-|---|---|---|---|
-| ADR merged before implementation, if architecturally significant | Automated (partial) | `pre-commit-governance.sh` Rule 3 blocks commit without ADR-ref when decision-type files staged | Partial — Rule 3 fires only when ADR files are staged; whether an ADR was needed is human judgment |
-| Domain docs updated if BC boundary or term changed | Agent-triggered | `domain-reviewer` invoked when `docs/domain/` changes | Yes — detecting *when* an update is needed is human judgment |
-| Unit tests written; coverage ≥ 80% | Honor | None | Yes — no CI coverage gate in this repo |
-| `/review` (Claude) approved | Honor | `/review` skill output (markdown, no merge gate) | Yes |
-| `/codex-review` approved OR `type:deferred-review` issue created | Automated (partial) | `review-codex.sh` creates deferred issue on skip/quota | Partial — "approved" is human judgment; deferred-issue creation is automated |
-| Disagreements between Claude and Codex resolved in PR thread | Honor | PR body convention | Yes |
-| Human self-review performed | Honor | None | Yes |
-| Security scans clean | Honor | None — no language-specific audit (pure shell/markdown repo) | Yes |
-| Docs updated (README, runbook, CHANGELOG) | Agent-triggered (conditional) | `docs-reviewer` invoked when human-facing docs change | Partial — trigger detection is human judgment |
-| Human-facing docs reviewed by `docs-reviewer` | Agent-triggered (conditional) | `docs-reviewer` invoked inside `/review` | Partial — trigger is honor; review itself is automated once triggered |
-| Reliability reviewed by `reliability-reviewer` on prod-bound PRs | Agent-triggered (conditional) | `reliability-reviewer` invoked inside `/review` | Partial — prod-bound detection is honor; review itself is automated once triggered |
-| CI green on all required jobs | Automated | `.github/workflows/` (ShellCheck, lint-prompts, etc.) | No |
-| Conventional Commits; governance hook passed | Automated | `pre-commit-governance.sh` (PreToolUse) + `commit-msg-governance.sh` (`.git/hooks/commit-msg`) | No |
-| PR body cross-references issue (`Closes #NNN`) | Honor | PR body convention | Yes |
-| PR body cross-references ADR if one was authored | Automated (partial) | `pre-commit-governance.sh` Rule 3 requires ADR-ref in commit message | Partial — commit is enforced; PR body is honor |
-| `advisor()` called ≥ 2× on nontrivial tasks (per advisor policy, `docs/principles.md` §6 — beyond DoD checklist but included here for completeness) | Honor | None | Yes — no mechanical enforcement; tracked in issue #101 |
+**Enforcer column:** path to the hook/CI job/skill that enforces the norm, or `honor-only — see #NNN` for norms that remain on the honor system (tracked in a P2 ticket).
 
-**Meta-result:** 8 norms are full honor-system gaps; 6 are partially automated (trigger detection or approval step is human judgment); only 2 are fully automated (CI, governance hook). This table documents a partially aspirational DoD — not a description of a fully automated quality gate.
+| Norm | Enforcement type | Enforcer | Remaining gap? |
+|---|---|---|---|
+| ADR merged before implementation, if architecturally significant | Automated (partial) | `bootstrap/hooks/pre-commit-governance.sh` Rule 3; `bootstrap/hooks/commit-msg-governance.sh` Rule 3 | Partial — whether an ADR was *needed* is human judgment; the hook only checks that if decision-type files are staged, an ADR ref exists |
+| Domain docs updated if BC boundary or term changed | Automated (partial) | `bootstrap/hooks/pre-commit-governance.sh` Rule 3 (fires when `docs/domain/` staged, requires ADR ref); `domain-reviewer` agent invoked when `docs/domain/` changes | Partial — detecting *when* an update is needed remains human judgment; the hook only enforces traceability *when* domain files are staged. **Note:** table previously listed this as Honor — the hook coverage was already present but undocumented (#135). |
+| Installer test harness passes (coverage gate N/A — pure shell/markdown repo; see note) | Automated | `.github/workflows/ci.yml` job `install-verification` — runs `bootstrap/scripts/test-install-verification.sh` (13 assertions) | No — CI blocks merge on failure. **Note:** norm text updated in #135: original "Unit tests; coverage ≥ 80%" does not apply to this repo type; installer integration test is the closest mechanical equivalent. |
+| `/review` (Claude) approved | Honor | honor-only — see #202 | Yes — no merge gate; `/review` skill produces markdown report only |
+| `/codex-review` approved OR `type:deferred-review` issue created | Automated (partial) | `bootstrap/scripts/review-codex.sh` — creates deferred issue on skip/quota | Partial — "approved" is human judgment; deferred-issue creation is automated |
+| Disagreements between Claude and Codex resolved in PR thread | Honor | honor-only — see #203 | Yes — PR thread convention, no CI check |
+| Human self-review performed | Honor | honor-only — see #204 | Yes — no artifact enforces it |
+| Secret leak scan clean; dependency audit N/A for this repo (see note) | Automated | `.github/workflows/ci.yml` job `secret-scan` — scans for PEM private key headers and credential assignment patterns | No — CI blocks merge on every push/PR. Pattern grep covers the most common accidents (hardcoded private keys, credential assignment literals) for this repo type; dep-audit tools (`npm audit`, etc.) do not apply to a pure shell/markdown repo. **Note:** norm text updated in #135 from the principles.md examples which target language-specific dep audits. |
+| Docs updated (README, runbook, CHANGELOG) | Agent-triggered (conditional) | `docs-reviewer` agent invoked when human-facing docs change | Partial — trigger detection is human judgment |
+| Human-facing docs reviewed by `docs-reviewer` | Agent-triggered (conditional) | `docs-reviewer` agent invoked inside `/review` | Partial — trigger is human judgment; review itself is automated once triggered |
+| Reliability reviewed by `reliability-reviewer` on prod-bound PRs | Agent-triggered (conditional) | `reliability-reviewer` agent invoked inside `/review` | Partial — prod-bound detection is human judgment; review itself is automated once triggered |
+| CI green on all required jobs | Automated | `.github/workflows/ci.yml` (ShellCheck, setup-dry-run, install-verification, secret-scan, pr-body-check, markdown-links, gate-audit-test, adr-retirement-audit-test) | No |
+| Conventional Commits; governance hook passed | Automated | `bootstrap/hooks/pre-commit-governance.sh` (PreToolUse hook) + `bootstrap/hooks/commit-msg-governance.sh` (`.git/hooks/commit-msg`) | No |
+| PR body cross-references issue (`Closes #NNN`) | Automated | `.github/workflows/ci.yml` job `pr-body-check` — greps PR body for `Closes/Fixes/Resolves/Implements #NNN` (case-insensitive) on non-bot PRs | No — CI blocks merge on pull_request events. **Previously Honor; converted to automated in #135.** Note: this check requires a keyword prefix (`Closes`, `Fixes`, `Resolves`, `Implements`) — a deliberate tightening relative to the commit-msg governance hook (which accepts bare `#NNN` anywhere in the message). |
+| PR body cross-references ADR if one was authored | Automated (partial) | `bootstrap/hooks/pre-commit-governance.sh` Rule 3 requires ADR-ref in commit message | Partial — commit is enforced; PR body itself is not re-checked by CI |
+| `advisor()` called ≥ 2× on nontrivial tasks (beyond DoD checklist proper — included for completeness) | Honor | honor-only — see #205 (extends #101) | Yes — no mechanical trace of advisor invocations |
+
+**Meta-result after #135:** 5 norms are fully automated (CI green, governance hook, install-verification, secret-scan, pr-body-check); 4 are partially automated (trigger detection or approval step remains human judgment); 3 are agent-triggered conditional; 4 are honor-only with P2 tracking tickets (#202 /review, #203 disagreements, #204 self-review, #205 advisor×2). Total: 16 norms. This table describes the actual enforcement state, not aspirational state — every gap is acknowledged and tracked.
 
 ---
 
