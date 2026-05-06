@@ -161,7 +161,7 @@ echo "Exit: $?"  # 0 = OK, 1 = blocked
 | Сервер | Transport | Pinned version | Назначение | Когда использовать |
 |---|---|---|---|---|
 | **Serena** | stdio | `v1.2.0` | Семантическая навигация по коду: поиск символов, их references, структура файла | Вместо grep на больших файлах |
-| **GitHub** | HTTP (allowlisted) | GitHub API | Чтение и запись issues, PR, projects, actions | Для работы с бэклогом и PR |
+| **GitHub** | HTTP (allowlisted) | — (stable API) | Чтение и запись issues, PR, projects, actions | Для работы с бэклогом и PR |
 | **Context7** | stdio | `2.2.4` | Актуальная документация библиотек (не из training data) | Перед любой гипотезой об API библиотеки |
 
 Конфигурация серверов — в `.mcp.json` (repo root, `--scope project`, committable). Транспортная политика: ADR-0028 (`docs/decisions/0028-mcp-transport-security.md`). CI lint: `bootstrap/scripts/check-mcp-config.sh`.
