@@ -52,7 +52,7 @@ fi
 
 # Run the entire aggregation + report generation in a single python3 invocation.
 # Arguments: events_file output_dir dry_run(0|1)
-python3 - "$EVENTS_FILE" "$OUTPUT_DIR" "$DRY_RUN" << 'PYEOF'
+python3 - "$EVENTS_FILE" "$OUTPUT_DIR" "$DRY_RUN" "$REPO_ROOT" << 'PYEOF'
 import sys
 import json
 import os
@@ -66,6 +66,7 @@ QUALIFYING_WINDOW = 4    # number of qualifying weeks required for REMOVE verdic
 events_file = sys.argv[1]
 output_dir  = sys.argv[2]
 dry_run     = sys.argv[3] == "1"
+repo_root   = sys.argv[4] if len(sys.argv) > 4 else None
 
 current_day  = date.today()
 iso_cal      = current_day.isocalendar()
@@ -221,6 +222,79 @@ for gate_name, (gate_weeks, retention_rec) in gate_results.items():
             f"| {w['false_positives']} | {w['bypasses']} | {cost} |"
         )
     md_lines.append("")
+
+# ── DoD compliance snapshot ────────────────────────────────────────────────
+# Static read of docs/domain/meta/overview.md Internal Compliance table.
+# Counts norms by enforcement type; lists honor-only gaps with ticket refs.
+# Gracefully skipped if overview file is absent (e.g. sandboxed test env).
+
+if repo_root:
+    overview_path = os.path.join(repo_root, "docs", "domain", "meta", "overview.md")
+    try:
+        with open(overview_path) as fh:
+            overview_lines = fh.readlines()
+        in_compliance = False
+        in_table = False
+        counts = {"Automated": 0, "Automated (partial)": 0, "Agent-triggered": 0, "Honor": 0}
+        honor_entries = []
+        for line in overview_lines:
+            line = line.rstrip()
+            if "## Internal Compliance" in line:
+                in_compliance = True
+                continue
+            if in_compliance and line.startswith("## "):
+                break
+            if in_compliance and line.startswith("| Norm |"):
+                in_table = True
+                continue
+            if in_compliance and in_table and line.startswith("|---|"):
+                continue
+            if in_compliance and in_table and line.startswith("|"):
+                cols = [c.strip() for c in line.split("|")[1:-1]]
+                if len(cols) < 4:
+                    continue
+                norm_text = cols[0][:70]
+                enforcement = cols[1]
+                enforcer = cols[2]
+                if enforcement == "Automated":
+                    counts["Automated"] += 1
+                elif "partial" in enforcement.lower():
+                    counts["Automated (partial)"] += 1
+                elif "Agent-triggered" in enforcement:
+                    counts["Agent-triggered"] += 1
+                elif "honor" in enforcement.lower():
+                    counts["Honor"] += 1
+                    ticket_m = re.search(r'see #(\d+)', enforcer)
+                    ticket = f"#{ ticket_m.group(1)}" if ticket_m else "untracked"
+                    honor_entries.append(f"{ticket}: {norm_text}")
+        total = sum(counts.values())
+        if total == 0:
+            print("gate-audit: WARNING — Internal Compliance table parsed 0 norms; "
+                  "table header or section header may have changed in overview.md. "
+                  "DoD compliance section omitted from report.", file=sys.stderr)
+        if total > 0:
+            md_lines += [
+                "## DoD Compliance Snapshot",
+                "",
+                f"Source: `docs/domain/meta/overview.md` §Internal Compliance — read {current_day.isoformat()}",
+                "",
+                "| Enforcement type | Count | Share |",
+                "|---|---|---|",
+                f"| Automated (full) | {counts['Automated']} | {round(100*counts['Automated']/total)}% |",
+                f"| Automated (partial) | {counts['Automated (partial)']} | {round(100*counts['Automated (partial)']/total)}% |",
+                f"| Agent-triggered (conditional) | {counts['Agent-triggered']} | — |",
+                f"| Honor-only (P2 ticket exists) | {counts['Honor']} | {round(100*counts['Honor']/total)}% |",
+                f"| **Total norms** | **{total}** | |",
+                "",
+            ]
+            if honor_entries:
+                md_lines.append("**Honor-only norms (tracked):**")
+                md_lines.append("")
+                for entry in honor_entries:
+                    md_lines.append(f"- {entry}")
+                md_lines.append("")
+    except FileNotFoundError:
+        pass
 
 # ── Write or print ─────────────────────────────────────────────────────────
 

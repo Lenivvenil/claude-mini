@@ -62,9 +62,9 @@ git commit -m "chore(gate-audit): tag events YYYY-WW #122"
 
 ## Output
 
-Weekly report written to `docs/gate-audit/YYYY-WW.md` with one section per gate showing:
-- Retention recommendation: `KEEP` / `REMOVE` / `INSUFFICIENT_DATA`
-- Per-week table: frequency, real blocks, FP, bypasses, estimated cost
+Weekly report written to `docs/gate-audit/YYYY-WW.md` with:
+- One section per gate: retention recommendation (`KEEP` / `REMOVE` / `INSUFFICIENT_DATA`) + per-week table (frequency, real blocks, FP, bypasses, estimated cost)
+- **`## DoD Compliance Snapshot` section** — static read of `docs/domain/meta/overview.md` §Internal Compliance; counts norms by enforcement type (Automated / Automated partial / Agent-triggered / Honor-only) and lists honor-only gaps with their P2 ticket refs. Provides DoD coverage context alongside gate ROI data.
 
 Aggregate JSONL written to `docs/gate-audit/aggregate.jsonl`. Schema documented in
 `docs/gate-audit/schema.md`.

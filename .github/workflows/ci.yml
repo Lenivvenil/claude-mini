@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: '0 6 * * 1'  # Every Monday 06:00 UTC — weekly gate-audit run
 
+# Default to read-only token for all jobs. Write-capable jobs (gate-audit-weekly,
+# adr-retirement-audit-weekly) override with explicit permissions blocks.
+permissions:
+  contents: read
+
 jobs:
   shellcheck:
     runs-on: ubuntu-latest
@@ -81,6 +86,74 @@ jobs:
           use-quiet-mode: 'yes'
           config-file: '.github/markdown-link-check.json'
           folder-path: 'docs, bootstrap'
+
+  install-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Run install verification test harness
+        run: bash bootstrap/scripts/test-install-verification.sh
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Scan for hardcoded secrets
+        run: |
+          fail=0
+          # PEM-style private key headers — never legitimate in this repo.
+          # Scans all text files (--binary-files=without-match skips binaries).
+          if grep -rn --binary-files=without-match --exclude-dir=.git \
+               -E '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY' . 2>/dev/null; then
+            echo "::error::Private key header found — remove before committing"
+            fail=1
+          fi
+          # Credential assignments with literal values (excludes env var refs like $TOKEN or ${{ secrets.X }}).
+          # Covers .sh, .py, .yml, .yaml, .json, .toml, .env, and all other text files.
+          # {20,}: minimum 20 chars = practical threshold for real credential length;
+          # shorter random strings are unlikely to be production secrets.
+          # Known limitation: fires on pull_request [opened, synchronize, reopened]
+          # but NOT on PR body edits — process gate only, not a security boundary.
+          if grep -rn --binary-files=without-match --exclude-dir=.git \
+               -E '(PASSWORD|SECRET|TOKEN|API_KEY|APIKEY|PRIVATE_KEY)\s*=\s*[^$\{][a-zA-Z0-9+/]{20,}' \
+               . 2>/dev/null; then
+            echo "::error::Potential hardcoded credential found — use env vars or GitHub Secrets"
+            fail=1
+          fi
+          if [ "$fail" -eq 0 ]; then
+            echo "Secret scan clean."
+          fi
+          exit "$fail"
+
+  pr-body-check:
+    # Process gate: enforces PR body contains issue cross-reference (DoD norm).
+    # Known gap: fires on pull_request [opened, synchronize, reopened] but NOT on
+    # PR body edits (GitHub does not re-trigger `pull_request` on body edits by default).
+    # This is a governance process gate, not a security boundary — the gap is acceptable
+    # and tracked in issue #203. To close it: add `types: [opened, synchronize, reopened, edited]`
+    # to the workflow `pull_request:` trigger (would re-run all PR jobs on body edits).
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
+    steps:
+      - name: Verify PR body contains issue cross-reference
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # -i: case-insensitive so 'closes #123' also matches.
+          # Requires a keyword prefix (Closes/Fixes/Resolves/Implements) — deliberate tightening
+          # compared to the commit-msg governance hook (which accepts bare #NNN anywhere).
+          # The DoD norm specifies 'Closes #NNN'; this check enforces that intent.
+          if echo "$PR_BODY" | grep -iqE 'Closes\s+#[0-9]+|Fixes\s+#[0-9]+|Resolves\s+#[0-9]+|Implements\s+#[0-9]+'; then
+            echo "PR body contains issue cross-reference — OK"
+          else
+            echo "::error::PR body must reference an issue with a keyword prefix (e.g., 'Closes #123'). Add it and push again."
+            echo "PR body received (first 300 chars): ${PR_BODY:0:300}"
+            exit 1
+          fi
 
   gate-audit-test:
     runs-on: ubuntu-latest
