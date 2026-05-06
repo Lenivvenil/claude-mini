@@ -24,7 +24,7 @@
 
 This BC owns the triple hand-off contract: maintaining `STATE.md` (snapshot), `session-log/YYYY/MM/YYYY-MM-DD.md` (append-only history), and `plan.md` linter (ADR-discipline gate) such that any new LLM session or operator can resume work within five minutes of reading the snapshot — the Human Resume Test.
 
-This BC does NOT own pipeline orchestration, governance enforcement, or any `FeatureRun` lifecycle — those belong to `claude-mini-pipeline`.
+This BC does NOT own pipeline orchestration, governance enforcement, or any `FeatureRun` lifecycle — those belong to `meta-pipeline BC`.
 
 ---
 
@@ -53,13 +53,13 @@ This BC does NOT own pipeline orchestration, governance enforcement, or any `Fea
 |---|---|
 | `AppendSessionEntry(session_id, content)` | `SessionLogAppended` |
 
-### Inbound events (consumed from claude-mini-pipeline)
+### Inbound events (consumed from meta-pipeline BC)
 
 | Event | Source BC | Reaction |
 |---|---|---|
-| `FeaturePipelineStarted` | claude-mini-pipeline | Update `STATE.md.active_feature_run_id` |
-| `DoDSatisfied` | claude-mini-pipeline | Update `STATE.md.next_3_actions`; append session-log note |
-| `AdvisorReturned` | claude-mini-pipeline | Append session-log entry referencing critique |
+| `FeaturePipelineStarted` | meta-pipeline BC | Update `STATE.md.active_feature_run_id` |
+| `DoDSatisfied` | meta-pipeline BC | Update `STATE.md.next_3_actions`; append session-log note |
+| `AdvisorReturned` | meta-pipeline BC | Append session-log entry referencing critique |
 
 ---
 
@@ -73,8 +73,8 @@ This BC does NOT own pipeline orchestration, governance enforcement, or any `Fea
 - `bootstrap/templates/STATE.md.template` — starter for `--target` installs
 
 **Out of scope:**
-- `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` lifecycle — owned by `claude-mini-pipeline`
-- ADR-discipline rule definition — owned by `claude-mini-pipeline`; this BC only invokes the linter
+- `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` lifecycle — owned by `meta-pipeline BC`
+- ADR-discipline rule definition — owned by `meta-pipeline BC`; this BC only invokes the linter
 - `docs/gate-audit/events.jsonl` — gate audit is a separate append-only log with different consumer (not unified by design; see ADR-0024 sub-decision 8)
 - CI gate on plan.md linter — follow-up; not in this PR
 
@@ -110,7 +110,7 @@ Document-model aggregate root (ADR-0024, sub-decision 2). Nine fields:
 
 ```
 ┌─────────────────────────────────┐     reference-only     ┌──────────────────────────────────┐
-│     Session Continuity BC       │ ──────────────────────► │    claude-mini-pipeline BC        │
+│     Session Continuity BC       │ ──────────────────────► │    meta-pipeline BC           │
 │                                 │  (Customer/Supplier)    │                                   │
 │  STATE.md (aggregate root)      │                         │  FeatureRun (aggregate root)      │
 │  session-log (entity)           │  active_feature_run_id  │  GovernanceRun (aggregate root)   │
@@ -125,7 +125,7 @@ Document-model aggregate root (ADR-0024, sub-decision 2). Nine fields:
          └─ Operator (HandoffRequested, SessionStarted)
 ```
 
-Session Continuity is **Customer** of claude-mini-pipeline (**Supplier**). Session Continuity reads `FeatureRun` state by ID at snapshot time and emits no commands back into claude-mini-pipeline. This follows ADR-0020 cross-aggregate communication pattern.
+Session Continuity is **Customer** of meta-pipeline BC (**Supplier**). Session Continuity reads `FeatureRun` state by ID at snapshot time and emits no commands back into meta-pipeline BC. This follows ADR-0020 cross-aggregate communication pattern.
 
 ---
 
@@ -233,7 +233,7 @@ session-log/2026/05/2026-05-03.md (entity, append-only)
 
 ## Red Hotspots
 
-1. **plan.md linter invocation boundary.** Linter enforces `claude-mini-pipeline` rule (ADR-discipline) but is invoked from Session Continuity hand-off contract. Two defensible placements remain: (a) invocation owned here, rule defined in pipeline BC; (b) linter lives fully in pipeline BC. ADR-0024 chose option (a). Re-visit if the linter grows beyond grep-based checks. *(ADR-0024 sub-decision 1; trigger: linter needs LLM or complex logic)*
+1. **plan.md linter invocation boundary.** Linter enforces `meta-pipeline BC` rule (ADR-discipline) but is invoked from Session Continuity hand-off contract. Two defensible placements remain: (a) invocation owned here, rule defined in pipeline BC; (b) linter lives fully in pipeline BC. ADR-0024 chose option (a). Re-visit if the linter grows beyond grep-based checks. *(ADR-0024 sub-decision 1; trigger: linter needs LLM or complex logic)*
 
 2. **Operator-asserted field enforcement.** `next_3_actions`, `blocked_on`, `open_questions`, `risk_flags` cannot be mechanically verified for *quality* — only for *presence*. A filled-but-meaningless field passes all checks. Human Resume Test catches this only post-hoc. *(ADR-0024 deferred; trigger: one confirmed resume failure attributable to misleading fields)*
 

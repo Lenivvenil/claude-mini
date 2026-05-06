@@ -1,9 +1,7 @@
-# Ubiquitous Language — claude-mini-pipeline
+# Ubiquitous Language — meta-pipeline BC
 
-> **DEPRECATED as of ADR-0027 (2026-05-06).** This file has been migrated to `docs/domain/meta/vocabulary.md`. The canonical vocabulary for `meta-pipeline BC` lives there. This file is kept for historical ADR cross-reference integrity. Do not edit; do not use as source of truth.
-
-**Version:** 2026-05-04
-**Status:** superseded by `docs/domain/meta/vocabulary.md` (ADR-0027, issue #130)
+**Version:** 2026-05-06
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122) + ADR-0024 (Session Continuity BC, issue #128) + IntentCheck/AC alignment (#133) + ADR-0027 (Domain Inversion: meta vs target BC, issue #130); four aggregate roots across two BCs
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
@@ -17,6 +15,16 @@ The property of a feature branch diff where every acceptance criterion in the li
 
 ---
 
+## ACL (Anti-Corruption Layer)
+
+Слой трансляции и валидации на стыке `meta-pipeline BC` и `target BC`, принимающий на вход target-артефакты (plan.md, qa-report.md, commit-message, PR-description) и валидирующий их на соответствие meta-схеме. ACL отвергает артефакты, не прошедшие валидацию, не пропуская их во внутреннюю модель meta. ACL не модифицирует артефакты — исправление обязанность target.
+
+Текущая реализация ACL фрагментарна: `bootstrap/scripts/plan-lint.sh` (валидация plan.md), `pre-commit-governance.sh` (валидация commit-message), `@agent-domain-reviewer` (валидация изменений docs/domain/). Консолидация в единый модуль — follow-up (ADR-0027 AC#4 reinterpretation).
+
+*Discriminating note:* «ACL» в этом BC — Anti-Corruption Layer по Эвансу (DDD), не authentication/authorization и не список ACL файловой системы. Все три значения аббревиатуры несовместимы; внутри этого BC применяется только DDD-смысл.
+
+---
+
 ## ADR (Architecturally Significant Decision Record)
 
 A MADR 4.0 document in `docs/decisions/NNNN-*.md` recording a decision that meets at least one trigger in `docs/principles.md#что-значит-архитектурно-значимо`. Required before implementation; merged via canonical pipeline.
@@ -27,7 +35,7 @@ A MADR 4.0 document in `docs/decisions/NNNN-*.md` recording a decision that meet
 
 ## active_feature_run_id
 
-The `STATE.md` field holding a reference (issue number, e.g., `#128`) to the `FeatureRun` currently in progress, or `null` if no run is active. Read-only pointer across the BC boundary into `claude-mini-pipeline`; resolves to a `FeatureRun` aggregate that Session Continuity does not own.
+The `STATE.md` field holding a reference (issue number, e.g., `#128`) to the `FeatureRun` currently in progress, or `null` if no run is active. Read-only pointer across the BC boundary into `meta-pipeline BC`; resolves to a `FeatureRun` aggregate that Session Continuity does not own.
 
 *Discriminating note:* this is a reference, not an embedded copy of `FeatureRun` state. Session Continuity reads `FeatureRun.dod_state` by ID at snapshot time; it does not mirror or cache it (ADR-0020 cross-aggregate communication pattern, ADR-0024 sub-decision 2).
 
@@ -57,6 +65,14 @@ An agent subtype that can invoke a write-capable skill to produce documentation 
 
 ---
 
+## Bypass (gate)
+
+An instance of a gate being deliberately skipped, circumventing its enforcement. Occurs when an operator runs `git commit` directly (bypassing the Claude Code hook) or uses a workaround known to skip a specific gate. Contributes to the `bypasses` field in `GateAuditWeek`. Not automatically detected; must be manually recorded in `events.jsonl`.
+
+*Discriminating note:* a bypass is an intentional skip, not a gate failure or a false positive. A gate that always fires and is always a false positive has `fp > 0`; one that is actively circumvented has `bypasses > 0`.
+
+---
+
 ## Canonical Pipeline
 
 The documented sequence in `CLAUDE.md:27-34`: `task-to-issue → plan → adr (if needed) → implement → review → codex-review → governance → PR`. The single authoritative path for feature work. Deviations require justification. Orchestrated by `/feature`.
@@ -71,11 +87,11 @@ The property that work-in-progress survives the boundary between LLM sessions: a
 
 ---
 
-## dod_state
+## Deferred Review
 
-The `FeatureRun` attribute tracking pipeline progress. Valid transitions: `in_progress → review_pending → done` (monotonic; never reversed within a run). Driven by pipeline stage completion events.
+The state in which the second voice of two-voice review could not complete. Represented as a GitHub issue of type `type:deferred-review` (the artifact). Created when `/codex-review` is skipped (e.g., Plus OAuth quota exhausted, corporate repo gate). Satisfies the DoD graceful-degradation clause. Does not substitute for a passing review.
 
-*Discriminating note:* `dod_state` is not the same as the DoD checklist. The checklist is a set of boolean flags; `dod_state` is the aggregate state derived from them.
+*Naming note:* "Deferred Review" is the concept/state. "deferred-review issue" is the GitHub artifact. `DeferredReviewIssueCreated` is the domain event. Three forms, one concept.
 
 ---
 
@@ -87,11 +103,13 @@ The checklist in `docs/principles.md#definition-of-done` that every change must 
 
 ---
 
-## Deferred Review
+## Domain Inversion
 
-The state in which the second voice of two-voice review could not complete. Represented as a GitHub issue of type `type:deferred-review` (the artifact). Created when `/codex-review` is skipped (e.g., Plus OAuth quota exhausted, corporate repo gate). Satisfies the DoD graceful-degradation clause. Does not substitute for a passing review.
+Архитектурный приём, при котором переиспользуемый процесс описывается отдельным BC (`meta-pipeline BC`), а доменная модель проекта-потребителя — другим BC (`target BC`), причём процесс-BC ничего не знает о доменной модели потребителя, а потребитель конформируется к словарю и стадиям процесса.
 
-*Naming note:* "Deferred Review" is the concept/state. "deferred-review issue" is the GitHub artifact. `DeferredReviewIssueCreated` is the domain event. Three forms, one concept.
+Применение к данному репозиторию: до ADR-0027 `docs/domain/` описывал pipeline как единый flat-BC (`claude-mini-pipeline`) — это была инверсия, потому что pipeline — инструмент, а не домен. ADR-0027 исправляет инверсию: meta-pipeline BC описывает каркас; конкретный pet-проект (target BC) описывает свои агрегаты в своём репозитории.
+
+*Discriminating note:* Domain Inversion не является инверсией зависимостей в SOLID-смысле и не является «inversion of control». Источники: Verraes M. «Domains and BCs Don't Map 1 on 1» (2025), Evans DDD Europe 2025, Synpulse8 AACL pattern.
 
 ---
 
@@ -103,11 +121,11 @@ A `STATE.md` field naming the single concrete obstacle preventing forward progre
 
 ---
 
-## Bypass (gate)
+## dod_state
 
-An instance of a gate being deliberately skipped, circumventing its enforcement. Occurs when an operator runs `git commit` directly (bypassing the Claude Code hook) or uses a workaround known to skip a specific gate. Contributes to the `bypasses` field in `GateAuditWeek`. Not automatically detected; must be manually recorded in `events.jsonl`.
+The `FeatureRun` attribute tracking pipeline progress. Valid transitions: `in_progress → review_pending → done` (monotonic; never reversed within a run). Driven by pipeline stage completion events.
 
-*Discriminating note:* a bypass is an intentional skip, not a gate failure or a false positive. A gate that always fires and is always a false positive has `fp > 0`; one that is actively circumvented has `bypasses > 0`.
+*Discriminating note:* `dod_state` is not the same as the DoD checklist. The checklist is a set of boolean flags; `dod_state` is the aggregate state derived from them.
 
 ---
 
@@ -120,7 +138,6 @@ A gate blocking an action that was, upon operator judgment, a legitimate operati
 ---
 
 ## Fan-out
-
 
 Spawning multiple parallel agents or sub-tasks. Forbidden for feature work (ADR 0002). Permitted only for embarrassingly-parallel tasks: symbol renames across many files, import migrations, test templating from schema.
 
@@ -136,9 +153,9 @@ The canonical multi-stage workflow for delivering a change: issue → plan → (
 
 ## Feature Run
 
-One complete execution of `/feature <issue-number>`. The orchestrating aggregate root of `claude-mini-pipeline` BC. Holds full context (`issue_ref`, `dod_state`, `advisor_call_count`) from pipeline start to merge. Delegates to `GovernanceRun` and `TwoVoiceReview` sub-cycles and reads their terminal states at DoD evaluation.
+One complete execution of `/feature <issue-number>`. The orchestrating aggregate root of `meta-pipeline BC`. Holds full context (`issue_ref`, `dod_state`, `advisor_call_count`) from pipeline start to merge. Delegates to `GovernanceRun` and `TwoVoiceReview` sub-cycles and reads their terminal states at DoD evaluation.
 
-Invariants: single issue reference; monotonic `dod_state` (`in_progress → review_pending → done`); `dod_state = done` requires `GovernanceRun.state = approved` AND `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}`; advisor called ≥ 2 times on nontrivial work.
+Invariants: single issue reference; monotonic `dod_state` (`in_progress → review_pending → done`); `dod_state = done` requires `GovernanceRun.state = approved` AND `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}`; advisor called ≥ 2 times on nontrivial work; **FeatureRun does not read target BC domain data directly — all target artifacts enter meta through ACL** (ADR-0027).
 
 *Discriminating note:* `FeatureRun` no longer owns `two_voice_state` — that attribute migrated to `TwoVoiceReview` (ADR-0020). `FeatureRun` reads `TwoVoiceReview.state` by ID reference; it does not embed a copy.
 
@@ -156,7 +173,7 @@ The `posttooluse-format.sh` Claude Code hook registered under `PostToolUse[Edit|
 
 A read-model summary record (not a DDD aggregate root) for gate ROI: one (gate_name, week_iso) pair from `docs/gate-audit/aggregate.jsonl`. Fields: `frequency` (total fires), `real_blocks`, `false_positives`, `bypasses`, `est_cost_min`, `retention_rec`. The `retention_rec` field is computed over the last 4 qualifying `GateAuditWeek` records for a gate, not within a single week. Produced by `gate-audit-aggregate.sh`; not owned by any aggregate root within this BC.
 
-*Discriminating note:* `GateAuditWeek` is a read-model summary record, not a DDD aggregate root. The three aggregate roots of this BC remain `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` (ADR-0020). `GateEvent` is the raw per-fire record.
+*Discriminating note:* `GateAuditWeek` is a read-model summary record, not a DDD aggregate root. The four aggregate roots of this BC are `FeatureRun`, `GovernanceRun`, `TwoVoiceReview`, `RunbookExecution` (ADR-0020 + ADR-0027). `GateEvent` is the raw per-fire record.
 
 ---
 
@@ -178,7 +195,7 @@ The `pre-commit-governance.sh` shell hook registered under `PreToolUse[Bash]` in
 
 ## GovernanceRun
 
-An aggregate root within `claude-mini-pipeline` BC. One commit-governance episode per `FeatureRun`. Created by `FeatureRun` on `FeaturePipelineStarted`; remains in `pending` state until `AttemptCommit` is first called. Owns: command `AttemptCommit`; events `CommitAttempted`, `GovernanceBlocked`, `GovernanceApproved`; internal `retry_count`.
+An aggregate root within `meta-pipeline BC`. One commit-governance episode per `FeatureRun`. Created by `FeatureRun` on `FeaturePipelineStarted`; remains in `pending` state until `AttemptCommit` is first called. Owns: command `AttemptCommit`; events `CommitAttempted`, `GovernanceBlocked`, `GovernanceApproved`; internal `retry_count`.
 
 State machine: `pending → approved` (terminal). `GovernanceBlocked` increments retry counter without changing the instance; `GovernanceApproved` terminates it. `GovernanceRun.state = approved` is required for `FeatureRun.dod_state = done`. Enforcement artifact: `pre-commit-governance.sh`.
 
@@ -200,6 +217,14 @@ The contract by which a session transfers state to its successor: `STATE.md` (sn
 
 ---
 
+## Honor-System Gap
+
+A norm in the Internal Compliance table that has no mechanical enforcement artifact — it depends on operator discipline alone. Labeled explicitly in the `Honor-system gap?` column as "Yes." The existence of a gap does not mean the norm is optional; it means there is no automated gate preventing violation.
+
+*Discriminating note:* a partial-automation gap (e.g., "agent-triggered but trigger detection is human judgment") is different from a full honor-system gap. Both are documented, but full gaps carry higher regression risk.
+
+---
+
 ## Human Resume Test
 
 The acceptance criterion for Session Continuity: an operator (or a fresh agent) given only `STATE.md` and the latest `session-log` entry can identify the next concrete action and begin work within five minutes. The five-minute budget is a sustained design constraint, not a stopwatch metric per session.
@@ -213,6 +238,18 @@ The acceptance criterion for Session Continuity: an operator (or a fresh agent) 
 The `/intent-check` skill that compares acceptance criteria from a GitHub issue against `git diff main...HEAD` for a feature branch. Outputs a per-AC-item table with statuses `covered | partial | missing | unrelated-changes` and an evidence file:line pointer for each claim. Runs at two points in the pipeline: after `/implement` (step 5c in `/feature`) and inside `/review` Layer 2 as the `**AC alignment**` subsection.
 
 *Discriminating note:* IntentCheck is a skill, not an agent — it is invoked by the operator (or by `/feature` checklist nudge), not autonomously by the pipeline. It does not block merge; its output is advisory and operator-resolved.
+
+---
+
+## Interface Contract
+
+A row in the Interface Contracts section of a BC overview specifying: interface name, operations used, handled failure modes, and explicitly unhandled failure modes. Sourced empirically from code — not inferred. Unhandled failures are as important as handled ones: they define the boundary of what the pipeline can recover from.
+
+---
+
+## Internal Compliance
+
+The section of a BC overview mapping each Definition of Done norm to its enforcement type (`automated | agent-triggered | honor`), the concrete artifact enforcing it, and whether a honor-system gap exists. Distinct from NFR: NFR states what the system must do; Internal Compliance states how each DoD norm is actually enforced (or not).
 
 ---
 
@@ -233,6 +270,34 @@ The deterministic verification phase within `/review` that runs `~/.claude/scrip
 ## Main Loop
 
 The Sonnet model instance that orchestrates all pipeline actions within a session. Has write authority over files and GitHub (within permissions). Distinct from the advisor (read-only) and agents (subagents with constrained toolsets).
+
+---
+
+## meta-pipeline BC
+
+Bounded context, владеющий переиспользуемым каркасом AI-конвейера: оркестрацией стадий feature-pipeline, инвокацией агентов, governance-хуками, ADR-дисциплиной, политикой advisor-вызовов, протоколом two-voice review и моделью runbook-исполнений. Не владеет доменом конкретного pet-проекта (target BC) и не владеет внутренностями Claude Code или Anthropic API.
+
+Инварианты на уровне BC: каркас применим к произвольному target BC без модификаций самого каркаса; все target-артефакты проходят через ACL.
+
+До ADR-0027 этот BC назывался `claude-mini-pipeline`. После Domain Inversion переименован в `meta-pipeline BC`.
+
+*Discriminating note:* «meta-pipeline BC» — это конкретный BC, владеющий агрегатами `FeatureRun`, `GovernanceRun`, `TwoVoiceReview`, `RunbookExecution`. Не следует путать с «meta-уровнем над всеми BC»: Session Continuity BC — отдельный sibling-BC, не часть meta-pipeline BC.
+
+---
+
+## NFR (Non-Functional Requirement)
+
+In this BC: a measurable constraint on pipeline behavior that is already mechanically verified by an existing check or ADR. Speculative constraints and intent-only statements are excluded. Constraints without mechanical checks appear in the Internal Compliance table as honor-system rows instead.
+
+*Discriminating note:* not every quality attribute is an NFR in this BC's sense. A constraint must have a cited enforcement artifact to qualify.
+
+---
+
+## next_3_actions
+
+A `STATE.md` field listing exactly three ordered, concrete next actions, written as imperatives (e.g., "Run /implement on plan.md §3"). Cardinality is fixed at three: fewer signals premature stop, more signals lack of focus. The field is `[]` only when `blocked_on != null` or all work is complete.
+
+*Discriminating note:* `next_3_actions` describes the immediate plan, not the full backlog. The full backlog lives in GitHub issues; `next_3_actions` is the slice the next session executes first.
 
 ---
 
@@ -260,7 +325,23 @@ A named step within the Feature Pipeline: `/plan`, `/adr`, `/implement`, `/revie
 
 A grep-based bash script (`bootstrap/scripts/plan-lint.sh`) that scans the current `plan.md` and verifies every entry in §3 ("Approaches considered") and §4 ("Selected approach") that asserts a design decision carries an `ADR-ref` (`docs/decisions/NNNN-*.md`) or an explicit exemption (`"no ADR — justification: ..."`). Run as part of the hand-off contract; failure blocks the hand-off from being declared complete. No LLM dependency — bash and grep only (Principle 3).
 
-*Discriminating note:* the plan.md linter enforces ADR-discipline on plan content, which is a `claude-mini-pipeline` concern, but is invoked from the hand-off contract, which is a Session Continuity concern. This BC owns the *invocation* (when to run); `claude-mini-pipeline` owns the *rule definition* (what counts as a design decision).
+*Discriminating note:* the plan.md linter enforces ADR-discipline on plan content, which is a `meta-pipeline BC` concern, but is invoked from the hand-off contract, which is a Session Continuity concern. `Session Continuity BC` owns the *invocation* (when to run); `meta-pipeline BC` owns the *rule definition* (what counts as a design decision).
+
+---
+
+## Policy (entity)
+
+A domain entity capturing the rule "when trigger X, then action Y." Distinct from the Policies *table* (which is the collection of all active policies). A Policy entity has `trigger`, `action`, and `active` attributes. A waived policy requires explicit justification.
+
+*Discriminating note:* "policy" (lowercase) in generic English means any rule. `Policy` in this BC means a specific persistable domain entity with a trigger-action pair and an active state.
+
+---
+
+## Real Block (gate)
+
+A gate blocking an action that, upon operator judgment, was a genuine violation that the gate was correct to catch. Recorded by `bash ~/.claude/scripts/forge.sh gate-tag <event_id> --real` (see `bootstrap/skills/gate-audit/SKILL.md` for full invocation). Contributes to `real_blocks` in `GateAuditWeek`. A gate with consistently high `real_blocks / (real_blocks + false_positives + bypasses)` ratio has proven ROI and should be kept.
+
+*Discriminating note:* "real block" is the operator's post-hoc judgment, not the gate's output. The gate does not distinguish real from false-positive at fire time.
 
 ---
 
@@ -276,19 +357,32 @@ An unresolved question or known invariant violation that the domain docs explici
 
 ---
 
-## Real Block (gate)
-
-A gate blocking an action that, upon operator judgment, was a genuine violation that the gate was correct to catch. Recorded by `bash ~/.claude/scripts/forge.sh gate-tag <event_id> --real` (see `bootstrap/skills/gate-audit/SKILL.md` for full invocation). Contributes to `real_blocks` in `GateAuditWeek`. A gate with consistently high `real_blocks / (real_blocks + false_positives + bypasses)` ratio has proven ROI and should be kept.
-
-*Discriminating note:* "real block" is the operator's post-hoc judgment, not the gate's output. The gate does not distinguish real from false-positive at fire time.
-
----
-
 ## Resume
 
 The act of a new session reading the hand-off artifacts and beginning meaningful work on the previous session's outstanding context. Distinct from "starting fresh" (no prior STATE.md) and from "continuing within a session" (no session boundary crossed).
 
 *Discriminating note:* a resume succeeds when the first action a new session takes matches one of the prior session's `next_3_actions` (or explicitly supersedes one with justification). A resume that re-plans from scratch is a continuity failure, not a successful resume.
+
+---
+
+## RetentionRecommendation
+
+The decision-rule output for a gate over a rolling 4-week window: `KEEP`, `REMOVE`, or `INSUFFICIENT_DATA`. Computed by `gate-audit-aggregate.sh` from `GateAuditWeek` records. `REMOVE` means `real / (real + fp + bypass) < 0.2` for all 4 qualifying weeks. Requires human approval before any gate is actually removed — this is a recommendation, not an automatic action.
+
+*Discriminating note:* `REMOVE` is not a verdict; it is a prompt for human review. The gate stays active until a human opens and merges a PR to remove it.
+
+---
+
+## ReviewArtifact
+
+A domain entity representing the output of a review step. Three types, two owners (ADR-0020):
+- `claude_review` — owned by `TwoVoiceReview`; verdict: `pending → approved | blocked | deferred`
+- `codex_review` — owned by `TwoVoiceReview`; verdict: `pending → approved | blocked | deferred`
+- `advisor_critique` — owned by `FeatureRun`; verdict always null (advisor returns critique only, never approves or blocks)
+
+The split is intentional: advisor is not part of two-voice review. `claude_review` and `codex_review` form the two-voice pair; `advisor_critique` is pre-work validation outside that pair.
+
+*Discriminating note:* a ReviewArtifact is not the same as the act of reviewing. It is the *persisted output* of a review step. The type-discriminator determines which aggregate owns the instance.
 
 ---
 
@@ -300,11 +394,15 @@ A `STATE.md` field listing zero or more known risks the next session should be a
 
 ---
 
-## RetentionRecommendation
+## RunbookExecution
 
-The decision-rule output for a gate over a rolling 4-week window: `KEEP`, `REMOVE`, or `INSUFFICIENT_DATA`. Computed by `gate-audit-aggregate.sh` from `GateAuditWeek` records. `REMOVE` means `real / (real + fp + bypass) < 0.2` for all 4 qualifying weeks. Requires human approval before any gate is actually removed — this is a recommendation, not an automatic action.
+**status: draft — requires Event Storming session with operator before invariants are finalized (ADR-0027 red hotspot; tracked in issue #200)**
 
-*Discriminating note:* `REMOVE` is not a verdict; it is a prompt for human review. The gate stays active until a human opens and merges a PR to remove it.
+An aggregate root within `meta-pipeline BC` (provisional). One invocation of a documented procedure from `docs/runbooks/` — e.g., `resume-drill.md`, `incident-recovery.md`. Models the lifecycle of an out-of-band procedure that runs outside the feature-pipeline (not bound to one `FeatureRun`), has steps with measurable postconditions, and may leave artifacts (report, GitHub issue, entry in `session-log`).
+
+Предполагаемые инварианты (требуют верификации): один `RunbookExecution` — один runbook-документ, одна инвокация; state machine предположительно `pending → in_progress → completed | aborted`; `RunbookExecution` не владеет `FeatureRun`, `GovernanceRun`, `TwoVoiceReview` и не порождает их.
+
+*Discriminating note:* `RunbookExecution` is not the runbook document. The document is the procedure specification (static markdown). `RunbookExecution` is a concrete lifecycle instance. Open question: is it a true aggregate root, or an entity inside `FeatureRun` for runbooks called from within a pipeline run? Resolution requires Event Storming.
 
 ---
 
@@ -350,63 +448,6 @@ Invariants (ADR-0024): ≤200 lines; all nine fields present (empty values `null
 
 ---
 
-## Honor-System Gap
-
-A norm in the Internal Compliance table that has no mechanical enforcement artifact — it depends on operator discipline alone. Labeled explicitly in the `Honor-system gap?` column as "Yes." The existence of a gap does not mean the norm is optional; it means there is no automated gate preventing violation.
-
-*Discriminating note:* a partial-automation gap (e.g., "agent-triggered but trigger detection is human judgment") is different from a full honor-system gap. Both are documented, but full gaps carry higher regression risk.
-
----
-
-## Interface Contract
-
-A row in the Interface Contracts section of a BC overview specifying: interface name, operations used, handled failure modes, and explicitly unhandled failure modes. Sourced empirically from code — not inferred. Unhandled failures are as important as handled ones: they define the boundary of what the pipeline can recover from.
-
----
-
-## Internal Compliance
-
-The section of a BC overview mapping each Definition of Done norm to its enforcement type (`automated | agent-triggered | honor`), the concrete artifact enforcing it, and whether a honor-system gap exists. Distinct from NFR: NFR states what the system must do; Internal Compliance states how each DoD norm is actually enforced (or not).
-
----
-
-## next_3_actions
-
-A `STATE.md` field listing exactly three ordered, concrete next actions, written as imperatives (e.g., "Run /implement on plan.md §3"). Cardinality is fixed at three: fewer signals premature stop, more signals lack of focus. The field is `[]` only when `blocked_on != null` or all work is complete.
-
-*Discriminating note:* `next_3_actions` describes the immediate plan, not the full backlog. The full backlog lives in GitHub issues; `next_3_actions` is the slice the next session executes first.
-
----
-
-## NFR (Non-Functional Requirement)
-
-In this BC: a measurable constraint on pipeline behavior that is already mechanically verified by an existing check or ADR. Speculative constraints and intent-only statements are excluded. Constraints without mechanical checks appear in the Internal Compliance table as honor-system rows instead.
-
-*Discriminating note:* not every quality attribute is an NFR in this BC's sense. A constraint must have a cited enforcement artifact to qualify.
-
----
-
-## Policy (entity)
-
-A domain entity capturing the rule "when trigger X, then action Y." Distinct from the Policies *table* (which is the collection of all active policies). A Policy entity has `trigger`, `action`, and `active` attributes. A waived policy requires explicit justification.
-
-*Discriminating note:* "policy" (lowercase) in generic English means any rule. `Policy` in this BC means a specific persistable domain entity with a trigger-action pair and an active state.
-
----
-
-## ReviewArtifact
-
-A domain entity representing the output of a review step. Three types, two owners (ADR-0020):
-- `claude_review` — owned by `TwoVoiceReview`; verdict: `pending → approved | blocked | deferred`
-- `codex_review` — owned by `TwoVoiceReview`; verdict: `pending → approved | blocked | deferred`
-- `advisor_critique` — owned by `FeatureRun`; verdict always null (advisor returns critique only, never approves or blocks)
-
-The split is intentional: advisor is not part of two-voice review. `claude_review` and `codex_review` form the two-voice pair; `advisor_critique` is pre-work validation outside that pair.
-
-*Discriminating note:* a ReviewArtifact is not the same as the act of reviewing. It is the *persisted output* of a review step. The type-discriminator determines which aggregate owns the instance.
-
----
-
 ## Triple Hand-off Contract
 
 The combined precondition that all three hand-off artifacts (STATE.md updated and ≤200 lines; session-log entry appended for today; plan.md linter passing) are simultaneously valid. The contract is binary: all three pass, or hand-off is incomplete. Partial hand-offs are not a recognised state.
@@ -425,7 +466,7 @@ The gating mechanism combining `/review` (Claude main loop) and `/codex-review` 
 
 ## TwoVoiceReview
 
-An aggregate root within `claude-mini-pipeline` BC. One two-voice review episode per `FeatureRun`. Owns: commands `RequestReview`, `RequestCodexReview`, `RecordTwoVoiceResult`; all two-voice events; `ReviewArtifact` entities of type `claude_review` and `codex_review`; the `two_voice_state` machine.
+An aggregate root within `meta-pipeline BC`. One two-voice review episode per `FeatureRun`. Owns: commands `RequestReview`, `RequestCodexReview`, `RecordTwoVoiceResult`; all two-voice events; `ReviewArtifact` entities of type `claude_review` and `codex_review`; the `two_voice_state` machine.
 
 State machine: `{pending → agreed | pending → deferred | pending → disagreed | disagreed → reconciled | disagreed → deferred}`. Terminal states (`agreed`, `reconciled`, `deferred`) are monotonically stable — no backward transitions. `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` is required for `FeatureRun.dod_state = done`.
 
@@ -441,14 +482,14 @@ The `TwoVoiceReview` aggregate attribute tracking the two-voice review state mac
 
 ---
 
+## Ubiquitous Language
+
+The shared vocabulary of this bounded context. Terms here are used with their definitions above in all ADRs, issues, PR descriptions, runbooks, and conversations. Drift from these definitions is detected by `domain-reviewer`.
+
+---
+
 ## Use Case
 
 A scenario in the Use Cases section describing how an actor achieves a goal with this BC. Required structure: Actor, Preconditions, Main scenario (numbered steps), Alternatives (lettered), Postconditions. Use Cases are the primary navigation entry point for new contributors: they show *why* the pipeline behaves as it does, not just *what* it does.
 
 *Discriminating note:* a Use Case is not a user story ("As a … I want … so that …"). It is a structured scenario with explicit alternatives and postconditions.
-
----
-
-## Ubiquitous Language
-
-The shared vocabulary of this bounded context. Terms here are used with their definitions above in all ADRs, issues, PR descriptions, runbooks, and conversations. Drift from these definitions is detected by `domain-reviewer`.
