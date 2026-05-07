@@ -2,23 +2,22 @@
 
 **Предпосылка:** пройден [minimal.md](minimal.md) или ты уже знаком с Claude Code и базовыми командами.
 
-**Что получишь сверх minimal:**
-- Governance hook — блокирует коммиты без Conventional Commits prefix + issue-ref
-- MCP-серверы: GitHub (issues/PR), Serena (навигация по коду), Context7 (актуальная документация)
-- Claude Code settings с правильными permission allowlist
-- Полный set агентов-критиков (`docs-reviewer`, `adversarial-critic`, `security-reviewer` и др.)
+Что добавится к minimal:
+- Governance hook — Claude Code будет проверять формат коммитов: правильный префикс (`feat:`, `fix:`...) и ссылку на issue (`#42`). Плохой коммит будет заблокирован автоматически.
+- MCP-серверы: GitHub (работа с issues и PR прямо из Claude), Serena (навигация по коду), Context7 (актуальная документация библиотек)
+- Правильная конфигурация Claude Code settings
 
 ---
 
-## Предпосылки
+## Перед началом
 
 ```bash
-jq --version       # нужен для патча settings.json
+jq --version       # нужен для настройки settings.json
 codex --version    # Codex CLI (второй голос в /review)
 ```
 
-Если `jq` не найден → `brew install jq`
-Если `codex` не найден → `npm install -g @openai/codex`
+Нет `jq` → `brew install jq`  
+Нет `codex` → `npm install -g @openai/codex`
 
 ---
 
@@ -26,21 +25,16 @@ codex --version    # Codex CLI (второй голос в /review)
 
 ```bash
 cd ~/claude-mini
-./bootstrap/universal-setup.sh --check   # посмотреть что будет
+./bootstrap/universal-setup.sh --check   # посмотреть что будет сделано
 ./bootstrap/universal-setup.sh --install
 ```
 
 Что делает `--install`:
 - Копирует агентов, skills, commands в `~/.claude/`
-- Патчит `~/.claude/settings.json` (PreToolUse/PostToolUse hooks через абсолютные пути)
-- Создаёт `~/bin/mini-*` symlinks на session-скрипты
+- Прописывает hooks в `~/.claude/settings.json`
+- Создаёт ярлыки `~/bin/mini-*` для session-скриптов
 
-Exit codes:
-- **exit 0** — успех (в т.ч. «уже установлено»)
-- **exit 1** — hardware layer не готов → создай `~/.config/claude-mini/platform.done` (см. `minimal.md` шаг 2)
-- **exit 2** — отсутствуют зависимости (`jq`, `gh`, `claude`) → установи
-- **exit 3** — ошибка копирования или jq-патча → проверь права и место на диске
-- **exit 4** — drift (файлы отличаются от источника) → добавь `--force`
+Если после установки что-то выглядит не так — добавь `--force` и запусти снова.
 
 ---
 
@@ -60,39 +54,33 @@ cat /path/to/your/project/.claude/pipeline-version
 
 ## Шаг 3: Установить governance hook
 
+Этот шаг подключает автоматическую проверку коммитов в конкретный проект:
+
 ```bash
-# Запускать из директории целевого проекта:
 cd /path/to/your/project
 ~/claude-mini/bootstrap/universal-setup.sh --hook-this-repo
-# или вручную (использует staged-копию из --install, не source):
-cp ~/.claude/git-hooks/commit-msg .git/hooks/commit-msg
-chmod +x .git/hooks/commit-msg
 ```
 
-Проверка:
-```bash
-echo "bad message without prefix" | bash /path/to/your/project/.git/hooks/commit-msg /dev/stdin
-# exit 1 — заблокировано
+Проверь что hook работает — попробуй плохой и хороший коммит-сообщения:
 
-echo "feat: add feature #1" | bash /path/to/your/project/.git/hooks/commit-msg /dev/stdin
-# exit 0 — пропущено
+```bash
+echo "bad message without prefix" | bash .git/hooks/commit-msg /dev/stdin
+# заблокирует: Exit code 1
+
+echo "feat: add feature #1" | bash .git/hooks/commit-msg /dev/stdin
+# пропустит: Exit code 0
 ```
 
 ---
 
 ## Шаг 4: Подключить MCP-серверы
 
-Скопируй `.mcp.json` из claude-mini в свой проект:
+Скопируй `.mcp.json` в проект:
 ```bash
 cp ~/claude-mini/.mcp.json /path/to/your/project/.mcp.json
 ```
 
-Или подключи только GitHub MCP (минимальный вариант):
-```bash
-gh auth token   # скопируй токен
-```
-
-Затем в Claude Code: перезапусти (`/exit` → `claude`) — MCP подключится автоматически.
+Перезапусти Claude Code (`/exit` → `claude`) — MCP подключится автоматически.
 
 ---
 
@@ -108,7 +96,7 @@ claude
 /feature 1
 ```
 
-Ожидаемый результат: чеклист pipeline с 12 шагами, issue переходит в "In Progress".
+Ожидаемый результат: чеклист из 12 шагов, issue переходит в "In Progress".
 
 ---
 

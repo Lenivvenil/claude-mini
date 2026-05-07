@@ -1,26 +1,26 @@
 # Minimal: от git clone до первого /review (~30 минут)
 
-**Что получишь:** `/plan`, `/review` и остальные pipeline-команды + skills глобально. Один тестовый прогон review на staged diff.
+Для тех, кто хочет попробовать claude-mini прежде чем разбираться со всеми настройками. Установим команды, создадим тестовый issue и запустим ревью на реальном изменении.
 
-**Что НЕ входит в minimal:** governance hook, MCP-серверы, CI, агенты. Всё это — в [standard.md](standard.md).
+Что здесь **не** будет: проверка формата коммитов, MCP-серверы, CI, агенты. Это всё — в [standard.md](standard.md).
 
 ---
 
-## Предпосылки
+## Перед началом
+
+Убедись что инструменты есть:
 
 ```bash
-claude --version   # Claude Code установлен
-git --version      # ≥ 2.39
-gh --version       # GitHub CLI установлен
-gh auth status     # Logged in to github.com
+claude --version   # Claude Code
+gh auth status     # GitHub CLI — должен сказать "Logged in to github.com"
 ```
 
-Если `claude` не найден → [claude.ai/code](https://claude.ai/code)
-Если `gh` не найден → `brew install gh` (macOS) или [cli.github.com](https://cli.github.com)
+Нет Claude Code → [claude.ai/code](https://claude.ai/code)  
+Нет `gh` → `brew install gh`, потом `gh auth login`
 
 ---
 
-## Шаг 1: Клонировать claude-mini
+## Шаг 1: Скачать claude-mini
 
 ```bash
 git clone https://github.com/Lenivvenil/claude-mini.git ~/claude-mini
@@ -29,36 +29,46 @@ cd ~/claude-mini
 
 ---
 
-## Шаг 2: Установить universal layer (глобально, один раз)
+## Шаг 2: Установить команды и skills (один раз на машине)
+
+Сначала скажи установщику что с железом всё в порядке (без этого он ожидает отдельной hardware-настройки):
 
 ```bash
-# Создать platform flag (обходит hardware layer check для не-Mac Mini машин):
 mkdir -p ~/.config/claude-mini
 echo "generic-$(date +%Y-%m-%d)" > ~/.config/claude-mini/platform.done
+```
 
-# Установить skills, agents, hooks глобально:
+Запусти установку:
+
+```bash
 ./bootstrap/universal-setup.sh --install
 ```
 
-Ожидаемый результат: серия `✓ ...` строк, exit 0.
-Если exit 4 → `./bootstrap/universal-setup.sh --install --force` (overwrite drift).
+Ты увидишь строки с галочками — команды, skills и агенты копируются в `~/.claude/`. Если появится сообщение про `drift` — добавь `--force` к команде и запусти снова.
+
+Нужен `jq`? → `brew install jq`
 
 ---
 
-## Шаг 3: Установить pipeline-команды в твой проект
+## Шаг 3: Подключить команды к твоему проекту
+
+Каждый проект подключается отдельно. Если тестового проекта ещё нет:
 
 ```bash
-# Если проекта ещё нет:
 mkdir ~/my-project && cd ~/my-project && git init && cd ~/claude-mini
+```
 
-# Установить команды в проект:
+Подключи claude-mini к проекту:
+
+```bash
 ./bootstrap/universal-setup.sh --target ~/my-project
 ```
 
-Проверь:
+Проверь что всё на месте:
+
 ```bash
 ls ~/my-project/.claude/commands/
-# plan.md  implement.md  feature.md  ...
+# увидишь: plan.md  implement.md  feature.md  ...
 ```
 
 ---
@@ -67,38 +77,35 @@ ls ~/my-project/.claude/commands/
 
 ```bash
 cd ~/my-project
-gh issue create \
-  --title "test: hello onboarding" \
-  --body "Тестовый issue для проверки pipeline" \
-  --label "needs-triage" 2>/dev/null \
-  || gh issue create --title "test: hello onboarding" --body "Тестовый issue"
+gh issue create --title "test: hello onboarding" --body "Тестовый issue для проверки pipeline"
 ```
 
-Запомни номер (например `#1`).
+Запомни номер — например `#1`.
 
 ---
 
-## Шаг 5: Открыть Claude Code и запустить /plan
+## Шаг 5: Запустить Claude Code и написать план
 
 ```bash
 cd ~/my-project
 claude
 ```
 
-Внутри Claude Code:
+Внутри Claude Code напиши:
 
 ```
 /plan 1
 ```
 
-Результат: `plan.md` в корне проекта (6 разделов).
+Claude создаст `plan.md` — он нужен для следующего шага.
 
 ---
 
 ## Шаг 6: Сделать изменение и запустить /review
 
+В соседнем терминале (не в Claude Code):
+
 ```bash
-# В терминале (вне Claude Code):
 echo "# Hello claude-mini" >> README.md
 git add README.md
 ```
@@ -109,37 +116,31 @@ git add README.md
 /review
 ```
 
-Ожидаемый результат: Layer 1 (детерминированные проверки) + Layer 2 (LLM review) без BLOCK-findings.
+Claude проверит staged изменение и напишет ревью. Если в конце написано `APPROVE` — ты прошёл minimal tier.
 
 ---
 
-## Готово
-
-Ты прошёл minimal tier. Что дальше:
+## Готово. Что дальше
 
 - Попробовать полный цикл: `/feature 1` вместо ручного `/plan` + `/review`
-- Добавить governance hook и MCP → [standard.md](standard.md)
+- Добавить проверку коммитов и MCP → [standard.md](standard.md)
 
 ---
 
-## Troubleshooting
+## Что-то пошло не так?
 
-**`./bootstrap/universal-setup.sh: exit 1` на шаге 2**
-Проверь что `platform.done` создан:
-```bash
-cat ~/.config/claude-mini/platform.done   # должен вывести строку
-```
-Если файл есть но exit 1 — проверь `jq --version` (нужен для settings.json patch).
+**Установщик завершился с ошибкой на шаге 2**  
+Проверь: `cat ~/.config/claude-mini/platform.done` должен вывести одну строку.  
+Также нужен `jq` → `brew install jq`.
 
-**`/plan: command not found` внутри Claude Code**
-Pipeline не установлен в проект. Проверь `ls ~/my-project/.claude/commands/plan.md`.
-Если нет — перезапусти шаг 3.
+**`/plan` не найден внутри Claude Code**  
+Проверь: `ls ~/my-project/.claude/commands/plan.md`. Если файла нет — повтори шаг 3.
 
-**`/review: unknown command`**
-Skills не установлены. Перезапусти шаг 2 (`--install`).
+**`/review` не найден**  
+Повтори шаг 2 (`--install`).
 
-**`gh issue create` требует label `needs-triage`, которого нет**
-Убери `--label "needs-triage"` — достаточно заголовка.
+**`gh issue create` завершился с ошибкой про label**  
+Убери `--label "needs-triage"` из команды — label может отсутствовать в репозитории.
 
-**`/review` говорит "plan.md not found"**
-Сначала запусти `/plan <issue-num>` (шаг 5).
+**`/review` говорит "plan.md not found"**  
+Сначала нужен `/plan 1` (шаг 5) — ревью опирается на план.
