@@ -127,6 +127,6 @@ claude
 
 ## Дополнительно
 
-- Метрики и ROI: [`docs/metrics/onboarding.md`](../../metrics/onboarding.md)
+- Метрики и ROI: [`docs/metrics/onboarding.md`](../metrics/onboarding.md)
 - Еженедельная maintenance: [`docs/runbooks/weekly-maintenance.md`](../runbooks/weekly-maintenance.md)
 - Перенос на новую машину: [`docs/runbooks/vendor-migration.md`](../runbooks/vendor-migration.md)

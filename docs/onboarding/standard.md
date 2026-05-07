@@ -104,4 +104,4 @@ claude
 
 - Попробовать полный pipeline с реальной задачей
 - Подключить CI workflows → [full.md](full.md)
-- Посмотреть метрики → [`docs/metrics/onboarding.md`](../../metrics/onboarding.md)
+- Посмотреть метрики → [`docs/metrics/onboarding.md`](../metrics/onboarding.md)
