@@ -120,10 +120,23 @@ Claude проверит staged изменение и напишет ревью. 
 
 ---
 
+## Хочешь увидеть pipeline изнутри?
+
+Запусти демо-тур — он создаёт изолированный проект, устанавливает pipeline и покажет что делает каждая команда:
+
+```bash
+bash ~/claude-mini/bootstrap/scripts/mini-bootstrap-demo.sh
+```
+
+Не требует GitHub. Занимает ~40 минут. Артефакты остаются в `~/claude-mini-demo/` для изучения.
+
+---
+
 ## Готово. Что дальше
 
 - Попробовать полный цикл: `/feature 1` вместо ручного `/plan` + `/review`
 - Добавить проверку коммитов и MCP → [standard.md](standard.md)
+- Структурировать первую неделю → [first-week.md](first-week.md)
 
 ---
 
@@ -139,8 +152,8 @@ Claude проверит staged изменение и напишет ревью. 
 **`/review` не найден**  
 Повтори шаг 2 (`--install`).
 
-**`gh issue create` завершился с ошибкой про label**  
-Убери `--label "needs-triage"` из команды — label может отсутствовать в репозитории.
+**`gh issue create` завершился с ошибкой**  
+Проверь: `gh auth status` — нужен активный логин. Если ошибка про remote: `git remote add origin <url>` в `~/my-project`.
 
 **`/review` говорит "plan.md not found"**  
 Сначала нужен `/plan 1` (шаг 5) — ревью опирается на план.
