@@ -42,7 +42,7 @@ cp ~/claude-mini/bootstrap/templates/ci-go.yml .github/workflows/ci.yml
 cp ~/claude-mini/bootstrap/templates/mutation.yml .github/workflows/mutation.yml
 ```
 
-Отредактируй `ci.yml` и `mutation.yml` под свой проект (пути, переменные).
+Отредактируй `ci.yml` и `mutation.yml` под свой проект — в первую очередь `paths:` и версию языка в `ci.yml`, и путь к мутируемым файлам (`src/`) в `mutation.yml`.
 
 ---
 

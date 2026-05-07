@@ -13,11 +13,11 @@
 
 ```bash
 jq --version       # нужен для настройки settings.json
-codex --version    # Codex CLI (второй голос в /review)
+codex --version    # Codex CLI — второй голос; нужен на шаге /codex-review внутри /feature
 ```
 
 Нет `jq` → `brew install jq`  
-Нет `codex` → `npm install -g @openai/codex`
+Нет `codex` → `npm install -g @openai/codex` (только для личных/OSS проектов; см. CLAUDE.md)
 
 ---
 
@@ -96,7 +96,7 @@ claude
 /feature 1
 ```
 
-Ожидаемый результат: чеклист из 12 шагов, issue переходит в "In Progress".
+Ожидаемый результат: чеклист из 12 шагов. Переход issue в «In Progress» срабатывает только для issues на доске проекта claude-mini (upstream); в твоём проекте команда тихо пропустит этот шаг.
 
 ---
 
