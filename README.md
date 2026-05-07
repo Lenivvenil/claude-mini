@@ -1,11 +1,67 @@
 # claude-mini
 
-> Воспроизводимый enterprise workflow для Claude Code на headless-станции. Сетап сам себя документирует и сам себя устанавливает.
+> Воспроизводимый AI-assisted workflow для Claude Code: агенты, governance hook, pipeline из коробки.
+> Устанавливается одной командой. Сам себя документирует.
 
 [![governance](https://img.shields.io/badge/governance-hook--enforced-green)](docs/architecture/overview.md#governance)
 [![pipeline](https://img.shields.io/badge/pipeline-sonnet%20+%20advisor-blue)](docs/decisions/0003-sonnet-main-opus-advisor.md)
 
-## Что это
+## Onboarding: выбери свой путь
+
+```mermaid
+flowchart LR
+    A[Новый пользователь] --> B{Сколько времени?}
+    B -->|"~30 мин"| C[Minimal]
+    B -->|"~1-2 ч"| D[Standard]
+    B -->|"~3-4 ч"| E[Paranoid mode]
+    B -->|"Не уверен"| F[Decision matrix]
+```
+
+## Быстрый старт (~30 мин)
+
+**Нужно:** Claude Code, `gh` (GitHub CLI), `jq`.
+
+```bash
+git clone https://github.com/Lenivvenil/claude-mini.git ~/claude-mini
+cd ~/claude-mini
+./bootstrap/universal-setup.sh --install              # установить на эту машину
+./bootstrap/universal-setup.sh --target <твой-проект> # подключить к проекту
+```
+
+Полный путь (prerequisites, hardware setup, первый `/review`): **[docs/onboarding/minimal.md](docs/onboarding/minimal.md)**
+
+## Standard setup (~1-2 ч)
+
+Добавляет к minimal: governance hook (проверка формата коммитов), MCP-серверы (GitHub, Serena, Context7), настройку Claude Code settings.
+
+Полный путь: **[docs/onboarding/standard.md](docs/onboarding/standard.md)**
+
+## Paranoid mode (~3-4 ч)
+
+Полный стек: CI workflows, mutation testing, все агенты, ADR baseline.
+Для продакшн-значимых репо.
+
+Полный путь: **[docs/onboarding/full.md](docs/onboarding/full.md)**
+
+---
+
+Не знаешь с чего начать? → **[docs/onboarding/decision-matrix.md](docs/onboarding/decision-matrix.md)**
+
+## Как с этим работать
+
+| Задача | Ссылка |
+|---|---|
+| Ежедневный флоу | [docs/runbooks/daily-session.md](docs/runbooks/daily-session.md) |
+| Новая фича | [docs/runbooks/feature-pipeline.md](docs/runbooks/feature-pipeline.md) |
+| Новое архитектурное решение | [docs/runbooks/adr-workflow.md](docs/runbooks/adr-workflow.md) |
+| Onboarding чужого репо | [docs/runbooks/onboarding-repo.md](docs/runbooks/onboarding-repo.md) |
+| Пятничная maintenance | [docs/runbooks/weekly-maintenance.md](docs/runbooks/weekly-maintenance.md) |
+| Что-то сломалось | [docs/runbooks/incident-recovery.md](docs/runbooks/incident-recovery.md) |
+
+---
+
+<details>
+<summary>Что это и зачем (9 принципов)</summary>
 
 Персональная AI-assisted разработческая станция, построенная на девяти принципах ([`docs/principles.md`](docs/principles.md)):
 
@@ -19,33 +75,17 @@
 8. **Антихрупкость по домену, запас 2-3×** — 7 измерений зрелости на каждое решение; не больше нужного.
 9. **Перехват — контракт** — при отказе LLM оператор продолжает с точки остановки без контекстного ввода.
 
-Проект решает две задачи одновременно:
+Проект решает две задачи:
 
 - **Material reference** — готовый набор агентов, skills, commands, hooks, scripts и runbooks, устанавливаемый одной командой.
 - **Живая документация** — каждое решение зафиксировано как ADR, каждая процедура как runbook, каждый процесс прошёл через собственный pipeline.
 
-## Быстрый старт
+Если предпочитаешь единый вводный документ: [docs/onboarding/GETTING-STARTED.md](docs/onboarding/GETTING-STARTED.md).
 
-**Prerequisite (hardware layer — один раз на машине):**
-См. `bootstrap/hardware/` для вашей платформы. Сейчас задокументирована `mac-mini-2018.md`.
+</details>
 
-**Universal layer (на любой машине с установленным Claude Code):**
-
-```bash
-git clone https://github.com/<owner>/claude-mini.git
-cd claude-mini
-./bootstrap/universal-setup.sh --check     # dry-run
-./bootstrap/universal-setup.sh --install   # идемпотентно
-```
-
-Скрипт:
-- копирует агентов, skills, commands, hooks, scripts в `~/.claude/`
-- патчит `~/.claude/settings.json` (добавляет PreToolUse wiring через абсолютные пути)
-- проверяет `gh auth`, `codex login`, `ANTHROPIC_*` env vars
-- создаёт symlinks `~/bin/mini-*` на session-скрипты
-- не трогает уже существующие файлы без `--force`
-
-## Структура
+<details>
+<summary>Структура репо</summary>
 
 ```
 docs/
@@ -68,7 +108,10 @@ bootstrap/
 └── universal-setup.sh  — идемпотентный installer
 ```
 
-## Что внутри
+</details>
+
+<details>
+<summary>Что внутри (агенты, skills, commands, hooks, scripts)</summary>
 
 **Агенты (9):** `adr-reviewer`, `domain-reviewer`, `domain-researcher`, `solutions-architect`, `backlog-groomer`, `security-reviewer`, `docs-reviewer`, `reliability-reviewer`, `adversarial-critic` (LLM-laziness scanner, всегда в `/review`).
 
@@ -76,15 +119,18 @@ bootstrap/
 
 **Verifier suite — per-PR:** `shellcheck` (bash), `setup-dry-run` (bash syntax + lint), `markdown-links`, `gate-audit-test`, `adr-retirement-audit-test`.
 
-**Verifier suite — weekly cron:** **mutation testing** (`mutation.yml`, Sunday 00:00 UTC; запускается вручную через `gh workflow run mutation.yml`) — mutmut (Python), Stryker (TS/JS), cargo-mutants (Rust), conditional skip если язык не обнаружен. Результаты — SARIF в Code Scanning + GitHub Issue с меткой `type:mutation-report`. Surviving mutants → `docs/anti-patterns.md` по решению оператора. Подробности: [docs/decisions/0025-mutation-testing-tool-selection.md](docs/decisions/0025-mutation-testing-tool-selection.md).
+**Verifier suite — weekly cron:** **mutation testing** (`mutation.yml`, Sunday 00:00 UTC) — mutmut (Python), Stryker (TS/JS), cargo-mutants (Rust), conditional skip если язык не обнаружен. Результаты — SARIF в Code Scanning + GitHub Issue с меткой `type:mutation-report`. Surviving mutants → `docs/anti-patterns.md` по решению оператора.
 
 **Slash commands (11):** `/plan`, `/implement`, `/adr`, `/review`, `/codex-review`, `/intent-check`, `/task-to-issue`, `/issue-to-task`, `/backlog-review`, `/project-health`, `/feature` (master orchestrator).
 
-**Hooks (4):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `commit-msg-governance.sh` — применяет те же блокирующие правила к прямым терминальным коммитам (git hook); также выдаёт non-blocking reminder если `docs/anti-patterns.md` не трогался на текущей ветке при наличии code-файлов в коммите. `posttooluse-format.sh` — проверяет форматирование и lint после Edit|MultiEdit|Write и выдаёт предупреждение Claude (PostToolUse, не блокирует). `stop-hook.sh` — блокирует завершение сессии если тесты не проходят (Stop); уважает `stop_hook_active` escape-hatch.
+**Hooks (4):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `commit-msg-governance.sh` — те же правила на git-level; также non-blocking reminder обновить `docs/anti-patterns.md` если в ветке есть code-файлы без правок этого файла. `posttooluse-format.sh` — проверяет форматирование после Edit|MultiEdit|Write (PostToolUse, не блокирует). `stop-hook.sh` — блокирует завершение сессии если тесты не проходят (Stop).
 
-**Scripts (8):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`, `gate-audit-lib.sh` (event-write helper), `gate-audit-aggregate.sh` (weekly aggregation), `forge.sh` (gate-tag CLI).
+**Scripts (8):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`, `gate-audit-lib.sh`, `gate-audit-aggregate.sh`, `forge.sh`.
 
-## MCP Servers
+</details>
+
+<details>
+<summary>MCP Servers</summary>
 
 Три сервера, подключаемых через `.mcp.json` (repo-tracked, `--scope project`):
 
@@ -94,44 +140,20 @@ bootstrap/
 | `context7` | stdio | `2.2.4` | Актуальная документация библиотек (не из training data) |
 | `github` | HTTP (allowlisted) | — (stable API) | Issues, PR, projects, actions |
 
-**Транспортная политика ([ADR-0028](docs/decisions/0028-mcp-transport-security.md)):** stdio — дефолт для локальных серверов; HTTP — только для эндпоинтов из явного allowlist (`api.githubcopilot.com/mcp/`). Нет unauthenticated local HTTP MCP. stdio-серверы пинированы по semver/git-tag — CI блокирует merge без `@<version>` pin. HTTP-серверы (GitHub) контролируются allowlist, а не версией (стабильный API-эндпоинт).
+**Транспортная политика ([ADR-0028](docs/decisions/0028-mcp-transport-security.md)):** stdio — дефолт для локальных серверов; HTTP — только для эндпоинтов из явного allowlist (`api.githubcopilot.com/mcp/`). Нет unauthenticated local HTTP MCP. stdio-серверы пинированы по semver/git-tag — CI блокирует merge без `@<version>` pin.
 
-**Примечание по `context7`:** `@upstash/context7-mcp` запускается как локальный npm-процесс (stdio). Он по-прежнему обращается к Upstash backend по HTTPS. stdio закрывает Claude↔local-process вектор; от Upstash изоляция не является целью.
+**Примечание по `context7`:** `@upstash/context7-mcp` запускается как локальный npm-процесс (stdio). Обращается к Upstash backend по HTTPS. stdio закрывает Claude↔local-process вектор; от Upstash изоляция не является целью.
 
 **Quarterly review:** [docs/runbooks/mcp-quarterly-review.md](docs/runbooks/mcp-quarterly-review.md) — CVE check, pin staleness, allowlist status (Q: январь, апрель, июль, октябрь).
 
 **При добавлении нового HTTP сервера:** нужен ADR-0028 amendment. Новые stdio серверы — добавить в `.mcp.json` с явным pin.
 
-## AGENTS.md + CLAUDE.md — два файла, два читателя
+</details>
 
-Репо поддерживает два конфигурационных файла одновременно:
+<details>
+<summary>Как работает пайплайн</summary>
 
-```mermaid
-graph LR
-    A["AGENTS.md\nvendor-neutral"] --> Codex["Codex CLI"]
-    A --> Goose["Goose"]
-    A --> OC["opencode / Aider / Cursor"]
-    C["CLAUDE.md\n@AGENTS.md + специфика"] -- "разворачивает импорт" --> CC["Claude Code"]
-    A -.-> CC
-```
-
-**AGENTS.md** содержит всё vendor-neutral: структуру репо, workflow-стадии, правила, governance hook, MCP-серверы. Написан в формате [AGENTS.md](https://aaif.ai/), совместимом с AAIF-стандартом.
-
-**CLAUDE.md** — тонкий stub. Начинается с `@AGENTS.md` (Claude Code разворачивает импорт автоматически) и добавляет только то, что специфично для Claude Code: slash-команды, таблицу субагентов, advisor policy.
-
-**Если нужно мигрировать на другой инструмент:** большая часть pipeline переносится без усилий. Подробности и пример — `docs/runbooks/vendor-migration.md`.
-
----
-
-## Контракт воспроизводимости
-
-- Любой шаг можно пройти повторно без разрушения состояния (`--install` после `--install` ничего не сломает).
-- Hardware-специфичное живёт в `bootstrap/hardware/<platform>.md` и **не вызывается** из `universal-setup.sh`.
-- Переход с Mac на Linux = пройти соответствующий hardware-runbook, затем запустить тот же `universal-setup.sh`.
-
-## Как работает пайплайн
-
-Каждая фича проходит через три управляемых цикла. Все три создаются в момент старта `/feature <issue>` и не существуют без него:
+Каждая фича проходит через три управляемых цикла:
 
 ```
 /feature <issue>
@@ -161,25 +183,43 @@ graph LR
         └─▶ gh pr create  (pre-PR artifact gate — issue #115)
 ```
 
-**Что обязательно на каждом этапе** — см. `docs/runbooks/feature-pipeline.md#10-pre-pr-artifact-verification`. Пропуск этапа без явного основания блокирует pipeline.
+**Механический gate коммитов:** `pre-commit-governance.sh` (Claude Code PreToolUse) блокирует коммит без Conventional Commits prefix + issue-ref + ADR-ref (для архитектурно-значимых изменений). `commit-msg-governance.sh` (git-level) применяет те же правила к прямым терминальным коммитам; дополнительно non-blocking reminder обновить `docs/anti-patterns.md`.
 
-**Механический gate коммитов:** `pre-commit-governance.sh` (Claude Code PreToolUse) блокирует коммит без Conventional Commits prefix + issue-ref. `commit-msg-governance.sh` (git-level) дополнительно напоминает (non-blocking) обновить `docs/anti-patterns.md`, если в этой ветке не было ни одного коммита с правками этого файла, а в текущем коммите есть code-файлы.
+**Что обязательно на каждом этапе** — см. `docs/runbooks/feature-pipeline.md#10-pre-pr-artifact-verification`.
 
-**Механический gate PR:** планируется в issue #115.
+</details>
 
-## Как с этим работать
+<details>
+<summary>AGENTS.md + CLAUDE.md — два файла, два читателя</summary>
 
-- **Новый пользователь:** [`docs/onboarding/GETTING-STARTED.md`](docs/onboarding/GETTING-STARTED.md)
-- Ежедневный флоу: `docs/runbooks/daily-session.md`
-- Новая фича: `docs/runbooks/feature-pipeline.md`
-- Новое архитектурное решение: `docs/runbooks/adr-workflow.md`
-- Onboarding существующего репо: `docs/runbooks/onboarding-repo.md`
-- Пятничная maintenance: `docs/runbooks/weekly-maintenance.md`
-- Что-то сломалось: `docs/runbooks/incident-recovery.md`
+```mermaid
+graph LR
+    A["AGENTS.md\nvendor-neutral"] --> Codex["Codex CLI"]
+    A --> Goose["Goose"]
+    A --> OC["opencode / Aider / Cursor"]
+    C["CLAUDE.md\n@AGENTS.md + специфика"] -- "разворачивает импорт" --> CC["Claude Code"]
+    A -.-> CC
+```
 
-## Статус
+**AGENTS.md** содержит всё vendor-neutral: структуру репо, workflow-стадии, правила, governance hook, MCP-серверы. Написан в формате [AGENTS.md](https://aaif.ai/), совместимом с AAIF-стандартом.
 
-Первичный bootstrap проекта выполнен через собственный pipeline — каждая директория и каждый ADR созданы как самостоятельная задача (см. issues и закрытые PR с labels `type:adr`, `type:bootstrap`). Это не стайлинг, а доказательство работоспособности: если проект нельзя построить через pipeline, pipeline сломан.
+**CLAUDE.md** — тонкий stub. Начинается с `@AGENTS.md` и добавляет только то, что специфично для Claude Code: slash-команды, таблицу субагентов, advisor policy.
+
+**Если нужно мигрировать на другой инструмент:** большая часть pipeline переносится без усилий. Подробности — `docs/runbooks/vendor-migration.md`.
+
+</details>
+
+<details>
+<summary>Контракт воспроизводимости и статус проекта</summary>
+
+**Контракт воспроизводимости:**
+- Любой шаг можно пройти повторно без разрушения состояния (`--install` после `--install` ничего не сломает).
+- Hardware-специфичное живёт в `bootstrap/hardware/<platform>.md` и **не вызывается** из `universal-setup.sh`.
+- Переход с Mac на Linux = пройти соответствующий hardware-runbook, затем запустить тот же `universal-setup.sh`.
+
+**Статус:** первичный bootstrap проекта выполнен через собственный pipeline — каждая директория и каждый ADR созданы как самостоятельная задача (см. issues и закрытые PR с labels `type:adr`, `type:bootstrap`). Это не стайлинг, а доказательство работоспособности: если проект нельзя построить через pipeline, pipeline сломан.
+
+</details>
 
 ## Лицензия
 
