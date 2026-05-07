@@ -2,10 +2,10 @@
 <!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
 <!-- Five-minute cold-start: read this + latest session-log entry, start in 5 min. (ADR-0024) -->
 
-session_id: 2026-05-07T08:00:00Z
+session_id: 2026-05-07T04:25:34Z
 date_iso: 2026-05-07
 current_branch: main
-last_commit_sha: 6c776b2
+last_commit_sha: d5475c1
 active_feature_run_id: null
 
 completed_this_session:
@@ -17,6 +17,7 @@ completed_this_session:
   - "docs/runbooks/mcp-quarterly-review.md created"
   - "README.md + AGENTS.md: MCP policy section"
   - "ADR-0029 authored + merged (PR #209): nine-principle hardened revision of docs/principles.md, closes #117"
+  - "#158 merged (PR #210): migrate DoD/ADR-trigger/advisor-policy from principles.md to runbooks"
 
 next_3_actions:
   - Context7 stdio smoke test (manual): restart Claude Code, send a MCP request to context7, confirm response
