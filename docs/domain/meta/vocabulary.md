@@ -27,7 +27,7 @@ The property of a feature branch diff where every acceptance criterion in the li
 
 ## ADR (Architecturally Significant Decision Record)
 
-A MADR 4.0 document in `docs/decisions/NNNN-*.md` recording a decision that meets at least one trigger in `docs/principles.md#что-значит-архитектурно-значимо`. Required before implementation; merged via canonical pipeline.
+A MADR 4.0 document in `docs/decisions/NNNN-*.md` recording a decision that meets at least one trigger in `docs/runbooks/adr-trigger.md`. Required before implementation; merged via canonical pipeline.
 
 *Discriminating note:* a plan is not an ADR. If no trigger fires, use `/plan`, not `/adr`.
 
@@ -97,7 +97,7 @@ The state in which the second voice of two-voice review could not complete. Repr
 
 ## Definition of Done (DoD)
 
-The checklist in `docs/principles.md#definition-of-done` that every change must satisfy before merge. Includes: ADR merged (if significant), domain docs updated (if BC changed), reviews passed, CI green, governance hook passed, PR body cross-references.
+The checklist in `docs/runbooks/dod-checklist.md` that every change must satisfy before merge. Includes: ADR merged (if significant), domain docs updated (if BC changed), reviews passed, CI green, governance hook passed, PR body cross-references.
 
 *Discriminating note:* DoD is the merge gate, not a style guide. Unchecked boxes block merge.
 

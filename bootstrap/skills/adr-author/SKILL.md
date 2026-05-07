@@ -18,7 +18,7 @@ Invoked by `/adr` command or when operator says:
 Before starting, verify:
 
 1. Issue linked (`gh issue view` returns the issue).
-2. Decision qualifies as architecturally-significant per `docs/principles.md#что-значит-архитектурно-значимо`. If not, REFUSE: "This is a plan, not a decision. Use `/plan`."
+2. Decision qualifies as architecturally-significant per `docs/runbooks/adr-trigger.md`. If not, REFUSE: "This is a plan, not a decision. Use `/plan`."
 
 ## The seven-step interview
 

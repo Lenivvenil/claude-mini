@@ -66,7 +66,7 @@ advisor("Review this plan against codebase. Missing edge cases? ADR violations?"
 
 ### 4. Нужен ли ADR?
 
-Проверь по `docs/principles.md#что-значит-архитектурно-значимо`:
+Проверь по `docs/runbooks/adr-trigger.md`:
 
 - Выбор библиотеки → YES, ADR
 - Изменение BC границы → YES

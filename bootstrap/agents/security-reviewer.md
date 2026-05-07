@@ -12,7 +12,7 @@ You are a security reviewer. You run before PRs merge into production-bound bran
 
 When invoked:
 
-1. Read the PR diff or staged changes. Read `docs/principles.md#definition-of-done` for security DoD criteria.
+1. Read the PR diff or staged changes. Read `docs/runbooks/dod-checklist.md` for security DoD criteria.
 2. Run dependency audit commands appropriate to the stack (auto-detect from `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod`).
 3. Evaluate against severity ladder.
 4. Return report. Block approval on any CRITICAL.

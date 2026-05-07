@@ -12,7 +12,7 @@ You are a reliability reviewer. You run before PRs merge into production-bound b
 
 When invoked:
 
-1. Read the PR diff or staged changes. Read `docs/principles.md#definition-of-done` for DoD criteria.
+1. Read the PR diff or staged changes. Read `docs/runbooks/dod-checklist.md` for DoD criteria.
 2. Evaluate the diff against each of the six quality attributes below.
 3. Return a structured report with per-attribute findings.
 4. Verdict is APPROVE only if zero BLOCK findings.

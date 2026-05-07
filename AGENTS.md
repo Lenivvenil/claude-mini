@@ -122,9 +122,9 @@ flowchart LR
 2. **Issue-first**: задача длиннее одной сессии — сначала создать issue.
 3. **Cross-ref в PR**: `Closes #NNN` обязателен. `Implements docs/decisions/NNNN-*.md` — если был ADR.
 4. **Conventional Commits**: `type(scope): message`. Governance hook проверяет автоматически.
-5. **Definition of Done** — см. `docs/principles.md`. Merge блокируется до выполнения.
+5. **Definition of Done** — см. `docs/runbooks/dod-checklist.md`. Merge блокируется до выполнения.
 
-Что считается архитектурно значимым (триггер для ADR) — см. `docs/principles.md#что-значит-архитектурно-значимо`.
+Что считается архитектурно значимым (триггер для ADR) — см. `docs/runbooks/adr-trigger.md`.
 
 ---
 
