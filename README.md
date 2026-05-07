@@ -169,6 +169,7 @@ graph LR
 
 ## Как с этим работать
 
+- **Новый пользователь:** [`docs/onboarding/GETTING-STARTED.md`](docs/onboarding/GETTING-STARTED.md)
 - Ежедневный флоу: `docs/runbooks/daily-session.md`
 - Новая фича: `docs/runbooks/feature-pipeline.md`
 - Новое архитектурное решение: `docs/runbooks/adr-workflow.md`
