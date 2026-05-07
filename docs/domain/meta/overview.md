@@ -140,7 +140,7 @@ Invariants:
 - Exactly one issue reference (`Closes #NNN`) per run
 - `dod_state` monotonic: `in_progress → review_pending → done`; never reversed within a run
 - `dod_state` may transition to `done` only when both: `TwoVoiceReview.state ∈ {agreed, reconciled, deferred}` AND `GovernanceRun.state = approved` — cross-aggregate query, not embedded state (ADR-0020 §Cross-aggregate-communication)
-- `advisor()` called ≥ 2 times when task is nontrivial (per `docs/principles.md`)
+- `advisor()` called ≥ 2 times when task is nontrivial (per `docs/runbooks/advisor-policy.md`)
 - `FeatureRun` does not read target BC domain data directly — all target artifacts enter meta through ACL (ADR-0027)
 
 **Note:** `BacklogGroomed` belongs to a separate out-of-band aggregate (`BacklogGroomRun`). It is not part of `FeatureRun`.
@@ -457,7 +457,7 @@ Unresolved questions left explicit — not papered over:
 2. ~~God Aggregate: FeatureRun too large~~ — **resolved in issue #108** (`docs/decisions/0020-god-aggregate-sub-aggregate-extraction.md`). `GovernanceRun` and `TwoVoiceReview` extracted as separate aggregate roots. `FeatureRun` now owns 13 pipeline-orchestration commands; the two sub-aggregates own their respective flows. `domain-reviewer` scope updated to check all three roots.
 3. **Fan-out boundary is human judgement.** "Embarrassingly parallel" (ADR 0002) is defined by examples, not a mechanical rule. No automation path identified.
 4. **Codex skip ≠ Codex disapproval.** DoD requires a `deferred-review` issue on skip, but the gate between skip and fail is operator judgement. Not modelled formally.
-5. **Nontrivial-task criterion for advisor-×-2** is enumerated in `docs/principles.md` but requires judgement at the margin.
+5. **Nontrivial-task criterion for advisor-×-2** is enumerated in `docs/runbooks/advisor-policy.md` but requires judgement at the margin.
 6. **Skill vs agent distinction can drift.** ADR 0007 is normative but subtle; new contributors may conflate them.
 7. **ADR 0013 cited in domain policies is `proposed`, not `accepted`.** Policy `DomainDocsChanged → domain-reviewer` is contingent on ADR 0013 being accepted. This doc should be updated once ADR 0013 status changes.
 8. **Governance hook fails open on malformed input.** If `jq` is not installed or stdin is not valid JSON, `pre-commit-governance.sh` exits 0 (fail-open), bypassing all commit policy rules. Documented in `docs/runbooks/incident-recovery.md` but not mechanically mitigated. Tracked in issue #109.

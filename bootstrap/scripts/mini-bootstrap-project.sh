@@ -89,7 +89,7 @@ EOF
 cp "$TEMPLATES_DIR/CLAUDE.md.template" CLAUDE.md 2>/dev/null || cat > CLAUDE.md <<'EOF'
 # Project conventions — <name>
 
-Наследует соглашения `claude-mini`: pipeline `/plan → /adr? → /implement → /review → /codex-review`, read-only critic agents, governance hook на commits, Definition of Done из `docs/principles.md`.
+Наследует соглашения `claude-mini`: pipeline `/plan → /adr? → /implement → /review → /codex-review`, read-only critic agents, governance hook на commits, Definition of Done из `docs/runbooks/dod-checklist.md`.
 
 ## Source of truth
 

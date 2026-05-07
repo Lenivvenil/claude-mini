@@ -116,7 +116,7 @@ The current aggregate root owns `claude_review` and `codex_review` ReviewArtifac
 2. Keep `TwoVoiceReview` for two-voice mode and introduce a distinct `ThreeVoiceReview` aggregate for the three-voice path; `FeatureRun` references whichever was used.
 3. Keep `TwoVoiceReview` and add a sub-entity `ThirdVoice` that piggybacks on the existing aggregate without renaming.
 
-*Discriminating note:* this is an aggregate-boundary change and is therefore ADR-significant per `docs/principles.md#что-значит-архитектурно-значимо`. The vocabulary draft cannot pick — see Red Hotspots.
+*Discriminating note:* this is an aggregate-boundary change and is therefore ADR-significant per `docs/runbooks/adr-trigger.md`. The vocabulary draft cannot pick — see Red Hotspots.
 
 ---
 

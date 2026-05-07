@@ -80,3 +80,4 @@ Chosen option: **Вариант B**, потому что он устраняет
 * Referenced synthesis: `docs/synthesis/2026-04-29-pipeline-restructuring.md`
 * Scratch materials: `.claude/scratch/handoff-2026-04-29/`
 * Related ADRs: ADR-0025 (mutation testing), ADR-0026 (third voice fallback), ADR-0027 (domain inversion), ADR-0028 (MCP transport security)
+* Operational sections extracted to runbooks (#158): `docs/runbooks/dod-checklist.md`, `docs/runbooks/adr-trigger.md`, `docs/runbooks/advisor-policy.md`

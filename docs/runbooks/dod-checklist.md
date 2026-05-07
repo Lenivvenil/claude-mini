@@ -1,16 +1,8 @@
-## What & Why
+# Runbook: Definition of Done checklist
 
-Closes #
+**Для кого:** PR-автор перед merge. **Когда:** после `/review` и `/codex-review`, перед `gh pr create`.
 
-<!-- Implements docs/decisions/NNNN-*.md (если был ADR) -->
-
-## Changes
-
-- 
-
-## Definition of Done
-
-<!-- Source of truth: docs/runbooks/dod-checklist.md -->
+Изменение **Done** когда все условия истинны:
 
 - [ ] ADR открыт и смерджен, если изменение архитектурно-значимо
 - [ ] Domain-доки обновлены, если изменилась граница BC или термин
@@ -27,3 +19,5 @@ Closes #
 - [ ] CI зелёный на всех required jobs
 - [ ] Conventional Commits; governance-hook проверку прошёл
 - [ ] PR body ссылается на issue (`Closes #NNN`) и на ADR (`Implements docs/decisions/NNNN-*.md`) если был
+
+Этот чек-лист копируется в `pull_request_template.md` и проверяется на каждом PR.
