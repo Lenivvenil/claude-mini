@@ -2,27 +2,22 @@
 <!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
 <!-- Five-minute cold-start: read this + latest session-log entry, start in 5 min. (ADR-0024) -->
 
-session_id: 2026-05-07T04:25:34Z
-date_iso: 2026-05-07
+session_id: 2026-05-08T00:00:00Z
+date_iso: 2026-05-08
 current_branch: main
-last_commit_sha: d5475c1
+last_commit_sha: pending-pr-211
 active_feature_run_id: null
 
 completed_this_session:
-  - "#137 merged (PR #208): MCP transport hardening — pin versions, stdio-default, allowlist"
-  - "ADR-0028 authored + merged (PR #207)"
-  - ".mcp.json: serena@v1.2.0, context7@2.2.4 (stdio), github allowlisted"
-  - "bootstrap/scripts/check-mcp-config.sh — linter, 16 tests, ShellCheck clean"
-  - "CI job mcp-config-lint added"
-  - "docs/runbooks/mcp-quarterly-review.md created"
-  - "README.md + AGENTS.md: MCP policy section"
-  - "ADR-0029 authored + merged (PR #209): nine-principle hardened revision of docs/principles.md, closes #117"
-  - "#158 merged (PR #210): migrate DoD/ADR-trigger/advisor-policy from principles.md to runbooks"
+  - "#214 merged (PR #217): mini-bootstrap-demo.sh guided demo tour + first-week.md checklist"
+  - "#211 tracker: docs-reviewer run → 3 BLOCKs found → fixed → docs-reviewer APPROVE → PR opened"
+  - "docs/onboarding/ fixes: jq prereq, gh repo create step, standard.md expected-result, first-week hook+codex-review+справочник labels, full.md CI edit-points, decision-matrix clarified"
+  - "docs/metrics/health-2026-W19.md: first project-health baseline established"
 
 next_3_actions:
+  - Merge PR for #211 once CI passes; close tracker issue
   - Context7 stdio smoke test (manual): restart Claude Code, send a MCP request to context7, confirm response
-  - Plugin dedup: run `claude mcp list`, check for duplicate serena/context7 entries, remove user-scope if present (see docs/runbooks/mcp-quarterly-review.md §Plugin-marketplace deduplication)
-  - Create follow-up ticket for quarterly review mechanical gate (honor-only gap from ADR-0028)
+  - Triage Icebox batch #104-#110: confirm defer-vs-drop before next sprint
 
 blocked_on: null
 
@@ -30,4 +25,4 @@ open_questions: []
 
 risk_flags:
   - Context7 stdio smoke test NOT yet performed — verify transport switch works before relying on context7 in sessions
-  - Plugin marketplace duplicates may still be present (user-scope vs project-scope conflict) — check `claude mcp list`
+  - STATE.md `active_feature_run_id` field: value semantics (issue ref vs run ID) — pre-existing inconsistency, track separately

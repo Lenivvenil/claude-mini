@@ -15,8 +15,8 @@
 - [ ] `./bootstrap/universal-setup.sh --target ~/my-project` — подключить pipeline-команды к проекту
 - [ ] Установить governance hook в проект (команды устанавливаются отдельно):
   ```bash
-  cp ~/claude-mini/bootstrap/hooks/commit-msg-governance.sh ~/my-project/.git/hooks/commit-msg
-  chmod +x ~/my-project/.git/hooks/commit-msg
+  cd ~/my-project   # hook устанавливается в .git/ текущего каталога
+  ~/claude-mini/bootstrap/universal-setup.sh --hook-this-repo
   ```
 - [ ] `./bootstrap/universal-setup.sh --check` — убедиться, что drift нет
 
@@ -78,6 +78,7 @@
 - [ ] Прочитать `qa-report.md`
 - [ ] Запустить `/review` — Claude проверит изменение
 - [ ] Если PR prod-bound (`bootstrap/`, `.github/workflows/`, `.git/hooks/`, или label `prod-bound`): дождаться `security-reviewer` и `reliability-reviewer`
+- [ ] Для личных/OSS проектов: запустить `/codex-review` — второй голос (Codex CLI)
 
 **Результат:** `qa-report.md`, вердикт `/review`.
 
@@ -114,13 +115,13 @@
 
 ## Быстрый справочник
 
-| Команда | Когда |
-|---|---|
-| `/plan <N>` | Перед любой задачей |
-| `/implement` | После `/plan`, на feature branch |
-| `/qa` | После `/implement` |
-| `/review` | После `/qa` |
-| `/codex-review` | После `/review` (второй голос, только личные/OSS проекты) |
-| `/project-health` | Еженедельно (skill, не command) |
-| `/backlog-review` | Еженедельно, если issues > 10 (skill, не command) |
-| `advisor()` | Внутри `/implement`: до начала и перед done |
+| Команда | Когда | Тип |
+|---|---|---|
+| `/plan <N>` | Перед любой задачей | command |
+| `/implement` | После `/plan`, на feature branch | command |
+| `/qa` | После `/implement` | skill |
+| `/review` | После `/qa` | skill |
+| `/codex-review` | После `/review` (второй голос, только личные/OSS проекты) | skill |
+| `/project-health` | Еженедельно | skill |
+| `/backlog-review` | Еженедельно, если issues > 10 | skill |
+| `advisor()` | Внутри `/implement`: до начала и перед done | встроенный |

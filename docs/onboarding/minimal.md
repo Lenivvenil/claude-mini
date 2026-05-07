@@ -13,10 +13,12 @@
 ```bash
 claude --version   # Claude Code
 gh auth status     # GitHub CLI — должен сказать "Logged in to github.com"
+jq --version       # нужен для установщика
 ```
 
 Нет Claude Code → [claude.ai/code](https://claude.ai/code)  
-Нет `gh` → `brew install gh`, потом `gh auth login`
+Нет `gh` → `brew install gh`, потом `gh auth login`  
+Нет `jq` → `brew install jq`
 
 ---
 
@@ -73,10 +75,18 @@ ls ~/my-project/.claude/commands/
 
 ---
 
-## Шаг 4: Создать тестовый issue
+## Шаг 4: Создать GitHub репозиторий и тестовый issue
+
+`gh issue create` требует GitHub-репозиторий с remote. Создай его:
 
 ```bash
 cd ~/my-project
+gh repo create my-project --private --source=. --remote=origin
+```
+
+Теперь создай тестовый issue:
+
+```bash
 gh issue create --title "test: hello onboarding" --body "Тестовый issue для проверки pipeline"
 ```
 
@@ -153,7 +163,7 @@ bash ~/claude-mini/bootstrap/scripts/mini-bootstrap-demo.sh
 Повтори шаг 2 (`--install`).
 
 **`gh issue create` завершился с ошибкой**  
-Проверь: `gh auth status` — нужен активный логин. Если ошибка про remote: `git remote add origin <url>` в `~/my-project`.
+Проверь: `gh auth status` — нужен активный логин. Убедись, что шаг 4 (`gh repo create`) выполнен — без remote этот шаг падает.
 
 **`/review` говорит "plan.md not found"**  
 Сначала нужен `/plan 1` (шаг 5) — ревью опирается на план.
