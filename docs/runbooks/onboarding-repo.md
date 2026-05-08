@@ -32,6 +32,33 @@ cd ~/projects/claude-mini
 - [ ] Настроены ли GitHub labels?
 - [ ] Есть ли PR template?
 
+### 1a. Активировать governance hook
+
+`--target` устанавливает pipeline-команды, но **не** hook. Hook нужно подключить отдельно в каждый репо:
+
+```bash
+# Запускать из корня репо, куда устанавливается hook
+cd ~/projects/<repo>
+~/projects/claude-mini/bootstrap/universal-setup.sh --hook-this-repo
+```
+
+Проверка — попробуй плохое и хорошее сообщение:
+
+```bash
+echo "bad message" | bash .git/hooks/commit-msg /dev/stdin
+# ожидается: заблокирует, exit 1
+
+echo "feat: add feature #1" | bash .git/hooks/commit-msg /dev/stdin
+# ожидается: пропустит, exit 0
+```
+
+Откат:
+```bash
+rm .git/hooks/commit-msg
+```
+
+Если `./bootstrap/universal-setup.sh --check` выдаёт предупреждение про hook — hook не установлен в этот репо. Повтори этот шаг.
+
 ### 2. Кастомизировать AGENTS.md и CLAUDE.md
 
 `--target` (шаг 1) доставляет оба файла автоматически. Отредактируй под проект:
