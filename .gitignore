@@ -13,6 +13,7 @@ deploy-to-github.sh
 create-backlog.sh
 *.bak*
 .sweep/
+.sprint-state
 # Per-project pipeline install artifacts (ADR-0018)
 .claude/commands/
 .claude/pipeline-version

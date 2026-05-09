@@ -1,7 +1,7 @@
 # Ubiquitous Language — meta-pipeline BC
 
-**Version:** 2026-05-06
-**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122) + ADR-0024 (Session Continuity BC, issue #128) + IntentCheck/AC alignment (#133) + ADR-0027 (Domain Inversion: meta vs target BC, issue #130); four aggregate roots across two BCs
+**Version:** 2026-05-10
+**Status:** current as of ADR-0020 (God Aggregate extraction, issue #108) + gate-audit terms (issue #122) + ADR-0024 (Session Continuity BC, issue #128) + IntentCheck/AC alignment (#133) + ADR-0027 (Domain Inversion: meta vs target BC, issue #130) + ADR-0030 (Sprint orchestrator, issue #221); four aggregate roots across two BCs
 
 Terms are listed alphabetically. Each entry: one-sentence definition, then discriminating note where the term is easily confused.
 
@@ -214,6 +214,14 @@ A commit rejected by the governance hook. Not a failure state — it is the hook
 The contract by which a session transfers state to its successor: `STATE.md` (snapshot, replaces) + `session-log/YYYY/MM/YYYY-MM-DD.md` (history, appends) + `plan.md` linter pass (decision discipline, gates). Called "triple" because all three artifacts must be in their valid post-hand-off state simultaneously for the hand-off to be considered complete.
 
 *Discriminating note:* a hand-off is not a commit. A commit changes the repo; a hand-off prepares for session change. They often coincide but are not the same — a session can hand off without committing (e.g., end-of-day with WIP), and a commit can happen without a hand-off (mid-session progress commit).
+
+---
+
+## headless-step-per-call
+
+The rejected sprint-orchestrator architecture in which each pipeline stage (`/plan`, `/implement`, `/qa`, `/review`) is invoked as a separate `claude -p` call with externally reconstructed context, rather than executing the full `/feature` flow inside one session per ticket. Rejected by ADR-0030 because state must be reconstructed between calls, context window continuity within a feature run is lost, and `/feature` is contracted as a single-session orchestrator (no documented stage-resume API).
+
+*Discriminating note:* headless-step-per-call is distinct from the accepted Sprint orchestrator approach (one full `/feature` session per ticket). Both are "headless" in the `claude -p` sense; the distinction is the unit of invocation — stage versus ticket. Use the full term to avoid ambiguity in PR discussions and ADR cross-references.
 
 ---
 
@@ -449,6 +457,32 @@ A `STATE.md` field uniquely identifying the session that wrote the current snaps
 A slash-command (`/plan`, `/adr`, `/implement`, `/review`, `/feature`, etc.) that executes under main-loop authority. Has full write capability (subject to permissions). Distinct from agents, which are subagents with constrained toolsets.
 
 *Discriminating note:* a skill is not an agent. Skills run inside the main loop. Agents are separate Claude Code subagents. This distinction is normative in ADR 0007 and subtle in practice.
+
+---
+
+## Sprint orchestrator
+
+The external bash process `bootstrap/scripts/sprint.sh` that sequences per-ticket Claude Code sessions across all Sprint-status tickets, invoking the canonical `/feature` skill once per ticket via `claude -p "/feature <issue>"`. Does not modify the pipeline — it is purely an outer loop over `/feature` invocations with deterministic post-verification (PR exists, issue closed, escalation label applied) between iterations. Defined by ADR-0030.
+
+*Discriminating note:* the Sprint orchestrator is not a Claude Code skill and not an agent — it is a plain bash script outside Claude Code. The distinction matters because Principle 2 forbids the orchestrator from being a skill (skill-as-executor); the bash boundary makes the executor non-LLM by construction.
+
+---
+
+## Sprint sweep
+
+One full pass of the Sprint orchestrator (`sprint.sh`) over all Sprint-status tickets. A sweep completes when every ticket in scope has reached one of three terminal states: `merged` (PR closed, `Closes #N`), `escalated` (issue carries `needs-human` label and a comment with the reason), or `failed` (logged failure reason in `.sprint-state` with no recoverable retry).
+
+*Discriminating note:* a Sprint sweep is not the same as a single `FeatureRun`. A sweep is a sequence of N `FeatureRun`s (one per ticket); each `FeatureRun` is an independent aggregate instance. Failure of one ticket does not abort the sweep — the orchestrator records the terminal state and continues to the next ticket.
+
+---
+
+## .sprint-state
+
+The local JSON file (repo-root, gitignored) tracking which tickets the current Sprint sweep has processed and their terminal states. Used for restart recovery: if the sweep is interrupted, the next `sprint.sh` invocation reads `.sprint-state` to skip already-processed tickets. Authoritative only within the current machine for the current sweep — GitHub remains the canonical source of truth (Principle 7); `.sprint-state` is a local cache, not an artifact of record.
+
+*Discriminating note:* `.sprint-state` is not the same as `STATE.md`. `STATE.md` is the per-session continuity snapshot owned by the Session Continuity BC; `.sprint-state` is per-sweep orchestration state owned by the Sprint orchestrator. Different lifecycle (session vs sweep), different scope (one operator session vs one sprint pass), different consumer (next session vs next `sprint.sh` resume).
+
+*Privacy note:* `.sprint-state` may contain issue titles, error log snippets, and ticket identifiers from the sweep run. Do not share terminal screenshots or logs that include its contents if issues contain sensitive information. Schema defined in the `sprint.sh` implementation PR.
 
 ---
 
