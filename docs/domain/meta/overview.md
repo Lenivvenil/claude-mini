@@ -40,6 +40,7 @@ This BC owns the workflow choreography for AI-assisted software development: pip
 | **Skill** | Slash-command (`/plan`, `/adr`, `/implement`, `/review`, `/feature`, etc.) executing under main-loop authority | Main-loop authority |
 | **GitHub MCP** | MCP server invocable from inside the pipeline; ACL layer over GitHub platform | Pipeline-scoped GitHub API calls |
 | **Codex CLI** | Second voice in two-voice review; accessed via ChatGPT Plus device-auth OAuth | Read-only output (review text) |
+| **Sprint orchestrator** | External bash process (`bootstrap/scripts/sprint.sh`) that sequences per-ticket Claude Code sessions; sits outside Claude Code and drives `/feature` calls via `claude -p`; not a Skill, not an Agent | Invokes `claude -p`; reads/writes `.sprint-state`; reads GitHub via `gh` |
 
 ---
 
