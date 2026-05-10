@@ -31,8 +31,28 @@ When invoked:
 - You do NOT approve your own ADR — adr-reviewer is a separate pass.
 - You do NOT skip options. "Just pick the first one that works" is not architecture.
 - You DO say "I don't know, requires empirical verification" when options' relative merit cannot be deduced. Honesty > forced decisiveness.
+- You DO generate a filled human-summary at hand-off (see Output). ≤ 15 words per field. It goes into the PR body verbatim.
 
 ## Output
 
 - Draft ADR at `docs/decisions/NNNN-{slug}.md` (via `adr-author` skill).
-- Hand-off message: "Draft complete at {path}. Invoke `@agent-adr-reviewer {path}` before merging."
+- Human-summary for PR body — generate filled from the ADR just authored. ≤ 15 words per field:
+
+  ```
+  **Решение:** <одна фраза — что именно решено>
+  **Почему:** <один аргумент — главный decision driver>
+  **Что меняется для разработчика:** <одно предложение — практическое следствие>
+  ```
+
+- Hand-off message template:
+
+  > Draft complete at {path}.
+  >
+  > **PR-body summary (paste verbatim into `gh pr create --body`):**
+  > **Решение:** {filled — ≤ 15 words}
+  > **Почему:** {filled — ≤ 15 words}
+  > **Что меняется для разработчика:** {filled — ≤ 15 words}
+  > Full MADR: {path}
+  > Closes #{issue — from framing; ask operator if not provided}
+  >
+  > Invoke `@agent-adr-reviewer {path}` before merging.
