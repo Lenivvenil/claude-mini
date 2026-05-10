@@ -14,6 +14,7 @@ create-backlog.sh
 *.bak*
 .sweep/
 .sprint-state
+/.sprint-logs/
 # Per-project pipeline install artifacts (ADR-0018)
 .claude/commands/
 .claude/pipeline-version
