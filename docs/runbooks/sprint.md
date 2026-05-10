@@ -1,15 +1,13 @@
 # Runbook: Sprint Sweep
 
 > **Design doc:** [`docs/architecture/sprint-orchestrator.md`](../architecture/sprint-orchestrator.md)
-> **Script:** `bootstrap/scripts/sprint.sh` (not yet implemented — see #44 Phase-0 conditions)
+> **Script:** `bootstrap/scripts/sprint.sh` (Phase-0 реализация; известные ограничения в разделе ниже, #238)
 
-> **NOT FUNCTIONAL YET.** `bootstrap/scripts/sprint.sh` не существует. Команды ниже — будущий интерфейс после закрытия #44 Phase-0. До тех пор пользуйся design doc выше.
-
-*Этот runbook заполняется после первого реального прогона `sprint.sh`.*
+*Для оператора, запускающего недельный sprint sweep. Этот runbook дополняется после первого реального прогона. Детальные troubleshooting-сценарии — #238.*
 
 ---
 
-## Быстрый старт (после реализации sprint.sh)
+## Быстрый старт
 
 ```bash
 # Запустить sweep по всем Sprint-тикетам
@@ -27,9 +25,56 @@
 
 ---
 
-## TODO(#44): заполнить после первого прогона
+## Как читать `.sprint-state`
+
+`.sprint-state` — локальный JSON-кэш прогресса sweep'а. Источник правды — GitHub.
+
+```bash
+# Быстрый обзор sweep'а
+jq '{total: .summary.total, merged: .summary.merged, escalated: .summary.escalated, failed: .summary.failed}' .sprint-state
+
+# Все тикеты с их статусами
+jq '.tickets | to_entries[] | "\(.key): \(.value.state) (\(.value.reason))"' -r .sprint-state
+
+# Retro-дайджест (из design doc B.10)
+jq '{total: .summary.total, merged: .summary.merged, escalated: .summary.escalated, failed: .summary.failed, total_tokens: ([.tickets[].tokens_used] | add // 0)}' .sprint-state
+```
+
+State enum: `running` | `merged` | `escalated` | `escalation_failed` | `failed`.
+
+---
+
+## Как сбросить эскалацию
+
+Если тикет был ошибочно помечен `needs-human`:
+
+```bash
+# 1. Убрать label на GitHub
+gh issue edit <N> --remove-label "needs-human"
+
+# 2. Найти и удалить escalation-комментарий sprint.sh
+REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
+COMMENT_ID=$(gh api "repos/${REPO}/issues/<N>/comments" \
+  --jq '.[] | select(.body | startswith("sprint.sh escalation:")) | .id' | head -1)
+gh api "repos/${REPO}/issues/comments/${COMMENT_ID}" -X DELETE
+
+# 3. Удалить запись из .sprint-state (ключ — номер тикета без #, например "221")
+# Проверь ключи: jq 'keys' .sprint-state
+jq 'del(.tickets["<N>"])' .sprint-state > .sprint-state.tmp && mv .sprint-state.tmp .sprint-state
+
+# 4. Продолжить sweep
+./bootstrap/scripts/sprint.sh --resume
+```
+
+---
+
+## Известные ограничения
+
+- `gh_comment_id` в `.sprint-state` не пишется — TODO(#238).
+
+---
+
+## Заполнить после первого прогона (#238)
 
 - Типовые проблемы и решения
-- Как читать `.sprint-state`
-- Как вручную закрыть тикет если sweep завис
-- Как сбросить эскалацию (`needs-human` → убрать label, удалить запись из `.sprint-state`)
+- Как вручную закрыть тикет если sweep завис на `running`
