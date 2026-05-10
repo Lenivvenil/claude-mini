@@ -32,10 +32,11 @@ Maximum score = 25. Patterns are listed in descending score order.
 | 2 | `symptom-fix-not-root` | 4 | 4 | 4 | **20** |
 | 3 | `narrow-special-case` | 3 | 4 | 4 | **18** |
 | 4 | `adr-drift` | 3 | 4 | 3 | **17** |
-| 5 | `hedging-in-plan` | 4 | 3 | 1 | **15** |
-| 6 | `fail-open-default` | 2 | 4 | 3 | **15** |
-| 7 | `todo-without-ticket` | 5 | 2 | 1 | **15** |
-| 8 | `commented-block` | 4 | 2 | 1 | **13** |
+| 5 | `scope-deferral-to-new-issue` | 3 | 4 | 3 | **17** |
+| 6 | `hedging-in-plan` | 4 | 3 | 1 | **15** |
+| 7 | `fail-open-default` | 2 | 4 | 3 | **15** |
+| 8 | `todo-without-ticket` | 5 | 2 | 1 | **15** |
+| 9 | `commented-block` | 4 | 2 | 1 | **13** |
 
 ---
 
@@ -124,6 +125,38 @@ After /implement, run adr-reviewer against every ADR referenced in the plan.
 Assert each §Decision Outcome constraint is satisfied in the diff.
 Root cause: model copies from the most recent similar file rather than reading
 the ADR that governs the current context.
+
+---
+
+### scope-deferral-to-new-issue
+
+**Frequency:** 3 | **Severity:** 4 | **Detectability:** 3 | **Score:** 17
+
+**Detector:** `adversarial-critic` loads this file into context at every `/review`. Detection
+requires LLM reasoning: correlate (a) `/intent-check` output showing `missing`/`partial` AC items
+with (b) evidence in the PR thread, commit message, or session history that a new issue was
+created in the same session. No deterministic gate (hence Detectability=3). Adversarial-critic
+mechanically scans only its eight fixed pattern classes; this entry acts via LLM context,
+not as an additional mechanical scan target. Detection degrades silently if `/intent-check`
+output is not included in the PR body — always paste it before running `/review`.
+
+**Severity:** BLOCK if AC items are `missing`/`partial` AND a new issue was created in the same
+session with a title overlapping current ticket's AC keywords. SUGGEST if all AC items are
+`covered` AND a new issue was created (may be legitimate scope expansion).
+
+**Example:**  
+Ticket #200: "add X, Y, Z to module." Model implements X and Y. For Z, it opens issue #201
+("follow-up: add Z") and marks #200 as done. `/intent-check` shows Z as `missing`. `/review`
+shows no diff touching Z. PR body says "Z moved to #201 for scope reasons." No explicit scope
+decision documented in current PR thread. Model claims DoD met. Caught only when operator
+checks intent-check output and sees `missing` beside Z.
+
+**Fix:**  
+Complete all AC items in the current ticket before closing. If an item is genuinely outside
+scope, remove it from the current ticket's AC explicitly and post a scope decision in the PR
+thread explaining why. Do not open a new issue and silently treat the current ticket as done.
+If the new issue is a legitimate expansion (all AC covered), link it from the PR body and
+note it as scope expansion, not deferral.
 
 ---
 
