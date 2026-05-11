@@ -189,20 +189,44 @@ Claude Code CLI с флагом `--output-format stream-json` выводит с�
 parse_usage() {
     local session_log="$1"
     local input_tokens output_tokens cache_read cache_write total
-    input_tokens=$(jq -r 'select(.type == "result") | .usage.input_tokens // 0' "$session_log" | tail -1)
-    output_tokens=$(jq -r 'select(.type == "result") | .usage.output_tokens // 0' "$session_log" | tail -1)
-    cache_read=$(jq -r 'select(.type == "result") | .usage.cache_read_input_tokens // 0' "$session_log" | tail -1)
-    cache_write=$(jq -r 'select(.type == "result") | .usage.cache_creation_input_tokens // 0' "$session_log" | tail -1)
+    # -R reads each line as raw string; try fromjson skips non-JSON lines (e.g. stderr text from 2>&1)
+    input_tokens=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.input_tokens // "0"' "$session_log" | tail -1)
+    output_tokens=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.output_tokens // "0"' "$session_log" | tail -1)
+    cache_read=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.cache_read_input_tokens // "0"' "$session_log" | tail -1)
+    cache_write=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.cache_creation_input_tokens // "0"' "$session_log" | tail -1)
     total=$((input_tokens + output_tokens + cache_read + cache_write))
     printf '%d' "$total"
 }
 ```
 
-Лог сессии пишется перенаправлением: `claude -p ... --output-format stream-json > "$session_log" 2>&1`.
+Лог сессии пишется перенаправлением: `claude -p ... --output-format stream-json --verbose > "$session_log" 2>&1`.
 
 Хрупкость: shape `usage` зафиксирован на момент написания ADR-0030. Если Anthropic меняет schema — парсинг сломается (Negative Consequence в ADR-0030). Validation: при парсинге ≤0 токенов — логировать `WARN: usage parse returned 0, schema may have changed`.
 
 **T10 `usage_limit` (отложен — трекинг: #240):** точное поле JSON output при rate-limiting неизвестно до первого прогона с Pro-подпиской. После прогона: найти поле в `$session_log` (`jq 'path(..)|join(".")' | grep -i "limit\|reset\|quota"`), добавить T10 в §B.4 trigger table и в ADR-0030 (список закрытый — требует Re-visit Trigger per §B.4).
+
+### Empirical baseline — calibration after first sprint (issue #228)
+
+После первого реального прогона (`sprint.sh --ticket 228`, 2026-05-11) накоплена одна измеренная точка:
+
+| Метрика | Значение |
+|---------|----------|
+| `input_tokens` | 14 |
+| `output_tokens` | 3 305 |
+| `cache_read_input_tokens` | 353 074 |
+| `cache_creation_input_tokens` | 37 652 |
+| **total (sum)** | **394 045** |
+
+**Формула для ревизии threshold:**
+```
+new_threshold = среднее(tokens_used по закрытым тикетам) × 1.5
+```
+
+Применение к N=1: 394 045 × 1.5 = 591 068 ≈ **600 000** (округление до 100K).
+
+**Ограничение N=1:** Тикет #228 — meta/chore с высоким cache_read (90% total). Значение нестабильно при других типах тикетов. Threshold 600 000 является предварительным (авторизовано issue #228). Ревизия — после накопления N ≥ 3–5 тикетов (трекинг: #244).
+
+**Multiplier 1.5 сохранён:** σ при N=1 неопределима. Изменение multiplier до 2.0 без данных о разбросе — нарушение Принципа 1 (размытость без обоснования).
 
 ---
 
@@ -367,8 +391,9 @@ run_ticket() {
     local claude_exit=0
     "$CLAUDE_BIN" -p "/feature ${ticket_number}" \
         --output-format stream-json \
-        > "$session_log" 2>&1
-    claude_exit=$?
+        --verbose \
+        --max-turns "${MAX_TURNS}" \
+        > "$session_log" 2>&1 || claude_exit=$?
 
     if [ "$claude_exit" -ne 0 ]; then
         echo "[TICKET #${ticket_number}] T1 process_error: claude exited ${claude_exit}" >&2
