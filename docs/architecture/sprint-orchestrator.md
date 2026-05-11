@@ -161,6 +161,7 @@ stateDiagram-v2
 | T7 | `pre_existing_needs_human` | **warn** | label `needs-human` уже висит на тикете до старта сессии |
 | T8 | `no_commits_in_session` | **critical** | сессия `/feature` завершилась, в ветке нет новых коммитов и нет PR; **(deferred: TODO(#44), currently subsumed by T2)** |
 | T9 | `state_file_corrupt` | **critical** | `.sprint-state` есть, но не парсится как JSON (`jq . < .sprint-state` exit ≠ 0) |
+| T10 | `usage_limit` | **critical** | **(deferred — см. §B.5)** точное поле JSON output при rate-limiting неизвестно до первого прогона `sprint.sh`; трекинг: #240 |
 
 **Поведение при эскалации — общее:**
 1. Добавить label `needs-human` на issue через `gh issue edit N --add-label needs-human`
@@ -200,6 +201,8 @@ parse_usage() {
 Лог сессии пишется перенаправлением: `claude -p ... --output-format stream-json > "$session_log" 2>&1`.
 
 Хрупкость: shape `usage` зафиксирован на момент написания ADR-0030. Если Anthropic меняет schema — парсинг сломается (Negative Consequence в ADR-0030). Validation: при парсинге ≤0 токенов — логировать `WARN: usage parse returned 0, schema may have changed`.
+
+**T10 `usage_limit` (отложен — трекинг: #240):** точное поле JSON output при rate-limiting неизвестно до первого прогона с Pro-подпиской. После прогона: найти поле в `$session_log` (`jq 'path(..)|join(".")' | grep -i "limit\|reset\|quota"`), добавить T10 в §B.4 trigger table и в ADR-0030 (список закрытый — требует Re-visit Trigger per §B.4).
 
 ---
 
