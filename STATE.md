@@ -2,11 +2,11 @@
 <!-- Principle 9 hand-off artifact. Replaced (not appended) on each session end. -->
 <!-- Five-minute cold-start: read this + latest session-log entry, start in 5 min. (ADR-0024) -->
 
-session_id: 2026-05-10T00:00:00Z
-date_iso: 2026-05-10
-current_branch: feat/adr-sprint-orchestrator-221
-last_commit_sha: 0828e10
-active_feature_run_id: "#221"
+session_id: 2026-05-11T04:51:41Z
+date_iso: 2026-05-11
+current_branch: main
+last_commit_sha: c390897
+active_feature_run_id: #226
 
 completed_this_session:
   - "#221 pipeline in progress: plan.md written, ADR-0030 drafted + adr-reviewer APPROVE, vocabulary.md +4 terms, overview.md actors table updated, domain-reviewer APPROVE, .gitignore +.sprint-state, adversarial-critic APPROVE, /review APPROVE, /codex-review complete"
