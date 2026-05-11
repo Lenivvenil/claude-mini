@@ -15,7 +15,7 @@ set -uo pipefail
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 GH_BIN="${GH_BIN:-gh}"
 REPO_ROOT="${REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null)}"
-BUDGET_SPIKE_THRESHOLD="${BUDGET_SPIKE_THRESHOLD:-50000}"
+BUDGET_SPIKE_THRESHOLD="${BUDGET_SPIKE_THRESHOLD:-600000}"
 CONSECUTIVE_FAILURE_THRESHOLD="${CONSECUTIVE_FAILURE_THRESHOLD:-3}"
 MAX_TURNS="${MAX_TURNS:-200}"
 NOTIFY_SH="$(cd "$(dirname "$0")" && pwd)/notify.sh"
@@ -98,10 +98,11 @@ check_state_integrity() {
 parse_usage() {
     local session_log="$1"
     local input_tokens output_tokens cache_read cache_write total
-    input_tokens=$(jq -r 'select(.type == "result") | .usage.input_tokens // 0' "$session_log" 2>/dev/null | tail -1)
-    output_tokens=$(jq -r 'select(.type == "result") | .usage.output_tokens // 0' "$session_log" 2>/dev/null | tail -1)
-    cache_read=$(jq -r 'select(.type == "result") | .usage.cache_read_input_tokens // 0' "$session_log" 2>/dev/null | tail -1)
-    cache_write=$(jq -r 'select(.type == "result") | .usage.cache_creation_input_tokens // 0' "$session_log" 2>/dev/null | tail -1)
+    # -R reads each line as raw string; try fromjson skips non-JSON lines (e.g. stderr text from 2>&1)
+    input_tokens=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.input_tokens // "0"' "$session_log" 2>/dev/null | tail -1)
+    output_tokens=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.output_tokens // "0"' "$session_log" 2>/dev/null | tail -1)
+    cache_read=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.cache_read_input_tokens // "0"' "$session_log" 2>/dev/null | tail -1)
+    cache_write=$(jq -Rr '(try fromjson // null) | select(. != null and .type == "result") | .usage.cache_creation_input_tokens // "0"' "$session_log" 2>/dev/null | tail -1)
     input_tokens="${input_tokens:-0}"
     output_tokens="${output_tokens:-0}"
     cache_read="${cache_read:-0}"
@@ -332,8 +333,10 @@ run_ticket() {
     state_set "$ticket_number" "running" ""
 
     local claude_exit=0
+    # --verbose required: stream-json emits usage events only in verbose mode
     "$CLAUDE_BIN" -p "/feature ${ticket_number}" \
         --output-format stream-json \
+        --verbose \
         --max-turns "${MAX_TURNS}" \
         > "$session_log" 2>&1 || claude_exit=$?
 
@@ -377,7 +380,7 @@ run_ticket() {
     fi
 
     # T5: budget_spike (warn, non-terminal)
-    if [ "${tokens_used:-0}" -gt "${BUDGET_SPIKE_THRESHOLD:-50000}" ]; then
+    if [ "${tokens_used:-0}" -gt "${BUDGET_SPIKE_THRESHOLD:-600000}" ]; then
         notify "$ticket_number" "budget_spike" "${tokens_used} tokens"
     fi
 
