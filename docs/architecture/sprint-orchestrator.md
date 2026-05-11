@@ -156,7 +156,7 @@ stateDiagram-v2
 | T2 | `no_pr_after_session` | **critical** | сессия завершилась, PR не создан (нет open/merged PR с `Closes #N`) |
 | T3 | `issue_not_closed` | **warn** | PR смержен, но issue всё ещё открыт (`Closes #N` отсутствует в PR body) |
 | T4 | `governance_block` | **warn** | stdout сессии содержит `governance hook blocked` или `commit rejected`; handled by `notify()` — non-terminal |
-| T5 | `budget_spike` | **warn** | токены одного тикета > `$BUDGET_SPIKE_THRESHOLD` (default: 50 000); handled by `notify()` — non-terminal |
+| T5 | `budget_spike` | **warn** | токены одного тикета > `$BUDGET_SPIKE_THRESHOLD` (default: 600 000, calibrated in [#228](https://github.com/Lenivvenil/claude-mini/issues/228)); handled by `notify()` — non-terminal |
 | T6 | `consecutive_failures` | **critical** | ≥3 тикетов подряд в состоянии `failed`, `escalated`, или `escalation_failed`; abort sweep, без label/comment |
 | T7 | `pre_existing_needs_human` | **warn** | label `needs-human` уже висит на тикете до старта сессии |
 | T8 | `no_commits_in_session` | **critical** | сессия `/feature` завершилась, в ветке нет новых коммитов и нет PR; **(deferred: TODO(#44), currently subsumed by T2)** |
@@ -403,7 +403,7 @@ run_ticket() {
 
     # T5: budget_spike (warn, non-terminal) — token usage exceeded per-ticket threshold.
     # Uses notify(): the ticket may still have a merged PR; verify_outcome writes final state.
-    if [ "${tokens_used:-0}" -gt "${BUDGET_SPIKE_THRESHOLD:-50000}" ]; then
+    if [ "${tokens_used:-0}" -gt "${BUDGET_SPIKE_THRESHOLD:-600000}" ]; then
         notify "$ticket_number" "budget_spike" "${tokens_used} tokens"
     fi
 

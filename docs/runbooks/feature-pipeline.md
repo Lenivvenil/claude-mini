@@ -244,3 +244,10 @@ The following GitHub-specific commands and files are used in this pipeline. This
 ```
 
 Создаст TodoWrite со всеми стадиями и будет напоминать. Сами команды всё равно запускаешь ты.
+
+## Autonomous sprint sweep
+
+Для обхода нескольких тикетов подряд без оператора — `bootstrap/scripts/sprint.sh`.
+Запускает `/feature <N>` на каждый тикет из kanban-статуса `Sprint`, верифицирует результат через GitHub, эскалирует при сбоях.
+
+Подробнее: [`docs/runbooks/sprint.md`](sprint.md).

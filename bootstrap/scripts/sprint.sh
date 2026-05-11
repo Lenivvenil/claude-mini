@@ -15,7 +15,7 @@ set -uo pipefail
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 GH_BIN="${GH_BIN:-gh}"
 REPO_ROOT="${REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null)}"
-BUDGET_SPIKE_THRESHOLD="${BUDGET_SPIKE_THRESHOLD:-50000}"
+BUDGET_SPIKE_THRESHOLD="${BUDGET_SPIKE_THRESHOLD:-600000}"
 CONSECUTIVE_FAILURE_THRESHOLD="${CONSECUTIVE_FAILURE_THRESHOLD:-3}"
 MAX_TURNS="${MAX_TURNS:-200}"
 NOTIFY_SH="$(cd "$(dirname "$0")" && pwd)/notify.sh"
@@ -377,7 +377,7 @@ run_ticket() {
     fi
 
     # T5: budget_spike (warn, non-terminal)
-    if [ "${tokens_used:-0}" -gt "${BUDGET_SPIKE_THRESHOLD:-50000}" ]; then
+    if [ "${tokens_used:-0}" -gt "${BUDGET_SPIKE_THRESHOLD:-600000}" ]; then
         notify "$ticket_number" "budget_spike" "${tokens_used} tokens"
     fi
 
