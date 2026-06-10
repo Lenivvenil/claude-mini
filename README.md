@@ -14,7 +14,7 @@ flowchart LR
     B -->|"~30 мин"| C[Minimal]
     B -->|"~1-2 ч"| D[Standard]
     B -->|"~3-4 ч"| E[Paranoid mode]
-    B -->|"Не уверен"| F[Decision matrix]
+    B -->|"Не уверен"| F[Правило выбора в GETTING-STARTED]
 ```
 
 ## Быстрый старт (~30 мин)
