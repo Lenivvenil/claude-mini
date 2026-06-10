@@ -35,8 +35,16 @@ sessions, or whenever the human-resume contract is questioned.
 
 **Steps:**
 
+0. Run `mini-preflight` from the repo root (#257). Its «Что накопилось за отсутствие»
+   section is the return-ritual companion to STATE.md: days since last session, the
+   latest run of every CI workflow (red first, including scheduled ones that fail
+   silently for weeks), unread auto-issues (mutation weekly, deferred-review), open
+   PRs, and proposed ADRs with age. STATE.md answers "where did I stop"; this section
+   answers "what did the system accumulate while I was away". Offline it degrades to
+   a warn and skips — the drill itself never depends on the network.
+
 1. Open a new terminal / clean session. Do NOT look at chat history, PR descriptions,
-   or any context beyond `STATE.md` and today's `session-log` entry.
+   or any context beyond `STATE.md`, today's `session-log` entry, and the preflight output.
 
 2. Start a 5-minute timer.
 
@@ -118,6 +126,7 @@ After each drill, append a row to this table:
 
 - `STATE.md` — aggregate root (Session Continuity BC)
 - `session-log/YYYY/MM/YYYY-MM-DD.md` — append-only history
+- `bootstrap/scripts/mini-preflight.sh` — return ritual: «что накопилось за отсутствие» (#257)
 - `bootstrap/scripts/plan-lint.sh` — linter for plan.md ADR-discipline (third leg of hand-off)
 - `bootstrap/hooks/stop-hook.sh` — automates mechanical STATE.md field updates
 - `docs/decisions/0024-session-continuity-bc-and-state-schema.md` — ADR governing all of the above

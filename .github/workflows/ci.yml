@@ -168,6 +168,17 @@ jobs:
             exit 1
           fi
 
+  mini-preflight-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Run mini-preflight test suite
+        run: bash bootstrap/scripts/test-mini-preflight.sh
+
   gate-audit-test:
     runs-on: ubuntu-latest
     steps:
