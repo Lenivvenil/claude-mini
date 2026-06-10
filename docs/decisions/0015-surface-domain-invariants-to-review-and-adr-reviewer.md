@@ -1,6 +1,6 @@
 # 0015. Surface domain invariants to `/review` and `adr-reviewer` via loaded context and explicit cross-check instructions
 
-* Status: proposed
+* Status: accepted (2026-06-10)
 * Date: 2026-04-24
 * Deciders: venil
 * Tags: pipeline, agents, domain, review

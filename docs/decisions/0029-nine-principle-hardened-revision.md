@@ -2,6 +2,7 @@
 
 * Status: accepted
 * Superseded-by: ~
+* Supersedes: docs/decisions/0021-adopt-nine-principle-hardened-revision.md (earlier draft instrument of the same decision; duplicate publication resolved 2026-06-10)
 * Date: 2026-05-07
 * Deciders: Venil (operator)
 * Tags: governance, principles, pipeline

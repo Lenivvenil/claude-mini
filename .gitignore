@@ -21,3 +21,4 @@ create-backlog.sh
 # Python bytecode
 __pycache__/
 *.pyc
+.ruff_cache/
