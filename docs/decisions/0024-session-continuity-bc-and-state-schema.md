@@ -1,6 +1,6 @@
 # 0024. Establish Session Continuity as a sibling bounded context with `STATE.md` as document-model aggregate root
 
-* Status: proposed
+* Status: accepted (2026-06-10)
 * Superseded-by: ~
 * Date: 2026-05-03
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)

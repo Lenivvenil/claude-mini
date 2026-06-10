@@ -1,6 +1,7 @@
 # 0021. Adopt the nine-principle hardened revision of `docs/principles.md`
 
-* Status: proposed
+* Status: superseded
+* Superseded-by: docs/decisions/0029-nine-principle-hardened-revision.md
 * Date: 2026-04-29
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)
 * Tags: principles, governance, documentation, contract

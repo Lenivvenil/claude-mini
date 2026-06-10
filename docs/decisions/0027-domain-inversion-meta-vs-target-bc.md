@@ -1,6 +1,6 @@
 # 0027. Domain Inversion: Meta vs Target Bounded Contexts
 
-* Status: proposed — pending operator flip to accepted/rejected
+* Status: accepted (2026-06-10)
 * Superseded-by: ~
 * Date: 2026-05-05
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)

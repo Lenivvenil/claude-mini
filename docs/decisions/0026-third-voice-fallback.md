@@ -1,6 +1,6 @@
 # 0026. Raise Codex unavailability threshold to 35% and close #132 without implementation
 
-* Status: proposed — pending operator flip to accepted/rejected
+* Status: accepted (2026-06-10)
 * Date: 2026-05-05
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)
 * Tags: quality, review, cost, principle-1, principle-7, principle-8, principle-9
