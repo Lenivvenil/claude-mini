@@ -1,5 +1,7 @@
 # Runbook: Sprint Sweep
 
+> ⚠️ **СТАТУС: ЗАМОРОЖЕН (2026-06-10).** Оркестратор экспериментальный: spike #227 не завершён, известный баг #243 открыт, production-прогонов не было. Разморозка — по реальному трению в digest-проекте, не по календарю (решение оператора, #255). Код не удаляется; runbook остаётся справочным.
+
 > **ADR:** [`docs/decisions/0030-sprint-orchestrator.md`](../decisions/0030-sprint-orchestrator.md)
 > **Design doc:** [`docs/architecture/sprint-orchestrator.md`](../architecture/sprint-orchestrator.md)
 > **Script:** `bootstrap/scripts/sprint.sh`

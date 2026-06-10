@@ -1,6 +1,6 @@
 # 0030. Use external bash process as sprint orchestrator over `/feature`
 
-* Status: proposed
+* Status: proposed (frozen 2026-06-10 — parked until digest-driven need; spike #227 closed as parked, see #255)
 * Superseded-by: ~
 * Date: 2026-05-10
 * Deciders: Venil (operator)
