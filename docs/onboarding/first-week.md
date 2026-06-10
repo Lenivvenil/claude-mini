@@ -8,7 +8,7 @@
 
 **Прочитать:**
 - `docs/principles.md` — девять принципов (контракт проекта)
-- `docs/onboarding/minimal.md` — минимальная установка
+- [`docs/onboarding/GETTING-STARTED.md`](GETTING-STARTED.md) §Minimal — минимальная установка
 
 **Сделать:**
 - [ ] `./bootstrap/universal-setup.sh --install` — установить pipeline

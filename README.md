@@ -14,7 +14,7 @@ flowchart LR
     B -->|"~30 мин"| C[Minimal]
     B -->|"~1-2 ч"| D[Standard]
     B -->|"~3-4 ч"| E[Paranoid mode]
-    B -->|"Не уверен"| F[Decision matrix]
+    B -->|"Не уверен"| F[Правило выбора в GETTING-STARTED]
 ```
 
 ## Быстрый старт (~30 мин)
@@ -28,24 +28,24 @@ cd ~/claude-mini
 ./bootstrap/universal-setup.sh --target <твой-проект> # подключить к проекту
 ```
 
-Полный путь (prerequisites, hardware setup, первый `/review`): **[docs/onboarding/minimal.md](docs/onboarding/minimal.md)**
+Полный путь (prerequisites, hardware setup, первый `/review`): **[docs/onboarding/GETTING-STARTED.md §Minimal](docs/onboarding/GETTING-STARTED.md#minimal-30-мин)**
 
 ## Standard setup (~1-2 ч)
 
 Добавляет к minimal: governance hook (проверка формата коммитов), MCP-серверы (GitHub, Serena, Context7), настройку Claude Code settings.
 
-Полный путь: **[docs/onboarding/standard.md](docs/onboarding/standard.md)**
+Полный путь: **[docs/onboarding/GETTING-STARTED.md §Standard](docs/onboarding/GETTING-STARTED.md#standard-1-2-ч)**
 
 ## Paranoid mode (~3-4 ч)
 
 Полный стек: CI workflows, mutation testing, все агенты, ADR baseline.
 Для продакшн-значимых репо.
 
-Полный путь: **[docs/onboarding/full.md](docs/onboarding/full.md)**
+Полный путь: **[docs/onboarding/GETTING-STARTED.md §Full](docs/onboarding/GETTING-STARTED.md#full--paranoid-mode-3-4-ч)**
 
 ---
 
-Не знаешь с чего начать? → **[docs/onboarding/decision-matrix.md](docs/onboarding/decision-matrix.md)**
+Не знаешь с чего начать? → правило выбора в начале **[GETTING-STARTED.md](docs/onboarding/GETTING-STARTED.md)**
 
 ## Как с этим работать
 
@@ -80,7 +80,7 @@ cd ~/claude-mini
 - **Material reference** — готовый набор агентов, skills, commands, hooks, scripts и runbooks, устанавливаемый одной командой.
 - **Живая документация** — каждое решение зафиксировано как ADR, каждая процедура как runbook, каждый процесс прошёл через собственный pipeline.
 
-Если предпочитаешь единый вводный документ: [docs/onboarding/GETTING-STARTED.md](docs/onboarding/GETTING-STARTED.md).
+Единый вводный документ со всеми тремя ярусами установки: [docs/onboarding/GETTING-STARTED.md](docs/onboarding/GETTING-STARTED.md).
 
 </details>
 

@@ -11,8 +11,8 @@
 | Метрика | Цель | Как измерить |
 |---|---|---|
 | Время от `git clone` до первого зелёного `/review` | ≤ 30 минут | Секундомер: старт — команда clone, финиш — вывод `/review` без BLOCK |
-| Количество шагов troubleshooting | 0 | Прошёл `minimal.md` без обращения к troubleshooting-секции |
-| Длина `minimal.md` | ≤ 200 строк | `wc -l docs/onboarding/minimal.md` |
+| Количество шагов troubleshooting | 0 | Прошёл `GETTING-STARTED.md` §Minimal без обращения к troubleshooting-секции |
+| Длина секции §Minimal | ≤ 200 строк | `sed -n '/^## Minimal/,/^## Standard/p' docs/onboarding/GETTING-STARTED.md \| wc -l` |
 
 ## Метрики standard tier
 
@@ -35,8 +35,8 @@
 ## Drift detection
 
 При каждом изменении `bootstrap/universal-setup.sh`:
-1. Перечитать `docs/onboarding/minimal.md` — все команды актуальны?
-2. Перечитать `docs/onboarding/standard.md` — шаги `--install` и `--target` не устарели?
+1. Перечитать `docs/onboarding/GETTING-STARTED.md` §Minimal — все команды актуальны?
+2. Перечитать `docs/onboarding/GETTING-STARTED.md` §Standard — шаги `--install` и `--target` не устарели?
 3. Обновить соответствующие строки + зафиксировать в том же PR.
 
 Ответственный: автор PR затрагивающего `bootstrap/`.
