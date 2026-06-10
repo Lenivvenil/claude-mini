@@ -28,6 +28,13 @@ if [ -f "$_GATE_AUDIT_LIB" ]; then
 fi
 unset _GATE_AUDIT_LIB
 
+# --- Shared governance rules 1-3 (fail-closed below, after json_deny is defined) ---
+_RULES_LIB="$_SELF_DIR/governance-rules-lib.sh"
+if [ -f "$_RULES_LIB" ]; then
+    # shellcheck source=/dev/null
+    source "$_RULES_LIB"
+fi
+
 # --- Helpers ---
 
 json_deny() {
@@ -132,75 +139,26 @@ if [ -z "$msg" ]; then
     json_deny "Commit without -m flag not allowed from Claude (would open editor). Use: git commit -m \"<type>: <subject> (#NNN)\""
 fi
 
-# --- Rule 1: Conventional Commits prefix ---
+# --- Rules 1-3 (shared logic: governance-rules-lib.sh) ---
+# Fail-closed: a missing rules library means no governance — deny, do not pass through.
 
-cc_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]].+'
-
-if ! echo "$msg" | grep -qE "$cc_regex"; then
-    json_deny "Commit message does not follow Conventional Commits. Expected: type(scope?)!?: subject. Allowed types: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr. Got: '$msg'"
+if ! command -v gov_rule1_conventional_commits >/dev/null 2>&1; then
+    json_deny "pre-commit-governance: governance-rules-lib.sh missing at $_RULES_LIB. Re-run: ./bootstrap/universal-setup.sh --install"
 fi
-
-# --- Rule 2: Issue reference ---
-
-has_issue_ref=false
-if echo "$msg" | grep -qE '#[0-9]+'; then
-    has_issue_ref=true
-fi
-if echo "$branch" | grep -qE '[0-9]+'; then
-    has_issue_ref=true
-fi
-
-# ADR-commits и bootstrap не требуют issue-ref (сам ADR — первичный артефакт)
-if ! echo "$msg" | grep -qE '^adr(\(|:)' && ! echo "$msg" | grep -qE 'bootstrap|initial'; then
-    if [ "$has_issue_ref" = "false" ]; then
-        json_deny "Commit message or branch name must reference an issue (#NNN). Got message: '$msg', branch: '$branch'"
-    fi
-fi
-
-# --- Rule 3: ADR reference for decision-type changes ---
-
-# Decision-type changes: изменения в docs/decisions/, или в файлах, помеченных как
-# architecture/data-model/dependencies. Проверяем staged files.
 
 staged=$(git diff --cached --name-only 2>/dev/null || echo "")
 
-decision_markers=(
-    "docs/decisions/"
-    "go.mod"
-    "pyproject.toml"
-    "Cargo.toml"
-    "package.json"
-    ".github/workflows/"
-    "docs/domain/"
-)
-
-is_decision_change=false
-for marker in "${decision_markers[@]}"; do
-    if echo "$staged" | grep -qF "$marker"; then
-        is_decision_change=true
-        break
-    fi
-done
-
-# ADR-commits сами себе reference — пропускаем
-if echo "$msg" | grep -qE '^adr(\(|:)'; then
-    is_decision_change=false
+# `git commit -m` carries a single message string: it is both subject and body here.
+if ! gov_rule1_conventional_commits "$msg"; then
+    json_deny "$GOV_REASON"
 fi
 
-if [ "$is_decision_change" = "true" ]; then
-    has_adr_ref=false
-    # Ссылка на ADR в message
-    if echo "$msg" | grep -qiE 'adr[ -]?[0-9]+|docs/decisions/[0-9]+'; then
-        has_adr_ref=true
-    fi
-    # ИЛИ ADR staged в этом же коммите
-    if echo "$staged" | grep -qE '^docs/decisions/[0-9]+-.*\.md$'; then
-        has_adr_ref=true
-    fi
+if ! gov_rule2_issue_ref "$msg" "$msg" "$branch"; then
+    json_deny "$GOV_REASON"
+fi
 
-    if [ "$has_adr_ref" = "false" ]; then
-        json_deny "Decision-type change detected (staged: $(echo "$staged" | tr '\n' ' ' | head -c 200)). Commit must reference an ADR (e.g., 'Implements ADR-0012' or 'docs/decisions/0012-*.md') OR stage the ADR itself."
-    fi
+if ! gov_rule3_adr_ref "$msg" "$msg" "$staged"; then
+    json_deny "$GOV_REASON"
 fi
 
 # --- Rule H: Hedging language in plan.md / STATE.md / docs/decisions/*.md ---

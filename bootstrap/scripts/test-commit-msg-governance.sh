@@ -218,7 +218,9 @@ echo ""
 # ===== --hook-this-repo INSTALLER MODE =====
 echo "--hook-this-repo installer mode"
 
-INSTALLER="$(dirname "$0")/../../bootstrap/universal-setup.sh"
+# Canonicalize like HOOK above: HTR tests cd into sandbox repos, a relative
+# installer path stops resolving there (manifested as exit 127).
+INSTALLER="$(cd "$(dirname "$0")/../.." && pwd)/bootstrap/universal-setup.sh"
 if [ ! -f "$INSTALLER" ]; then
     echo "  (installer not found at $INSTALLER — HTR tests skipped; run from repo root to include them)"
 else
@@ -227,6 +229,9 @@ else
     mkdir -p "$FAKE_HOME/.claude/git-hooks"
     cp "$HOOK" "$FAKE_HOME/.claude/git-hooks/commit-msg"
     chmod +x "$FAKE_HOME/.claude/git-hooks/commit-msg"
+    # The hook ships as a pair with the shared rules lib (sourced from its own dir);
+    # --hook-this-repo requires both staged.
+    cp "$(dirname "$HOOK")/governance-rules-lib.sh" "$FAKE_HOME/.claude/git-hooks/governance-rules-lib.sh"
     trap 'rm -rf "$TMPDIR_REPO" "$TMPDIR_HOME" "$TMPDIR_REPO2" "$FAKE_HOME"' EXIT
 
     INSTALL_REPO=$(mktemp -d)

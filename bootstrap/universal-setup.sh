@@ -91,10 +91,11 @@ fi
 # Handled separately before prerequisite checks to keep it lightweight.
 if [ "$MODE" = "hook-this-repo" ]; then
     STAGED_HOOK="$HOME/.claude/git-hooks/commit-msg"
+    STAGED_RULES_LIB="$HOME/.claude/git-hooks/governance-rules-lib.sh"
 
-    if [ ! -f "$STAGED_HOOK" ]; then
-        err "Staged hook not found: $STAGED_HOOK"
-        echo "  Run './bootstrap/universal-setup.sh --install' first to stage the hook." >&2
+    if [ ! -f "$STAGED_HOOK" ] || [ ! -f "$STAGED_RULES_LIB" ]; then
+        err "Staged hook artifacts not found: need both $STAGED_HOOK and $STAGED_RULES_LIB"
+        echo "  Run './bootstrap/universal-setup.sh --install' first to stage them." >&2
         exit 2
     fi
 
@@ -103,29 +104,36 @@ if [ "$MODE" = "hook-this-repo" ]; then
         exit 3
     }
     DEST_HOOK="$GIT_DIR/hooks/commit-msg"
+    DEST_RULES_LIB="$GIT_DIR/hooks/governance-rules-lib.sh"
 
     mkdir -p "$GIT_DIR/hooks"
 
-    if [ -f "$DEST_HOOK" ] && ! cmp -s "$STAGED_HOOK" "$DEST_HOOK"; then
+    # Symmetric drift guard: the hook and its rules lib deploy as a pair, so a
+    # locally modified copy of either one requires --force to overwrite.
+    if { [ -f "$DEST_HOOK" ] && ! cmp -s "$STAGED_HOOK" "$DEST_HOOK"; } \
+        || { [ -f "$DEST_RULES_LIB" ] && ! cmp -s "$STAGED_RULES_LIB" "$DEST_RULES_LIB"; }; then
         if [ "$FORCE" != "1" ]; then
-            warn "A different commit-msg hook already exists at $DEST_HOOK"
-            echo "  Use --force to overwrite, or inspect with: diff $DEST_HOOK $STAGED_HOOK" >&2
+            warn "A different commit-msg hook or rules lib already exists in $GIT_DIR/hooks/"
+            echo "  Use --force to overwrite, or inspect with: diff $DEST_HOOK $STAGED_HOOK; diff $DEST_RULES_LIB $STAGED_RULES_LIB" >&2
             exit 4
         fi
-        warn "Overwriting existing commit-msg hook (--force)"
+        warn "Overwriting existing commit-msg hook/rules lib (--force)"
     fi
 
-    if [ -f "$DEST_HOOK" ] && cmp -s "$STAGED_HOOK" "$DEST_HOOK"; then
-        ok "commit-msg hook already installed and up-to-date"
+    if [ -f "$DEST_HOOK" ] && cmp -s "$STAGED_HOOK" "$DEST_HOOK" \
+        && [ -f "$DEST_RULES_LIB" ] && cmp -s "$STAGED_RULES_LIB" "$DEST_RULES_LIB"; then
+        ok "commit-msg hook + rules lib already installed and up-to-date"
         exit 0
     fi
 
     cp "$STAGED_HOOK" "$DEST_HOOK" || die "cp failed: $DEST_HOOK"
     chmod +x "$DEST_HOOK" || die "chmod failed: $DEST_HOOK"
     cmp -s "$STAGED_HOOK" "$DEST_HOOK" || die "post-copy verification failed: $DEST_HOOK"
-    ok "commit-msg governance hook installed → $DEST_HOOK"
+    cp "$STAGED_RULES_LIB" "$DEST_RULES_LIB" || die "cp failed: $DEST_RULES_LIB"
+    cmp -s "$STAGED_RULES_LIB" "$DEST_RULES_LIB" || die "post-copy verification failed: $DEST_RULES_LIB"
+    ok "commit-msg governance hook + rules lib installed → $DEST_HOOK"
     echo "  To verify: git commit -m 'bad message' (should be blocked)"
-    echo "  To remove: rm $DEST_HOOK"
+    echo "  To remove: rm $DEST_HOOK $DEST_RULES_LIB"
     exit 0
 fi
 
@@ -447,6 +455,16 @@ if [ -f "$COMMIT_MSG_SRC" ]; then
     fi
 else
     warn "commit-msg-governance.sh not found in bootstrap/hooks/ — skipping"
+fi
+
+# The shared rules lib must sit next to the staged hook: the hook sources it
+# from its own directory (fail-closed), and --hook-this-repo copies the pair.
+RULES_LIB_SRC="$REPO_ROOT/bootstrap/hooks/governance-rules-lib.sh"
+RULES_LIB_STAGE_DST="$CLAUDE_HOME/git-hooks/governance-rules-lib.sh"
+if [ -f "$RULES_LIB_SRC" ]; then
+    copy_file "$RULES_LIB_SRC" "$RULES_LIB_STAGE_DST"
+else
+    warn "governance-rules-lib.sh not found in bootstrap/hooks/ — commit-msg hook will fail closed"
 fi
 
 # --- Copy scripts ---
