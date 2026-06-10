@@ -15,9 +15,10 @@
 # is root on their own machine; terminal commits to main remain ungoverned
 # by design. See ADR-0011 §Decision Outcome.
 #
-# Sync note: rules are duplicated from pre-commit-governance.sh (PreToolUse).
-# If the policy changes in one, update both.
-# Cross-reference: bootstrap/hooks/pre-commit-governance.sh
+# Rules 1-3 logic lives in governance-rules-lib.sh (shared with
+# pre-commit-governance.sh). The installer deploys the lib next to this hook
+# in every location (--install stages it to ~/.claude/git-hooks/,
+# --hook-this-repo copies it into .git/hooks/).
 
 set -uo pipefail
 
@@ -29,6 +30,15 @@ deny() {
 log() {
     echo "[commit-msg-governance] $*" >&2
 }
+
+# --- Shared rules library (fail-closed: governance without rules is no governance) ---
+
+_RULES_LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/governance-rules-lib.sh"
+if [ ! -f "$_RULES_LIB" ]; then
+    deny "governance-rules-lib.sh not found next to the hook ($_RULES_LIB). From your claude-mini clone run: ./bootstrap/universal-setup.sh --install, then --hook-this-repo in this repo"
+fi
+# shellcheck source=/dev/null
+source "$_RULES_LIB"
 
 # --- Read commit message from file ($1 is the path) ---
 
@@ -64,73 +74,22 @@ if echo "$msg_subject" | grep -qE '^(fixup|squash)!'; then
     exit 0
 fi
 
-# --- Rule 1: Conventional Commits prefix (subject line only) ---
-
-cc_regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]].+'
-
-if ! echo "$msg_subject" | grep -qE "$cc_regex"; then
-    deny "Rule 1: message does not follow Conventional Commits. Expected: type(scope?)!?: subject. Allowed types: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr. Got: '$msg_subject'"
-fi
-
-# --- Rule 2: Issue reference (full message body + branch name) ---
-# Refs may appear in subject OR body (e.g. "Closes #9" in a multi-line message).
+# --- Rules 1-3 (shared logic: governance-rules-lib.sh) ---
+# Rule 2/3 refs may appear in subject OR body (e.g. "Closes #9", "Implements ADR-0011").
 
 branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-
-has_issue_ref=false
-if echo "$msg_body" | grep -qE '#[0-9]+'; then
-    has_issue_ref=true
-fi
-if echo "$branch" | grep -qE '[0-9]+'; then
-    has_issue_ref=true
-fi
-
-# ADR-commits and bootstrap/initial commits are exempt from issue-ref requirement
-if ! echo "$msg_subject" | grep -qE '^adr(\(|:)' && ! echo "$msg_body" | grep -qE '\b(bootstrap|initial)\b'; then
-    if [ "$has_issue_ref" = "false" ]; then
-        deny "Rule 2: message or branch name must reference an issue (#NNN). Got subject: '$msg_subject', branch: '$branch'"
-    fi
-fi
-
-# --- Rule 3: ADR reference for decision-type staged changes (full message body) ---
-# Refs may appear in subject OR body (e.g. "Implements ADR-0011" in body).
-
 staged=$(git diff --cached --name-only 2>/dev/null || echo "")
 
-decision_markers=(
-    "docs/decisions/"
-    "go.mod"
-    "pyproject.toml"
-    "Cargo.toml"
-    "package.json"
-    ".github/workflows/"
-    "docs/domain/"
-)
-
-is_decision_change=false
-for marker in "${decision_markers[@]}"; do
-    if echo "$staged" | grep -qF "$marker"; then
-        is_decision_change=true
-        break
-    fi
-done
-
-# ADR-commits are self-referencing — exempt from the ADR-ref requirement
-if echo "$msg_subject" | grep -qE '^adr(\(|:)'; then
-    is_decision_change=false
+if ! gov_rule1_conventional_commits "$msg_subject"; then
+    deny "$GOV_REASON"
 fi
 
-if [ "$is_decision_change" = "true" ]; then
-    has_adr_ref=false
-    if echo "$msg_body" | grep -qiE 'adr[ -]?[0-9]+|docs/decisions/[0-9]+'; then
-        has_adr_ref=true
-    fi
-    if echo "$staged" | grep -qE '^docs/decisions/[0-9]+-.*\.md$'; then
-        has_adr_ref=true
-    fi
-    if [ "$has_adr_ref" = "false" ]; then
-        deny "Rule 3: decision-type change detected (staged: $(echo "$staged" | tr '\n' ' ' | head -c 200)). Commit must reference an ADR (e.g., 'Implements ADR-0012' or 'docs/decisions/0012-*.md') OR stage the ADR file itself."
-    fi
+if ! gov_rule2_issue_ref "$msg_subject" "$msg_body" "$branch"; then
+    deny "$GOV_REASON"
+fi
+
+if ! gov_rule3_adr_ref "$msg_subject" "$msg_body" "$staged"; then
+    deny "$GOV_REASON"
 fi
 
 # --- Anti-patterns reminder (non-blocking, exit 0) ---

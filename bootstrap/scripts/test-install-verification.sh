@@ -56,6 +56,8 @@ DEST_HOOK="$FAKE_REPO/.git/hooks/commit-msg"
 mkdir -p "$FAKE_HOME/.claude/git-hooks"
 printf '#!/bin/bash\n# test staged hook\nexit 0\n' > "$STAGED_HOOK"
 chmod +x "$STAGED_HOOK"
+# --hook-this-repo requires the shared rules lib staged next to the hook (deployed as a pair)
+printf '#!/bin/bash\n# test staged rules lib\n' > "$FAKE_HOME/.claude/git-hooks/governance-rules-lib.sh"
 
 # 2a: clean install — should succeed and install matching hook
 if (cd "$FAKE_REPO" && HOME="$FAKE_HOME" bash "$SETUP" --hook-this-repo >/dev/null 2>&1); then
