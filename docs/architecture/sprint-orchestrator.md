@@ -2,7 +2,7 @@
 
 > **Implements:** [`docs/decisions/0030-sprint-orchestrator.md`](../decisions/0030-sprint-orchestrator.md)
 > **Related:** [`docs/runbooks/feature-pipeline.md`](../runbooks/feature-pipeline.md) · [`docs/runbooks/sprint.md`](../runbooks/sprint.md)
-> **Status:** design-ready; implementation pending (see #44 Phase-0 conditions)
+> **Status:** frozen 2026-06-10 — implemented (`sprint.sh`), but parked until digest-driven need; spike #227 closed as parked, bug #243 open (#255)
 
 Этот документ — рабочая спецификация для разработчика `bootstrap/scripts/sprint.sh`. ADR-0030 фиксирует «что и почему»; этот файл фиксирует «как именно». При расхождении — ADR-0030 имеет приоритет.
 
