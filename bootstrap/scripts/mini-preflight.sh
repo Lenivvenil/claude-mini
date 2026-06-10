@@ -99,6 +99,107 @@ else
     fail "claude бинарь не найден в PATH"
 fi
 
+# --- «Ритуал возвращения»: что накопилось, пока оператора не было (#257) ---
+# Report-only: секция никогда не меняет exit-код (не трогает $failed) и ничего
+# не мутирует. Деградация по Принципу 9: любой сбой gh/jq → warn + пропуск секции.
+report_accumulated() {
+    local repo_root tc
+    repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || return 0  # вне git-репо секции нет
+
+    echo ""
+    echo "Что накопилось за отсутствие ($(basename "$repo_root")):"
+
+    if ! command -v jq >/dev/null 2>&1; then
+        warn "jq не найден — секция пропущена"
+        return 0
+    fi
+    # timeout-обёртка: gh без сети может висеть десятки секунд, а preflight интерактивен.
+    # Не переиспользуем _tc из codex-блока выше: тот инициализируется только в своей
+    # ветке и под set -u здесь был бы unbound.
+    tc=$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
+    _gh() {
+        # 15s: дольше codex-овых 10s — gh run list на холодном TCP заметно медленнее
+        if [ -n "$tc" ]; then "$tc" 15 gh "$@" 2>/dev/null; else gh "$@" 2>/dev/null; fi
+    }
+
+    # --- Локальные подсекции (работают и офлайн — до gh-гейта) ---
+
+    # Дней с последней сессии — по имени последнего session-log файла (YYYY-MM-DD)
+    local last_log last_date days_away
+    last_log=$(find "$repo_root/session-log" -name '*.md' 2>/dev/null | sort | tail -1)
+    if [ -n "$last_log" ]; then
+        last_date=$(basename "$last_log" .md)
+        days_away=$(jq -rn --arg d "$last_date" '((now - (($d + "T00:00:00Z") | fromdate)) / 86400 | floor)' 2>/dev/null || echo "")
+        if [ -n "$days_away" ]; then
+            if [ "$days_away" -gt 7 ]; then  # неделя: дольше — пауза, а не выходные
+                warn "$days_away дней с последней сессии ($last_date)"
+            else
+                ok "$days_away дн. с последней сессии ($last_date)"
+            fi
+        fi
+    fi
+
+    # Proposed-ADR с возрастом из строки '* Date:' — чисто локальный grep,
+    # сознательно ДО gh-гейта: офлайн-оператор должен видеть протухшие ADR
+    local adr_file adr_date adr_age
+    for adr_file in "$repo_root"/docs/decisions/[0-9]*.md; do
+        [ -f "$adr_file" ] || continue
+        if grep -q '^\* Status: proposed' "$adr_file"; then
+            adr_date=$(grep -m1 '^\* Date:' "$adr_file" | sed 's/^\* Date:[[:space:]]*//')
+            adr_age=$(jq -rn --arg d "$adr_date" '((now - (($d + "T00:00:00Z") | fromdate)) / 86400 | floor)' 2>/dev/null || echo "?")
+            warn "proposed ADR: $(basename "$adr_file") — $adr_age дн."
+        fi
+    done
+
+    # --- Сетевые подсекции (gh-гейт) ---
+
+    if ! command -v gh >/dev/null 2>&1 || ! _gh auth status >/dev/null; then
+        warn "gh недоступен — CI/issues/PR секции пропущены (офлайн-режим, Принцип 9)"
+        return 0
+    fi
+
+    # CI: последний прогон каждого workflow; limit 50, чтобы редкие scheduled-прогоны
+    # не выпадали из окна в активный день. Красное = любой завершившийся не-success
+    # (failure, cancelled, timed_out, startup_failure); in-progress (conclusion == "")
+    # не красим. max_by(.createdAt) — не полагаемся на порядок вывода gh.
+    local runs red_lines ok_lines line
+    if runs=$(_gh run list --limit 50 --json workflowName,status,conclusion,createdAt) && [ -n "$runs" ]; then
+        red_lines=$(echo "$runs" | jq -r 'group_by(.workflowName) | map(max_by(.createdAt)) | .[] | select(.conclusion != "success" and .conclusion != "") | "\(.workflowName): \(.conclusion) (\(.createdAt[:10]))"')
+        ok_lines=$(echo "$runs" | jq -r 'group_by(.workflowName) | map(max_by(.createdAt)) | .[] | select(.conclusion == "success" or .conclusion == "") | "\(.workflowName): \(if .conclusion == "" then .status else .conclusion end) (\(.createdAt[:10]))"')
+        if [ -n "$red_lines" ]; then
+            while IFS= read -r line; do warn "CI: $line"; done <<<"$red_lines"
+        fi
+        if [ -n "$ok_lines" ]; then
+            while IFS= read -r line; do ok "CI: $line"; done <<<"$ok_lines"
+        fi
+    else
+        warn "gh run list не ответил — CI-секция пропущена"
+    fi
+
+    # Авто-issues (mutation weekly, deferred-review): OR-фильтр через jq —
+    # несколько --label у gh issue list означают AND, не OR.
+    # gsub: вычищаем control-символы из заголовков (ANSI-смаглинг в терминал).
+    local auto_issues
+    if auto_issues=$(_gh issue list --state open --limit 100 --json number,title,createdAt,labels); then  # 100: с запасом против дефолтных 30 — в репо уже ~30 открытых
+        echo "$auto_issues" | jq -r '.[] | select(.labels | any(.name == "type:mutation-report" or .name == "type:deferred-review")) | "#\(.number) \(.title[:60] | gsub("[\\u0000-\\u001F\\u007F]"; "")) — \((now - (.createdAt | fromdate)) / 86400 | floor) дн."' \
+            | while IFS= read -r line; do [ -n "$line" ] && warn "не прочитано: $line"; done
+    else
+        warn "gh issue list не ответил — auto-issue секция пропущена"
+    fi
+
+    # Открытые PR с возрастом (gsub — та же чистка control-символов)
+    local prs
+    if prs=$(_gh pr list --json number,title,createdAt); then
+        echo "$prs" | jq -r '.[] | "#\(.number) \(.title[:60] | gsub("[\\u0000-\\u001F\\u007F]"; "")) — \((now - (.createdAt | fromdate)) / 86400 | floor) дн."' \
+            | while IFS= read -r line; do [ -n "$line" ] && warn "открыт PR: $line"; done
+    else
+        warn "gh pr list не ответил — PR-секция пропущена"
+    fi
+
+    return 0
+}
+report_accumulated
+
 echo ""
 if [ $failed -eq 0 ]; then
     printf '%sГотов к сессии.%s\n' "$GREEN" "$NC"
