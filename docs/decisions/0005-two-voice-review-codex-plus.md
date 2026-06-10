@@ -2,6 +2,7 @@
 
 * Status: accepted
 * Date: 2026-04-21
+* Amended: 2026-06-10 — model pin `gpt-5.2` → `gpt-5.5`: `gpt-5.2` retired для ChatGPT-аккаунтов (400 invalid_request_error), см. #266. Решение (pin stable Plus-модели, graceful degradation) не меняется — только значение pin.
 * Deciders: venil
 * Tags: quality, review, cost
 
