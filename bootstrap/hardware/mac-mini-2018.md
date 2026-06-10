@@ -132,7 +132,7 @@ codex login --device-auth
 ```bash
 mkdir -p ~/.codex
 cat > ~/.codex/config.toml <<'EOF'
-model = "gpt-5.2"
+model = "gpt-5.5"
 
 [auth]
 preferred = "chatgpt"

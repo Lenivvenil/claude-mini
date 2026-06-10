@@ -13,7 +13,7 @@
 set -uo pipefail
 
 CODEX_TIMEOUT="${CODEX_TIMEOUT:-120}"
-CODEX_MODEL="${CODEX_MODEL:-gpt-5.2}"
+CODEX_MODEL="${CODEX_MODEL:-gpt-5.5}"
 
 # --- Prerequisite checks ---
 

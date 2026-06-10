@@ -158,10 +158,10 @@ Hook деградирует gracefully (exit 0, запись в лог вида 
 **Проверка:**
 ```bash
 codex login status
-codex exec --model gpt-5.2 "say hello"
+codex exec --model gpt-5.5 "say hello"
 ```
 
-**Если flake стабильный:** временно изменить pinned model в `~/.codex/config.toml` на `gpt-4.1`.
+**Если flake стабильный:** посмотреть актуальный список моделей аккаунта (`codex debug models`) и временно изменить pinned model в `~/.codex/config.toml` на доступную stable-модель.
 
 ### `/adr` не создаёт файл
 
