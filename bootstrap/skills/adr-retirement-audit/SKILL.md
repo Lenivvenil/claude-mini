@@ -7,7 +7,6 @@ description: Weekly ADR staleness audit. Checks each ADR for incoming refs, supe
 
 ## When to invoke
 
-- Weekly CI cron (see `.github/workflows/ci.yml` `adr-retirement-audit-weekly` job)
 - Manually: "run adr audit", "check stale ADRs", "adr-retirement-audit"
 
 ## Prerequisites

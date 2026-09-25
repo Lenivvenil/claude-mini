@@ -119,7 +119,7 @@ bootstrap/
 
 **Verifier suite — per-PR:** `shellcheck` (bash), `setup-dry-run` (bash syntax + lint), `markdown-links`, `gate-audit-test`, `adr-retirement-audit-test`.
 
-**Verifier suite — weekly cron:** **mutation testing** (`mutation.yml`, Sunday 00:00 UTC) — mutmut (Python), Stryker (TS/JS), cargo-mutants (Rust), conditional skip если язык не обнаружен. Результаты — SARIF в Code Scanning + GitHub Issue с меткой `type:mutation-report`. Surviving mutants → `docs/anti-patterns.md` по решению оператора.
+**Mutation testing — шаблон для целевых проектов:** `bootstrap/templates/mutation.yml` (weekly cron, Sunday 00:00 UTC), в самом claude-mini не запускается — mutmut (Python), Stryker (TS/JS), cargo-mutants (Rust), conditional skip если язык не обнаружен. Результаты — SARIF в Code Scanning + GitHub Issue с меткой `type:mutation-report`. Surviving mutants → `docs/anti-patterns.md` по решению оператора.
 
 **Slash commands (11):** `/plan`, `/implement`, `/adr`, `/review`, `/codex-review`, `/intent-check`, `/task-to-issue`, `/issue-to-task`, `/backlog-review`, `/project-health`, `/feature` (master orchestrator).
 

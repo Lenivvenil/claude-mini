@@ -95,7 +95,7 @@ Evidence of why this step is load-bearing: `docs/runbooks/first-feature-session-
 
 ## ADR retirement audit
 
-Еженедельный CI cron (`adr-retirement-audit-weekly`) запускает `bootstrap/scripts/adr-retirement-audit.sh` и открывает PR с отчётом. Отчёт содержит колонку `Recommendation`:
+Аудит запускается вручную: `bootstrap/scripts/adr-retirement-audit.sh` (еженедельный CI cron снят — отчёты без действия не читались). Отчёт содержит колонку `Recommendation`:
 
 | Значение | Действие оператора |
 |---|---|

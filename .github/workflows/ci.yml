@@ -4,11 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    - cron: '0 6 * * 1'  # Every Monday 06:00 UTC — weekly gate-audit run
 
-# Default to read-only token for all jobs. Write-capable jobs (gate-audit-weekly,
-# adr-retirement-audit-weekly) override with explicit permissions blocks.
+# Default to read-only token for all jobs.
 permissions:
   contents: read
 
@@ -55,18 +52,6 @@ jobs:
             fi
             expected=$((expected + 1))
           done
-      - name: Template drift check (mutation.yml)
-        run: |
-          if [ ! -f .github/workflows/mutation.yml ]; then
-            echo "MISSING: .github/workflows/mutation.yml not found in checkout"
-            exit 1
-          elif [ ! -f bootstrap/templates/mutation.yml ]; then
-            echo "MISSING: bootstrap/templates/mutation.yml not found in checkout"
-            exit 1
-          elif ! cmp -s .github/workflows/mutation.yml bootstrap/templates/mutation.yml; then
-            echo "DRIFT: .github/workflows/mutation.yml differs from bootstrap/templates/mutation.yml"
-            exit 1
-          fi
       - name: Validate Python scripts syntax (SARIF converters + filter)
         run: |
           for f in bootstrap/scripts/mutmut-to-sarif.py \
@@ -120,9 +105,16 @@ jobs:
           fail=0
           # PEM-style private key headers — never legitimate in this repo.
           # Scans all text files (--binary-files=without-match skips binaries).
-          if grep -rn --binary-files=without-match --exclude-dir=.git \
-               -E '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY' . 2>/dev/null; then
+          # -e: the pattern starts with '-' and would otherwise be parsed as an option.
+          # grep rc: 0 = match, 1 = clean, >1 = scanner error (must fail, never read as clean).
+          rc=0
+          grep -rn --binary-files=without-match --exclude-dir=.git \
+               -E -e '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY' . || rc=$?
+          if [ "$rc" -eq 0 ]; then
             echo "::error::Private key header found — remove before committing"
+            fail=1
+          elif [ "$rc" -ne 1 ]; then
+            echo "::error::secret scan: grep failed (rc=$rc) — scanner error, not a clean result"
             fail=1
           fi
           # Credential assignments with literal values (excludes env var refs like $TOKEN or ${{ secrets.X }}).
@@ -131,10 +123,15 @@ jobs:
           # shorter random strings are unlikely to be production secrets.
           # Known limitation: fires on pull_request [opened, synchronize, reopened]
           # but NOT on PR body edits — process gate only, not a security boundary.
-          if grep -rn --binary-files=without-match --exclude-dir=.git \
-               -E '(PASSWORD|SECRET|TOKEN|API_KEY|APIKEY|PRIVATE_KEY)\s*=\s*[^$\{][a-zA-Z0-9+/]{20,}' \
-               . 2>/dev/null; then
+          rc=0
+          grep -rn --binary-files=without-match --exclude-dir=.git \
+               -E -e '(PASSWORD|SECRET|TOKEN|API_KEY|APIKEY|PRIVATE_KEY)\s*=\s*[^$\{][a-zA-Z0-9+/]{20,}' \
+               . || rc=$?
+          if [ "$rc" -eq 0 ]; then
             echo "::error::Potential hardcoded credential found — use env vars or GitHub Secrets"
+            fail=1
+          elif [ "$rc" -ne 1 ]; then
+            echo "::error::secret scan: grep failed (rc=$rc) — scanner error, not a clean result"
             fail=1
           fi
           if [ "$fail" -eq 0 ]; then
@@ -196,59 +193,6 @@ jobs:
             --output-dir /tmp/gate-audit-smoke \
             --dry-run
 
-  gate-audit-weekly:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          ref: main
-      - name: Install prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq python3
-          gh --version
-      - name: Configure git for bot commit
-        run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-      - name: Run gate-audit aggregation
-        run: |
-          bash bootstrap/scripts/gate-audit-aggregate.sh \
-            --events-file docs/gate-audit/events.jsonl \
-            --output-dir docs/gate-audit
-      - name: Open PR with weekly report (preserves branch-protection on main)
-        # Opens a PR rather than pushing directly to main, so ADR-0009 branch-protection
-        # and governance remain intact. The PR is reviewed and merged by a human.
-        # Workflow run URL is embedded in the commit body for auditability.
-        run: |
-          if git diff --quiet; then
-            echo "No changes — events.jsonl may be empty or unchanged"
-            exit 0
-          fi
-          WEEK=$(python3 -c "from datetime import date; d=date.today(); print(str(d.isocalendar()[0])+'-W%02d'%d.isocalendar()[1])")
-          BRANCH="chore/gate-audit-${WEEK}-${{ github.run_id }}"
-          git checkout -b "$BRANCH"
-          git add docs/gate-audit/
-          git commit -m "chore(gate-audit): weekly report ${WEEK}" \
-                     -m "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          git push origin "$BRANCH"
-          gh pr create \
-            --title "chore(gate-audit): weekly report ${WEEK}" \
-            --body "Automated weekly gate-audit report. Review recommendations before merging. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --label "type:bootstrap" \
-            --base main \
-            --head "$BRANCH" \
-          || {
-            echo "PR creation failed — deleting orphan branch to prevent accumulation"
-            git push origin --delete "$BRANCH" || true
-            exit 1
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   adr-retirement-audit-test:
     runs-on: ubuntu-latest
@@ -257,69 +201,3 @@ jobs:
       - name: Run ADR retirement audit test suite
         run: bash bootstrap/scripts/test-adr-retirement-audit.sh
 
-  adr-retirement-audit-weekly:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          ref: main
-          fetch-depth: 0
-      - name: Configure git for bot commit
-        run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-      - name: Run ADR retirement audit
-        run: |
-          bash bootstrap/scripts/adr-retirement-audit.sh \
-            > /tmp/adr-retirement-audit-report.md
-          cat /tmp/adr-retirement-audit-report.md
-      - name: Open PR with weekly report
-        # Opens a PR rather than pushing directly to main, preserving ADR-0009 branch-protection.
-        # Report is human-reviewed; --apply is never called automatically (non-goal: no auto-tagging).
-        run: |
-          WEEK=$(python3 -c "from datetime import date; d=date.today(); print(str(d.isocalendar()[0])+'-W%02d'%d.isocalendar()[1])")
-          REPORT_DIR="docs/adr-audit"
-          mkdir -p "$REPORT_DIR"
-          cp /tmp/adr-retirement-audit-report.md "${REPORT_DIR}/${WEEK}.md"
-          git add "${REPORT_DIR}/"
-          if git diff --cached --quiet; then
-            echo "No change in report — all ADRs unchanged since last run"
-            exit 0
-          fi
-          # Deterministic branch name — one PR per ISO week, no duplicates on re-run
-          BRANCH="chore/adr-audit-${WEEK}"
-          # Fail-closed PR existence check: capture gh exit code separately so auth/API
-          # errors do not masquerade as "no open PR found"
-          existing_pr=$(gh pr list --head "$BRANCH" --state open --json number \
-            --jq '.[0].number' 2>/dev/null) || {
-            echo "gh pr list failed — cannot verify whether a PR already exists; aborting to prevent duplicates" >&2
-            exit 1
-          }
-          if echo "$existing_pr" | grep -qE '^[0-9]+$'; then
-            echo "Open PR already exists (#${existing_pr}) for ${BRANCH} — skipping"
-            exit 0
-          fi
-          git checkout -b "$BRANCH"
-          git commit -m "chore(adr-audit): weekly report ${WEEK}" \
-                     -m "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          # Use --force-with-lease to handle the edge case where a prior run pushed
-          # the branch but the PR was closed without deleting the branch
-          git push --force-with-lease origin "$BRANCH"
-          gh pr create \
-            --title "chore(adr-audit): weekly staleness report ${WEEK}" \
-            --body "$(printf 'Automated weekly ADR retirement audit. Review recommendations before applying any.\n\nTo apply a recommendation:\n```\nbash bootstrap/scripts/adr-retirement-audit.sh --apply 0004\n```\n(Use zero-padded 4-digit number or bare integer, e.g. --apply 4)\n\nRun: %s/%s/actions/runs/%s' \
-              "${{ github.server_url }}" "${{ github.repository }}" "${{ github.run_id }}")" \
-            --label "type:bootstrap" \
-            --base main \
-            --head "$BRANCH" \
-          || {
-            echo "PR creation failed — deleting orphan branch"
-            git push origin --delete "$BRANCH" || true
-            exit 1
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
