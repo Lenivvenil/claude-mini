@@ -14,8 +14,9 @@
 # squash time, and file-name heuristics for "architectural" changes proved unreliable
 # (audit 2026-09-25).
 #
-# The command is parsed by parse-commit.py (heredoc bodies cut out as data, shlex
-# tokens, git commit options with their argument boundaries). Every `git ... commit`
+# The command is parsed by parse-commit.py (a small Bash-aware tokenizer: quoting,
+# comments, command boundaries, heredocs; git commit options with their argument
+# boundaries). Every `git ... commit`
 # in the command is checked; the subject is the first line of its first message
 # source: -m/--message (also -am, -mVALUE, --message=VALUE, "$(cat <<'EOF' ...)"),
 # -F/--file <path> relative to the effective directory (cd, subshells, git -C), or
@@ -42,7 +43,10 @@ deny() {
 
 IFS= read -r -d '' input || true  # builtin: works even with a broken PATH
 # Most `git *` calls are not commits: leave them alone even without jq/python3.
-[[ $input == *commit* ]] || exit 0
+# Cheap pre-filter on the raw JSON: `git`, later a separate word `commit`
+# (not commit-tools, not .../commit-msg-check.sh). The parser decides the rest.
+_commit_re='git.*[[:space:]]commit([[:space:]"\\]|$)'
+[[ $input =~ $_commit_re ]] || exit 0
 
 for bin in jq python3; do
     command -v "$bin" >/dev/null 2>&1 \

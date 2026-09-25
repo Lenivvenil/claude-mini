@@ -25,9 +25,10 @@ claude plugin install claude-mini@claude-mini --scope local # только эт�
 | хук `PreToolUse` | на `git commit` из Claude проверяет формат Conventional Commits; другие команды не трогает |
 | `/claude-mini:plan <issue>` | пишет `plan.md`: варианты, выбор, тесты, риски |
 | `/claude-mini:adr-author` | ADR по MADR 4.0 через интервью |
-| `/claude-mini:codex-review [base]` | второе мнение `codex review --base`; модель — из `~/.codex/config.toml` |
+| `/claude-mini:codex-review [base]` | второе мнение `codex review --base`, плюс `--uncommitted` для незакоммиченного; модель — из `~/.codex/config.toml` |
 | агенты | `adversarial-critic`, `security-reviewer`, `adr-reviewer` — только чтение |
 
+Хук разбирает команду сам, без запуска shell. Он не видит коммит за алиасом, функцией, `eval`, `sh -c '…'` и путь `-F` из переменной — такие коммиты проходят без проверки.
 Версии моделей не закреплены: агенты указывают псевдонимы `sonnet`/`opus`, которые Claude Code сам разрешает в текущие версии; Codex берёт модель из `~/.codex/config.toml`.
 Плагин живёт в `plugin/`, каталог-маркетплейс — `.claude-plugin/marketplace.json` в корне. Проверка: `claude plugin validate plugin`; поведение — `cd plugin && claude plugin eval . --scaffold --allow-tools "Bash(git diff:*)"` (кейсы в `plugin/evals/`). Установка копирует плагин в кеш: после правок — `claude plugin uninstall` и `install` заново.
 

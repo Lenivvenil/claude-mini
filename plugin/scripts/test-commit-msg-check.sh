@@ -69,6 +69,16 @@ check allow "subshell cd does not leak"      '(cd sub && git status); git commit
 check deny  "subshell cd, bad file at top"   '(cd sub && git status); git commit -F same.txt'
 check allow "--dry-run without message"      'git commit --dry-run'
 check allow "--author value is not an option" 'git commit --author "A <a@b>" -m "fix: x"'
+check deny  "comment does not add --dry-run"  'git commit -m "bad subject" # --dry-run'
+check allow "comment does not add a commit"  'git commit -m "fix: valid" # git commit'
+check deny  "next line args stay out"        $'git commit -m "bad subject"\nprintf \'%s\' --dry-run'
+check allow "git grep for words git commit"  'git grep -n -e git -e commit'
+check allow "ANSI-C quoted message"          $'git commit -m $\'fix: subject\''
+check deny  "<<EOF in quotes is not heredoc" $'git commit -m \'docs: show <<EOF\'\ngit commit -m "bad subject"'
+check deny  "cd -- dir && -F relative"       'cd -- sub && git commit -F bad.txt'
+check allow "<<- strips tabs from body"      $'git commit -F - <<-EOF\n\tfix: subject\n\tEOF'
+check deny  "hash inside a word is no comment" 'echo a#b; git commit -m "bad subject"'
+check deny  "apostrophe in \$(cat heredoc) body" $'git commit -m "$(cat <<\'EOF\'\nfix: x\n\nWe don\'t need 1) this\nEOF\n)" && git commit -m "bad subject"'
 
 out=$(echo '{"tool_input":{"command":"git commit -m x"}}' | PATH=/nonexistent /bin/bash "$HOOK")
 if printf '%s' "$out" | grep -q '"permissionDecision":"deny"'; then echo "  ok   jq missing → deny with valid JSON"
@@ -77,6 +87,13 @@ else echo "  FAIL jq missing → expected deny JSON, got: $out"; FAIL=$((FAIL+1)
 out=$(echo '{"tool_input":{"command":"git status"}}' | PATH=/nonexistent /bin/bash "$HOOK")
 if [ -z "$out" ]; then echo "  ok   jq missing, git status → allowed"
 else echo "  FAIL jq missing, git status → expected allow, got: $out"; FAIL=$((FAIL+1)); fi
+
+for c in '{"tool_input":{"command":"git status"},"cwd":"/work/commit-tools"}' \
+         '{"tool_input":{"command":"git diff -- plugin/scripts/commit-msg-check.sh"}}'; do
+    out=$(printf '%s' "$c" | PATH=/nonexistent /bin/bash "$HOOK")
+    if [ -z "$out" ]; then echo "  ok   jq missing, not a commit → allowed: $c"
+    else echo "  FAIL jq missing, not a commit → expected allow: $c"; FAIL=$((FAIL+1)); fi
+done
 
 [ "$FAIL" -eq 0 ] && echo "All passed." || echo "$FAIL failed."
 exit "$FAIL"
