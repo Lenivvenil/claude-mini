@@ -12,7 +12,7 @@
 #
 # Message sources understood: -m "..." / -m '...' / --message=..., -F <file>,
 # -F - with a heredoc in the same command. --amend/--no-edit without a new message and
-# fixup!/squash! subjects are allowed. A commit with no message source would open an
+# fixup!/squash! subjects and -c/-C (reuse a commit's message) are allowed. A commit with no message source would open an
 # editor, which Claude cannot use — denied with a hint.
 #
 # Contract: stdin = hook JSON; deny = hookSpecificOutput JSON on stdout, exit 0.
@@ -40,17 +40,17 @@ command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/nul
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null) || cwd=""
 [ -n "$command" ] || exit 0
 
-# Rule 1 — same regex as bootstrap/hooks/governance-rules-lib.sh (v1 git hook). The plugin
+# Rule 1 — the v1 regex (bootstrap/hooks/governance-rules-lib.sh) plus a non-blank subject. The plugin
 # cannot source files outside its own directory once installed, so the rule lives here.
-CC_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]].+'
+CC_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]]+[^[:space:]]'
 
 subject=""
 # 1. -m "..." / -m '...' / --message="..." (first occurrence)
-subject=$(printf '%s' "$command" | grep -oE -- "(-m|--message)(=|[[:space:]]+)\"[^\"]*\"" | head -1 \
-    | sed -E 's/^(-m|--message)(=|[[:space:]]+)"(.*)"$/\3/')
+subject=$(printf '%s' "$command" | grep -oE -- "(-[a-zA-Z]*m|--message)(=|[[:space:]]+)\"[^\"]*\"" | head -1 \
+    | sed -E 's/^(-[a-zA-Z]*m|--message)(=|[[:space:]]+)"(.*)"$/\3/')
 if [ -z "$subject" ]; then
-    subject=$(printf '%s' "$command" | grep -oE -- "(-m|--message)(=|[[:space:]]+)'[^']*'" | head -1 \
-        | sed -E "s/^(-m|--message)(=|[[:space:]]+)'(.*)'$/\3/")
+    subject=$(printf '%s' "$command" | grep -oE -- "(-[a-zA-Z]*m|--message)(=|[[:space:]]+)'[^']*'" | head -1 \
+        | sed -E "s/^(-[a-zA-Z]*m|--message)(=|[[:space:]]+)'(.*)'$/\3/")
 fi
 # 2. -F - / --file=- with a heredoc: first line after the heredoc opener
 if [ -z "$subject" ] && printf '%s' "$command" | grep -qE -- '(-F|--file)(=|[[:space:]]+)-([[:space:]]|$)'; then
@@ -60,15 +60,15 @@ if [ -z "$subject" ] && printf '%s' "$command" | grep -qE -- '(-F|--file)(=|[[:s
 fi
 # 3. -F <file> / --file=<file>
 if [ -z "$subject" ]; then
-    file=$(printf '%s' "$command" | grep -oE -- '(-F|--file)(=|[[:space:]]+)[^[:space:]-][^[:space:]]*' | head -1 \
-        | sed -E 's/^(-F|--file)(=|[[:space:]]+)//')
+    file=$(printf '%s' "$command" | grep -oE -- "(-F|--file)(=|[[:space:]]+)(\"[^\"]+\"|'[^']+'|[^[:space:]\"'-][^[:space:]]*)" | head -1 \
+        | sed -E "s/^(-F|--file)(=|[[:space:]]+)//; s/^[\"'](.*)[\"']\$/\\1/")
     if [ -n "$file" ]; then
         case "$file" in /*) path="$file" ;; *) path="${cwd:-.}/$file" ;; esac
         [ -f "$path" ] && subject=$(head -1 "$path")
     fi
 fi
 # 4. amend / no-edit without a new message: nothing to check
-if [ -z "$subject" ] && printf '%s' "$command" | grep -qE -- '--amend|--no-edit'; then
+if [ -z "$subject" ] && printf '%s' "$command" | grep -qE -- '--amend|--no-edit|(^|[[:space:]])(-[cC]|--reuse-message|--reedit-message)([[:space:]=])'; then
     exit 0
 fi
 

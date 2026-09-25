@@ -7,6 +7,7 @@ HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/commit-msg-check.sh"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 printf 'docs: from file\n' > "$T/msg.txt"
 printf 'bad file msg\n' > "$T/bad.txt"
+mkdir -p "$T/dir with space" && printf 'docs: spaced\n' > "$T/dir with space/m.txt"
 FAIL=0
 
 check() {  # check <expect: allow|deny> <label> <command>
@@ -30,6 +31,12 @@ check deny  "-F file with bad subject"       'git commit -F bad.txt'
 check allow "--amend --no-edit"              'git commit --amend --no-edit'
 check allow "fixup! subject"                 'git commit -m "fixup! something"'
 check deny  "no message source (editor)"     'git commit'
+check allow "-am combined flag"              'git commit -am "fix(core): msg"'
+check deny  "-am with bad subject"           'git commit -am "stuff"'
+check allow "-C reuse message"               'git commit -C HEAD'
+check allow "-c reedit message"              'git commit -c HEAD~1'
+check allow "-F quoted path with spaces"     'git commit -F "dir with space/m.txt"'
+check deny  "blank subject after type"       'git commit -m "fix(s):    "'
 
 out=$(echo '{"tool_input":{"command":"git commit -m x"}}' | PATH=/nonexistent /bin/bash "$HOOK")
 if printf '%s' "$out" | grep -q '"permissionDecision":"deny"'; then echo "  ok   jq missing → deny with valid JSON"

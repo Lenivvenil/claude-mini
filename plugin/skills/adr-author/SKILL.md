@@ -1,6 +1,6 @@
 ---
 name: adr-author
-description: Navyk dlya sozdaniya ADR po MADR 4.0 cherez interv'yu. Ispol'zuj pri zaprose /adr, "novoye reshenie", "zafiksiruem reshenie", "architectural decision record", "ADR nuzhen". Zapuskaj tol'ko dlya arhitekturno-znachimykh reshenij (sm. principles.md).
+description: Write an ADR in MADR 4.0 through a short interview. Use for /adr, "new decision", "architectural decision record", only for architecturally significant decisions by the project's own rules.
 ---
 
 # ADR author skill
