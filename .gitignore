@@ -22,3 +22,6 @@ create-backlog.sh
 __pycache__/
 *.pyc
 .ruff_cache/
+
+# claude plugin eval run output
+plugin/evals/results/

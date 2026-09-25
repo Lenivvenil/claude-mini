@@ -123,13 +123,13 @@ for file in "$@"; do
     fi
 
     case "$file" in
-        bootstrap/agents/*.md)
+        bootstrap/agents/*.md|plugin/agents/*.md)
             lint_agent "$file" || ERRORS=$((ERRORS + 1))
             ;;
         bootstrap/commands/*.md)
             lint_command "$file" || ERRORS=$((ERRORS + 1))
             ;;
-        bootstrap/skills/*/SKILL.md)
+        bootstrap/skills/*/SKILL.md|plugin/skills/*/SKILL.md)
             lint_skill "$file" || ERRORS=$((ERRORS + 1))
             ;;
         *)

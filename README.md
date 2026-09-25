@@ -6,6 +6,33 @@
 [![governance](https://img.shields.io/badge/governance-hook--enforced-green)](docs/architecture/overview.md#governance)
 [![pipeline](https://img.shields.io/badge/pipeline-sonnet%20+%20advisor-blue)](docs/decisions/0003-sonnet-main-opus-advisor.md)
 
+## Плагин Claude Code (v2, #308)
+
+Ядро харнесса ставится штатным плагином, без `universal-setup.sh` и без флага платформы.
+
+```bash
+claude plugin marketplace add Lenivvenil/claude-mini        # или путь к локальному клону
+cd <твой-проект>
+claude plugin install claude-mini@claude-mini --scope local # только этот проект, только ты
+```
+
+**Только `--scope local` или `--scope project`.** По умолчанию `install` ставит в user scope — плагин и его хук заработают во всех проектах машины (это ровно дефект #303).
+
+Что внутри:
+
+| Компонент | Что делает |
+|---|---|
+| хук `PreToolUse` | на `git commit` из Claude проверяет формат Conventional Commits; другие команды не трогает |
+| `/claude-mini:plan <issue>` | пишет `plan.md`: варианты, выбор, тесты, риски |
+| `/claude-mini:adr-author` | ADR по MADR 4.0 через интервью |
+| `/claude-mini:codex-review [base]` | второе мнение `codex review --base`; модель — из `~/.codex/config.toml` |
+| агенты | `adversarial-critic`, `security-reviewer`, `adr-reviewer` — только чтение |
+
+Версии моделей не закреплены: агенты указывают псевдонимы `sonnet`/`opus`, которые Claude Code сам разрешает в текущие версии; Codex берёт модель из `~/.codex/config.toml`.
+Плагин живёт в `plugin/`, каталог-маркетплейс — `.claude-plugin/marketplace.json` в корне. Проверка: `claude plugin validate plugin`; поведение — `cd plugin && claude plugin eval . --scaffold --allow-tools "Bash(git diff:*)"` (кейсы в `plugin/evals/`). Установка копирует плагин в кеш: после правок — `claude plugin uninstall` и `install` заново.
+
+Установка v1 ниже остаётся до переноса остального и удаления installer'а.
+
 ## Onboarding: выбери свой путь
 
 ```mermaid

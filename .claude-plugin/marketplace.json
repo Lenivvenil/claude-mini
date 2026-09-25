@@ -1,0 +1,14 @@
+{
+  "name": "claude-mini",
+  "description": "Lenivvenil's claude-mini harness as a Claude Code plugin",
+  "owner": {
+    "name": "Lenivvenil"
+  },
+  "plugins": [
+    {
+      "name": "claude-mini",
+      "source": "./plugin",
+      "description": "Conventional Commits check, read-only critics, plan / ADR / Codex review skills. Enable at project or local scope only."
+    }
+  ]
+}
