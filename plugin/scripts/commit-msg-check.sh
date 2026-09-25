@@ -1,19 +1,26 @@
 #!/usr/bin/env bash
 # commit-msg-check.sh — claude-mini plugin PreToolUse hook (#308)
 #
-# Runs only for `git commit` (hooks/hooks.json: "if": "Bash(git commit *)") and only in
-# projects where the plugin is enabled (project/local scope). No repo marker, no global
-# settings: the plugin scope is the boundary (ADR-0011 intent, Principle 5).
+# Wired by hooks/hooks.json with "if": "Bash(git commit *)", only in projects where
+# the plugin is enabled (project/local scope). The `if` match is conservative —
+# Claude Code also runs the hook when it cannot resolve shell expansions (e.g.
+# `echo "$PATH"`) — so the script first checks that the command really runs
+# `git ... commit` and exits 0 otherwise.
 #
-# Checks Rule 1 (Conventional Commits subject).
-# Rules 2-3 (issue-ref, ADR-ref) are not applied: projects like likec4 add the PR number
-# at squash time, and file-name heuristics for "architectural" changes proved unreliable
+# Checks Rule 1: the commit subject follows Conventional Commits (v1 regex from
+# bootstrap/hooks/governance-rules-lib.sh plus a non-blank subject). Rules 2-3
+# (issue-ref, ADR-ref) are not applied: projects like likec4 add the PR number at
+# squash time, and file-name heuristics for "architectural" changes proved unreliable
 # (audit 2026-09-25).
 #
-# Message sources understood: -m "..." / -m '...' / --message=..., -F <file>,
-# -F - with a heredoc in the same command. --amend/--no-edit without a new message and
-# fixup!/squash! subjects and -c/-C (reuse a commit's message) are allowed. A commit with no message source would open an
-# editor, which Claude cannot use — denied with a hint.
+# The command is tokenised with Python shlex (POSIX quoting, multi-line strings).
+# Subject = first line of the FIRST message source, in command order:
+#   -m/--message (also -am, -qm, -mVALUE, --message=VALUE); a value of the form
+#   "$(cat <<'EOF' ... EOF)" yields the first heredoc line; -F/--file <path>
+#   (relative to cwd) or -F - with a heredoc in the same command.
+# Allowed without a subject: -c/-C/--reuse-message/--reedit-message, --amend or
+# --no-edit, --fixup/--squash; fixup!/squash!/amend! subjects.
+# No message source at all would open an editor, which Claude cannot use — denied.
 #
 # Contract: stdin = hook JSON; deny = hookSpecificOutput JSON on stdout, exit 0.
 
@@ -31,54 +38,30 @@ deny() {
     exit 0
 }
 
-if ! command -v jq >/dev/null 2>&1; then
-    deny "claude-mini: jq not found — install jq (brew install jq) to check commit messages."
-fi
+for bin in jq python3; do
+    command -v "$bin" >/dev/null 2>&1 \
+        || deny "claude-mini: $bin not found — install it to check commit messages (brew install $bin)."
+done
 
 input=$(cat)
 command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null) || command=""
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null) || cwd=""
 [ -n "$command" ] || exit 0
 
-# Rule 1 — the v1 regex (bootstrap/hooks/governance-rules-lib.sh) plus a non-blank subject. The plugin
-# cannot source files outside its own directory once installed, so the rule lives here.
-CC_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]]+[^[:space:]]'
+# Output of the parser: NOTCOMMIT | ALLOW | NOMSG | SUBJECT<TAB><subject>
+_self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+result=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py") \
+    || deny "claude-mini: commit message parser failed — see stderr."
 
-subject=""
-# 1. -m "..." / -m '...' / --message="..." (first occurrence)
-subject=$(printf '%s' "$command" | grep -oE -- "(-[a-zA-Z]*m|--message)(=|[[:space:]]+)\"[^\"]*\"" | head -1 \
-    | sed -E 's/^(-[a-zA-Z]*m|--message)(=|[[:space:]]+)"(.*)"$/\3/')
-if [ -z "$subject" ]; then
-    subject=$(printf '%s' "$command" | grep -oE -- "(-[a-zA-Z]*m|--message)(=|[[:space:]]+)'[^']*'" | head -1 \
-        | sed -E "s/^(-[a-zA-Z]*m|--message)(=|[[:space:]]+)'(.*)'$/\3/")
-fi
-# 2. -F - / --file=- with a heredoc: first line after the heredoc opener
-if [ -z "$subject" ] && printf '%s' "$command" | grep -qE -- '(-F|--file)(=|[[:space:]]+)-([[:space:]]|$)'; then
-    subject=$(printf '%s\n' "$command" | awk '
-        found { print; exit }
-        /<<-?[[:space:]]*['"'"'"]?[A-Za-z_][A-Za-z0-9_]*['"'"'"]?/ { found=1 }')
-fi
-# 3. -F <file> / --file=<file>
-if [ -z "$subject" ]; then
-    file=$(printf '%s' "$command" | grep -oE -- "(-F|--file)(=|[[:space:]]+)(\"[^\"]+\"|'[^']+'|[^[:space:]\"'-][^[:space:]]*)" | head -1 \
-        | sed -E "s/^(-F|--file)(=|[[:space:]]+)//; s/^[\"'](.*)[\"']\$/\\1/")
-    if [ -n "$file" ]; then
-        case "$file" in /*) path="$file" ;; *) path="${cwd:-.}/$file" ;; esac
-        [ -f "$path" ] && subject=$(head -1 "$path")
-    fi
-fi
-# 4. amend / no-edit without a new message: nothing to check
-if [ -z "$subject" ] && printf '%s' "$command" | grep -qE -- '--amend|--no-edit|(^|[[:space:]])(-[cC]|--reuse-message|--reedit-message)([[:space:]=])'; then
-    exit 0
-fi
+case "$result" in
+    NOTCOMMIT|ALLOW) exit 0 ;;
+    NOMSG) deny "claude-mini: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\"" ;;
+esac
 
-if [ -z "$subject" ]; then
-    deny "claude-mini: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\""
-fi
-
-subject=${subject%%$'\n'*}
+subject=${result#SUBJECT$'\t'}
 case "$subject" in fixup!*|squash!*|amend!*) exit 0 ;; esac
 
+CC_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]]+[^[:space:]]'
 if ! printf '%s' "$subject" | grep -qE "$CC_REGEX"; then
     deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr. Got: '$subject'"
 fi

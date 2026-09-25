@@ -21,5 +21,6 @@ printf '#!/bin/sh\n# commit-msg-governance\nexit 0\n' > hooks/commit-msg
 git add -A && git commit -q -m "chore: initial"
 # The change under review: reader switched to the common dir so worktrees resolve
 # to the main .git; the installer was left on --git-dir.
+# shellcheck disable=SC2016  # the $(...) text is sed pattern data, must stay literal
 sed -i.bak 's/hook="$(git rev-parse --git-dir)/hook="$(git rev-parse --git-common-dir)/' check.sh && rm check.sh.bak
 sed -i.bak 's/^# Called before every commit.*/# Called before every commit: enforce rules only in governed repos.\n# --git-common-dir: in a linked worktree this is the main .git, where git runs hooks./' check.sh && rm check.sh.bak

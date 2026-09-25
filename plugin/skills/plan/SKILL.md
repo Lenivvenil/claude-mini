@@ -25,6 +25,10 @@ Write `plan.md` in the repo root with exactly these sections:
 
 If the change is architecturally significant by the project's own rules (a new cross-cutting dependency, a changed public API or contract, a hard-to-reverse constraint, a security or data-model change), say so at the top of plan.md and suggest `/claude-mini:adr-author` before implementation.
 
+## Output
+
+`plan.md` in the repo root with the six sections above, and one line in chat: the path, the chosen approach, and whether an ADR is suggested.
+
 ## Hard rules
 
 - Do not write code. Only `plan.md`.

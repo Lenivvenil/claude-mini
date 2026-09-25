@@ -12,8 +12,10 @@ FAIL=0
 
 check() {  # check <expect: allow|deny> <label> <command>
     local out got
-    out=$(jq -n --arg c "$3" --arg d "$T" '{tool_input:{command:$c},cwd:$d}' | bash "$HOOK")
-    if [ -z "$out" ]; then got=allow
+    local rc=0
+    out=$(jq -n --arg c "$3" --arg d "$T" '{tool_input:{command:$c},cwd:$d}' | bash "$HOOK" 2>/dev/null) || rc=$?
+    if [ "$rc" -ne 0 ]; then got="script-error(rc=$rc)"
+    elif [ -z "$out" ]; then got=allow
     elif printf '%s' "$out" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null; then got=deny
     else got="invalid-output"; fi
     if [ "$got" = "$1" ]; then echo "  ok   $2"; else echo "  FAIL $2 — expected $1, got $got"; FAIL=$((FAIL+1)); fi
@@ -37,6 +39,15 @@ check allow "-C reuse message"               'git commit -C HEAD'
 check allow "-c reedit message"              'git commit -c HEAD~1'
 check allow "-F quoted path with spaces"     'git commit -F "dir with space/m.txt"'
 check deny  "blank subject after type"       'git commit -m "fix(s):    "'
+# shellcheck disable=SC2016  # literal $PATH: the hook must see the unexpanded text
+check allow "not a commit: echo \$PATH"       'echo "$PATH"'
+check allow "not a commit: quoted mention"   'echo "git commit -m x"'
+check allow "Claude style -m \$(cat heredoc)" $'git commit -m "$(cat <<\'EOF\'\nfeat(plugin): add hook\n\nbody line\n\nCo-Authored-By: X <x@y>\nEOF\n)"'
+check deny  "-m \$(cat heredoc) bad subject"  $'git commit -m "$(cat <<\'EOF\'\nsome stuff\n\nbody\nEOF\n)"'
+check allow "multi-line -m with body"        $'git commit -m "fix: subject\n\nbody text"'
+check deny  "first -m bad, second -m CC"     $'git commit -m \'bad subject\' -m "fix: body"'
+check deny  "git -C dir commit, bad subject" 'git -C sub commit -m "nope"'
+check allow "-F quoted relative path"        'git commit -F "msg.txt"'
 
 out=$(echo '{"tool_input":{"command":"git commit -m x"}}' | PATH=/nonexistent /bin/bash "$HOOK")
 if printf '%s' "$out" | grep -q '"permissionDecision":"deny"'; then echo "  ok   jq missing → deny with valid JSON"

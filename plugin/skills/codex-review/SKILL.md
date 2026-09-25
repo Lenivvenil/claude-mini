@@ -29,6 +29,10 @@ Head: !`git rev-parse --short HEAD`
    - **ERROR** — the command failed or timed out; show the exit code and stderr tail. Never report ERROR as PASS.
 4. For each finding give your own verdict: agree (and fix plan), disagree (with evidence), or unsure. Do not dismiss a finding without engaging it.
 
+## Output
+
+In chat: the reviewed range (base SHA..head SHA, files changed), the status line (FINDINGS, PASS or ERROR), each finding with `path:line`, and your verdict on each.
+
 ## Hard rules
 
 - Review the whole branch against the base, never only the last commit.
