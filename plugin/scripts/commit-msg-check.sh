@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # commit-msg-check.sh — claude-mini plugin PreToolUse hook (#308)
 #
-# Wired by hooks/hooks.json with "if": "Bash(git commit *)", only in projects where
+# Wired by hooks/hooks.json with "if": "Bash(git *)" (git global options such as -C sit
+# between git and commit, so a narrower pattern misses them), only in projects where
 # the plugin is enabled (project/local scope). The `if` match is conservative —
 # Claude Code also runs the hook when it cannot resolve shell expansions (e.g.
 # `echo "$PATH"`) — so the script first checks that the command really runs
@@ -48,21 +49,24 @@ command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/nul
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null) || cwd=""
 [ -n "$command" ] || exit 0
 
-# Output of the parser: NOTCOMMIT | ALLOW | NOMSG | SUBJECT<TAB><subject>
+# Parser output: one line per commit invocation — ALLOW | NOMSG | SUBJECT<TAB><subject>;
+# empty when the command runs no `git ... commit`.
 _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 result=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py") \
     || deny "claude-mini: commit message parser failed — see stderr."
 
-case "$result" in
-    NOTCOMMIT|ALLOW) exit 0 ;;
-    NOMSG) deny "claude-mini: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\"" ;;
-esac
-
-subject=${result#SUBJECT$'\t'}
-case "$subject" in fixup!*|squash!*|amend!*) exit 0 ;; esac
-
 CC_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]]+[^[:space:]]'
-if ! printf '%s' "$subject" | grep -qE "$CC_REGEX"; then
-    deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr. Got: '$subject'"
-fi
+
+# One line per commit invocation; every commit in the command must pass.
+while IFS= read -r line; do
+    case "$line" in
+        ""|ALLOW) continue ;;
+        NOMSG) deny "claude-mini: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\"" ;;
+    esac
+    subject=${line#SUBJECT$'\t'}
+    case "$subject" in fixup!*|squash!*|amend!*) continue ;; esac
+    if ! printf '%s' "$subject" | grep -qE "$CC_REGEX"; then
+        deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr. Got: '$subject'"
+    fi
+done <<< "$result"
 exit 0

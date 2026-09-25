@@ -8,6 +8,7 @@ T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 printf 'docs: from file\n' > "$T/msg.txt"
 printf 'bad file msg\n' > "$T/bad.txt"
 mkdir -p "$T/dir with space" && printf 'docs: spaced\n' > "$T/dir with space/m.txt"
+mkdir -p "$T/sub" && printf 'docs: in sub\n' > "$T/sub/m.txt" && printf 'nope in sub\n' > "$T/sub/bad.txt"
 FAIL=0
 
 check() {  # check <expect: allow|deny> <label> <command>
@@ -48,6 +49,16 @@ check allow "multi-line -m with body"        $'git commit -m "fix: subject\n\nbo
 check deny  "first -m bad, second -m CC"     $'git commit -m \'bad subject\' -m "fix: body"'
 check deny  "git -C dir commit, bad subject" 'git -C sub commit -m "nope"'
 check allow "-F quoted relative path"        'git commit -F "msg.txt"'
+check deny  "git -c opt=val commit, bad"     'git -c user.name=T commit -m "bad subject"'
+check deny  "second commit in chain is bad"  'git commit --allow-empty -m "fix: first" && git commit --allow-empty -m "bad subject"'
+check deny  "second commit on next line bad" $'git commit -m "fix: first"\ngit commit -m "bad subject"'
+check allow "cd sub && -F relative to sub"   'cd sub && git commit -F m.txt'
+check deny  "cd sub && -F bad file in sub"   'cd sub && git commit -F bad.txt'
+check allow "script heredoc then commit heredoc" $'cat > s.sh <<\'EOF\'\n#!/usr/bin/env bash\necho hi\nEOF\ngit commit -F - <<\'EOF\'\nfix: add script\nEOF'
+check allow "--fixup with -m body"           'git commit --fixup=HEAD -m "extra explanation"'
+check allow "-am attached value"             'git commit -am"fix: subject"'
+check deny  "-am attached bad value"         'git commit -am"bad subject"'
+check allow "not git: plain ls"              'ls -la'
 
 out=$(echo '{"tool_input":{"command":"git commit -m x"}}' | PATH=/nonexistent /bin/bash "$HOOK")
 if printf '%s' "$out" | grep -q '"permissionDecision":"deny"'; then echo "  ok   jq missing → deny with valid JSON"
