@@ -95,7 +95,7 @@ git checkout -b feat/<short-slug>-<issue-number>
 # Example: git checkout -b feat/retry-logic-42
 ```
 
-The governance hook (ADR-0009) blocks direct commits to `main`; creating the branch here avoids a stash/rebase recovery later.
+In a governed repo (claude-mini `commit-msg` hook installed via `--hook-this-repo`, ADR-0011) the governance hook (ADR-0009) blocks direct commits to `main`; creating the branch here avoids a stash/rebase recovery later.
 
 ```
 /implement

@@ -86,6 +86,22 @@ else
     skip "2b skipped: hook not installed by 2a"
 fi
 
+# 2d: install from a linked worktree lands in the common .git/hooks (#303) —
+# git never runs hooks from a worktree's private git-dir
+git -C "$FAKE_REPO" commit -q --allow-empty -m "init"
+FAKE_WT="$FAKE_REPO-wt"
+git -C "$FAKE_REPO" worktree add -q -b wt-verify "$FAKE_WT"
+DEST_RULES_LIB="$FAKE_REPO/.git/hooks/governance-rules-lib.sh"
+rm -f "$DEST_HOOK" "$DEST_RULES_LIB"
+if (cd "$FAKE_WT" && HOME="$FAKE_HOME" bash "$SETUP" --hook-this-repo >/dev/null 2>&1) \
+   && cmp -s "$STAGED_HOOK" "$DEST_HOOK" \
+   && cmp -s "$FAKE_HOME/.claude/git-hooks/governance-rules-lib.sh" "$DEST_RULES_LIB"; then
+    pass "worktree install: hook + rules lib placed in common .git/hooks"
+else
+    fail "worktree install: hook or rules lib not in common .git/hooks"
+fi
+git -C "$FAKE_REPO" worktree remove --force "$FAKE_WT"
+
 # 2c: staged hook absent — should exit non-zero (exit 2)
 MISSING_HOME=$(mktemp -d /tmp/claude-mini-verify-missinghome-XXXXXX)
 # Append to existing trap rather than overwriting it

@@ -123,7 +123,7 @@ bootstrap/
 
 **Slash commands (11):** `/plan`, `/implement`, `/adr`, `/review`, `/codex-review`, `/intent-check`, `/task-to-issue`, `/issue-to-task`, `/backlog-review`, `/project-health`, `/feature` (master orchestrator).
 
-**Hooks (4):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse). `commit-msg-governance.sh` — те же правила на git-level; также non-blocking reminder обновить `docs/anti-patterns.md` если в ветке есть code-файлы без правок этого файла. `posttooluse-format.sh` — проверяет форматирование после Edit|MultiEdit|Write (PostToolUse, не блокирует). `stop-hook.sh` — блокирует завершение сессии если тесты не проходят (Stop).
+**Hooks (4):** `pre-commit-governance.sh` — блокирует коммиты без CC-префикса / issue-ref / ADR-ref (PreToolUse); действует только в репо, подключённых через `--hook-this-repo` (ADR-0011). `commit-msg-governance.sh` — те же правила на git-level; также non-blocking reminder обновить `docs/anti-patterns.md` если в ветке есть code-файлы без правок этого файла. `posttooluse-format.sh` — проверяет форматирование после Edit|MultiEdit|Write (PostToolUse, не блокирует). `stop-hook.sh` — блокирует завершение сессии если тесты не проходят (Stop).
 
 **Scripts (8):** `mini-preflight`, `mini-session`, `mini-bootstrap-project`, `mini-health`, `review-codex.sh`, `gate-audit-lib.sh`, `gate-audit-aggregate.sh`, `forge.sh`.
 
@@ -183,7 +183,7 @@ bootstrap/
         └─▶ gh pr create  (pre-PR artifact gate — issue #115)
 ```
 
-**Механический gate коммитов:** `pre-commit-governance.sh` (Claude Code PreToolUse) блокирует коммит без Conventional Commits prefix + issue-ref + ADR-ref (для архитектурно-значимых изменений). `commit-msg-governance.sh` (git-level) применяет те же правила к прямым терминальным коммитам; дополнительно non-blocking reminder обновить `docs/anti-patterns.md`.
+**Механический gate коммитов:** в репо, подключённых через `--hook-this-repo` (ADR-0011), `pre-commit-governance.sh` (Claude Code PreToolUse) блокирует коммит без Conventional Commits prefix + issue-ref + ADR-ref (для архитектурно-значимых изменений). `commit-msg-governance.sh` (git-level) применяет те же правила к прямым терминальным коммитам; дополнительно non-blocking reminder обновить `docs/anti-patterns.md`.
 
 **Что обязательно на каждом этапе** — см. `docs/runbooks/feature-pipeline.md#10-pre-pr-artifact-verification`.
 

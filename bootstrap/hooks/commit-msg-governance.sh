@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # commit-msg-governance.sh — git commit-msg hook (phase 2 governance, ADR-0011)
 #
+# The token "commit-msg-governance" in this header is the governance marker:
+# pre-commit-governance.sh greps for it to decide whether a repo is governed (#303).
+#
 # Called by git with a file path as $1 containing the proposed commit message.
 # Enforces Rules 1-3 from the governance policy, covering direct terminal commits
 # that bypass Claude Code's PreToolUse hook (phase 1).

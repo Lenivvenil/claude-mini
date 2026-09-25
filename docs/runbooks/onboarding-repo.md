@@ -34,7 +34,9 @@ cd ~/projects/claude-mini
 
 ### 1a. Активировать governance hook
 
-`--target` устанавливает pipeline-команды, но **не** hook. Hook нужно подключить отдельно в каждый репо:
+`--target` устанавливает pipeline-команды, но **не** hook. Hook нужно подключить отдельно в каждый репо.
+
+Этот шаг включает governance целиком. Установленный `.git/hooks/commit-msg` — единственный признак подключённого репо (ADR-0011): по нему и git-level hook, и глобальный Claude Code hook `pre-commit-governance.sh` решают, проверять ли коммит. Репо без этого шага правилами не проверяется ни на одном уровне (#303). В репо с husky (`core.hooksPath`) git-level hook не исполняется, но Claude Code hook продолжает проверять.
 
 ```bash
 # Запускать из корня репо, куда устанавливается hook
@@ -56,6 +58,8 @@ echo "feat: add feature #1" | bash .git/hooks/commit-msg /dev/stdin
 ```bash
 rm .git/hooks/commit-msg
 ```
+
+Откат выключает оба уровня проверки: после удаления файла Claude Code hook тоже пропускает коммиты этого репо.
 
 Если `./bootstrap/universal-setup.sh --check` выдаёт предупреждение про hook — hook не установлен в этот репо. Повтори этот шаг.
 

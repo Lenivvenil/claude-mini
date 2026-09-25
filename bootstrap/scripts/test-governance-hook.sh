@@ -59,6 +59,16 @@ touch "$TMPDIR_REPO/README.md"
 git -C "$TMPDIR_REPO" add README.md
 git -C "$TMPDIR_REPO" commit -q -m "chore: initial commit"
 
+# Mark the temp repo as governed (ADR-0011 boundary, #303): the hook only enforces
+# where the claude-mini commit-msg hook is installed. The commit-msg hook sits next
+# to pre-commit-governance.sh both in bootstrap/hooks/ and in ~/.claude/hooks/.
+COMMIT_MSG_HOOK="$(dirname "$HOOK")/commit-msg-governance.sh"
+if [ ! -f "$COMMIT_MSG_HOOK" ]; then
+    printf "${RED}FATAL:${NC} commit-msg hook not found next to governance hook: %s\n" "$COMMIT_MSG_HOOK" >&2
+    exit 1
+fi
+cp "$COMMIT_MSG_HOOK" "$TMPDIR_REPO/.git/hooks/commit-msg"
+
 # --- Helper ---
 
 run_hook() {
@@ -229,6 +239,71 @@ else
         || git -C "$TMPDIR_REPO" reset HEAD plan.md 2>/dev/null || true
 fi
 unset _REPO_ROOT_FOR_TEST _HEDGING_CONFIG
+
+# --- Governance boundary (ADR-0011, #303) ---
+# Repos without the claude-mini commit-msg hook are outside governance: every commit
+# is allowed and the hook leaves no trace in the repo.
+
+echo ""
+echo "Governance boundary (repos without claude-mini commit-msg hook are not governed):"
+
+UNGOVERNED_REPO=$(mktemp -d /tmp/claude-mini-hook-test-ungoverned-XXXXXX)
+trap 'rm -rf "$TMPDIR_REPO" "$UNGOVERNED_REPO"' EXIT
+git -C "$UNGOVERNED_REPO" init -q
+git -C "$UNGOVERNED_REPO" symbolic-ref HEAD refs/heads/smoketest
+git -C "$UNGOVERNED_REPO" config user.email "test@example.com"
+git -C "$UNGOVERNED_REPO" config user.name "Test"
+touch "$UNGOVERNED_REPO/README.md"
+git -C "$UNGOVERNED_REPO" add README.md
+git -C "$UNGOVERNED_REPO" commit -q -m "initial"
+git -C "$UNGOVERNED_REPO" branch -q main
+mkdir -p "$UNGOVERNED_REPO/docs/gate-audit"   # audit dir present: must stay empty
+_before=$(git -C "$UNGOVERNED_REPO" status --porcelain --ignored)
+
+assert_allowed \
+    "no hook — non-CC message allowed" \
+    'git commit -m "analysis: some change"' \
+    "$UNGOVERNED_REPO"
+
+git -C "$UNGOVERNED_REPO" switch -q main
+assert_allowed \
+    "no hook — commit on main allowed" \
+    'git commit -m "just did some stuff"' \
+    "$UNGOVERNED_REPO"
+
+if [ "$(git -C "$UNGOVERNED_REPO" status --porcelain --ignored)" = "$_before" ] \
+   && [ -z "$(ls -A "$UNGOVERNED_REPO/docs/gate-audit")" ]; then
+    pass "no hook — repo left untouched (no gate-audit writes)"
+else
+    fail "no hook — hook wrote into an ungoverned repo"
+fi
+unset _before
+
+git -C "$UNGOVERNED_REPO" switch -q smoketest
+printf '#!/bin/sh\n# foreign Change-Id hook\nexit 0\n' > "$UNGOVERNED_REPO/.git/hooks/commit-msg"
+chmod +x "$UNGOVERNED_REPO/.git/hooks/commit-msg"
+assert_allowed \
+    "foreign commit-msg hook (no signature) — not governed" \
+    'git commit -m "just did some stuff"' \
+    "$UNGOVERNED_REPO"
+
+# core.hooksPath (husky) must not hide an installed claude-mini hook
+git -C "$TMPDIR_REPO" config core.hooksPath .husky/_
+assert_blocked \
+    "governed repo with core.hooksPath — rules still apply" \
+    'git commit -m "just did some stuff"' \
+    "Conventional Commits"
+git -C "$TMPDIR_REPO" config --unset core.hooksPath
+
+# Worktree of a governed repo resolves to the common .git/hooks
+WORKTREE_DIR="$UNGOVERNED_REPO-wt"
+trap 'rm -rf "$TMPDIR_REPO" "$UNGOVERNED_REPO" "$WORKTREE_DIR"' EXIT
+git -C "$TMPDIR_REPO" worktree add -q -b wt-smoketest "$WORKTREE_DIR"
+assert_blocked \
+    "worktree of governed repo — rules apply" \
+    'git commit -m "just did some stuff"' \
+    "Conventional Commits" \
+    "$WORKTREE_DIR"
 
 # --- Summary ---
 
