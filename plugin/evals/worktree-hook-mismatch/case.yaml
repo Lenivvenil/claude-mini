@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: worktree-hook-mismatch
+description: >
+  Real miss from PR #305 (2026-09-25): the reader of the hook was moved to
+  --git-common-dir, the installer still writes to --git-dir. Run from a linked
+  worktree, the installer puts the hook where git never executes it and reports
+  success. Four Claude critics missed it; Codex caught it.
+expected_outcome: The review names the installer/reader path mismatch for linked worktrees.
+tags: [review, real-miss]
+runs: 3
+context:
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 30
+  timeout_seconds: 600
+  allowed_tools: [Read, Glob, Grep, Agent, "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)"]

@@ -404,14 +404,15 @@ copy_file() {
 
 # --- Copy agents ---
 log "Copying agents..."
-for f in "$REPO_ROOT"/bootstrap/agents/*.md; do
+# plugin/agents: agents shared with the v2 plugin (#308), same files, no copies
+for f in "$REPO_ROOT"/bootstrap/agents/*.md "$REPO_ROOT"/plugin/agents/*.md; do
     [ -f "$f" ] || continue
     copy_file "$f" "$CLAUDE_HOME/agents/$(basename "$f")"
 done
 
 # --- Copy skills ---
 log "Copying skills..."
-for dir in "$REPO_ROOT"/bootstrap/skills/*/; do
+for dir in "$REPO_ROOT"/bootstrap/skills/*/ "$REPO_ROOT"/plugin/skills/adr-author/; do
     [ -d "$dir" ] || continue
     skill_name=$(basename "$dir")
     if [ "$MODE" = "install" ]; then

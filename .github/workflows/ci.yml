@@ -36,7 +36,7 @@ jobs:
       - name: Lint prompt artifacts
         run: |
           shopt -s nullglob
-          bash scripts/lint-prompts.sh bootstrap/agents/*.md bootstrap/commands/*.md bootstrap/skills/*/SKILL.md
+          bash scripts/lint-prompts.sh bootstrap/agents/*.md plugin/agents/*.md bootstrap/commands/*.md bootstrap/skills/*/SKILL.md plugin/skills/*/SKILL.md
       - name: Validate JSON/YAML
         run: |
           for f in bootstrap/templates/*.yml; do
@@ -97,6 +97,17 @@ jobs:
           sudo apt-get install -y jq
       - name: Run install verification test harness
         run: bash bootstrap/scripts/test-install-verification.sh
+
+  plugin-hook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Plugin commit-msg hook cases (#308)
+        run: bash plugin/scripts/test-commit-msg-check.sh
 
   mcp-config-lint:
     runs-on: ubuntu-latest

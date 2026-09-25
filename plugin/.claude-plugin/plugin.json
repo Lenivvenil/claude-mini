@@ -1,0 +1,10 @@
+{
+  "name": "claude-mini",
+  "version": "2.0.0",
+  "description": "Core of the claude-mini harness: Conventional Commits check on git commit, read-only critics (adversarial, security, ADR), plan / ADR / Codex second-opinion skills. Enable per project (project or local scope), never at user scope.",
+  "author": {
+    "name": "Lenivvenil"
+  },
+  "repository": "https://github.com/Lenivvenil/claude-mini",
+  "license": "MIT"
+}
