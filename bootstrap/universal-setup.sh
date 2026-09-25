@@ -99,7 +99,9 @@ if [ "$MODE" = "hook-this-repo" ]; then
         exit 2
     fi
 
-    GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || {
+    # --git-common-dir: git runs hooks only from the common .git/hooks, never from a
+    # linked worktree's private git-dir; pre-commit-governance.sh looks there too (#303).
+    GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null) || {
         err "Not a git repository (current directory: $PWD)"
         exit 3
     }

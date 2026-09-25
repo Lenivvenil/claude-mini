@@ -93,6 +93,24 @@ cd "$cwd" 2>/dev/null || {
     log "cannot cd to $cwd, allowing"
     exit 0
 }
+
+# --- Governance boundary (ADR-0011, Principle 5, #303) ---
+# This hook is registered globally in ~/.claude/settings.json, but governance applies
+# only where --hook-this-repo installed the claude-mini commit-msg hook. Same path the
+# installer writes to; --git-common-dir (not --git-path) so worktrees resolve to the
+# main .git and core.hooksPath (husky) does not redirect the lookup.
+# Signature "commit-msg-governance" lives in the header of commit-msg-governance.sh —
+# keep it there. Checked before _GATE_AUDIT_READY so ungoverned repos get no writes.
+_common_dir=$(git rev-parse --git-common-dir 2>/dev/null) || {
+    log "not a git repository, allowing"
+    exit 0
+}
+if ! grep -q 'commit-msg-governance' "$_common_dir/hooks/commit-msg" 2>/dev/null; then
+    log "repo not governed (no claude-mini commit-msg hook), allowing"
+    exit 0
+fi
+unset _common_dir
+
 _GATE_AUDIT_READY=1  # gate_event_write now safe: we are in the correct repo
 
 # --- Extract branch (needed by Rule 4, which runs before message-dependent rules) ---

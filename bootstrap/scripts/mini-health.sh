@@ -95,7 +95,8 @@ if [ ! -x "$staged_hook" ]; then
 else
     ok "Staged hook present: $staged_hook"
     if git rev-parse --git-dir >/dev/null 2>&1; then
-        _git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null) || _git_dir=$(cd "$(git rev-parse --git-dir)" && pwd)
+        # Common dir: hooks live there even when run from a linked worktree (#303)
+        _git_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd)
         repo_hook="$_git_dir/hooks/commit-msg"
         if [ ! -f "$repo_hook" ]; then
             warn "commit-msg hook not installed in this repo (run: ./bootstrap/universal-setup.sh --hook-this-repo)"
