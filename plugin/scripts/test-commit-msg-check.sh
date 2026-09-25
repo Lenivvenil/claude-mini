@@ -9,6 +9,7 @@ printf 'docs: from file\n' > "$T/msg.txt"
 printf 'bad file msg\n' > "$T/bad.txt"
 mkdir -p "$T/dir with space" && printf 'docs: spaced\n' > "$T/dir with space/m.txt"
 mkdir -p "$T/sub" && printf 'docs: in sub\n' > "$T/sub/m.txt" && printf 'nope in sub\n' > "$T/sub/bad.txt"
+printf 'bad at top\n' > "$T/same.txt" && printf 'docs: good in sub\n' > "$T/sub/same.txt"
 FAIL=0
 
 check() {  # check <expect: allow|deny> <label> <command>
@@ -59,10 +60,23 @@ check allow "--fixup with -m body"           'git commit --fixup=HEAD -m "extra 
 check allow "-am attached value"             'git commit -am"fix: subject"'
 check deny  "-am attached bad value"         'git commit -am"bad subject"'
 check allow "not git: plain ls"              'ls -la'
+check allow "heredoc body mentions git commit"  $'git commit -F - <<EOF\nfix: document usage\n\nDocument git commit here.\nEOF'
+check deny  "heredoc body hides no 2nd commit" $'git commit -F - <<EOF\nbad subject\n\ngit commit -m "fix: x"\nEOF'
+check allow "-F attached path"               'git commit -Fmsg.txt'
+check deny  "-F attached bad path"           'git commit -Fbad.txt'
+check deny  "--amend with attached bad -F"   'git commit --amend -Fbad.txt'
+check allow "subshell cd does not leak"      '(cd sub && git status); git commit -F msg.txt'
+check deny  "subshell cd, bad file at top"   '(cd sub && git status); git commit -F same.txt'
+check allow "--dry-run without message"      'git commit --dry-run'
+check allow "--author value is not an option" 'git commit --author "A <a@b>" -m "fix: x"'
 
 out=$(echo '{"tool_input":{"command":"git commit -m x"}}' | PATH=/nonexistent /bin/bash "$HOOK")
 if printf '%s' "$out" | grep -q '"permissionDecision":"deny"'; then echo "  ok   jq missing → deny with valid JSON"
 else echo "  FAIL jq missing → expected deny JSON, got: $out"; FAIL=$((FAIL+1)); fi
+
+out=$(echo '{"tool_input":{"command":"git status"}}' | PATH=/nonexistent /bin/bash "$HOOK")
+if [ -z "$out" ]; then echo "  ok   jq missing, git status → allowed"
+else echo "  FAIL jq missing, git status → expected allow, got: $out"; FAIL=$((FAIL+1)); fi
 
 [ "$FAIL" -eq 0 ] && echo "All passed." || echo "$FAIL failed."
 exit "$FAIL"

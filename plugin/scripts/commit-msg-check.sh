@@ -14,13 +14,14 @@
 # squash time, and file-name heuristics for "architectural" changes proved unreliable
 # (audit 2026-09-25).
 #
-# The command is tokenised with Python shlex (POSIX quoting, multi-line strings).
-# Subject = first line of the FIRST message source, in command order:
-#   -m/--message (also -am, -qm, -mVALUE, --message=VALUE); a value of the form
-#   "$(cat <<'EOF' ... EOF)" yields the first heredoc line; -F/--file <path>
-#   (relative to cwd) or -F - with a heredoc in the same command.
+# The command is parsed by parse-commit.py (heredoc bodies cut out as data, shlex
+# tokens, git commit options with their argument boundaries). Every `git ... commit`
+# in the command is checked; the subject is the first line of its first message
+# source: -m/--message (also -am, -mVALUE, --message=VALUE, "$(cat <<'EOF' ...)"),
+# -F/--file <path> relative to the effective directory (cd, subshells, git -C), or
+# -F - with the commit's own heredoc.
 # Allowed without a subject: -c/-C/--reuse-message/--reedit-message, --amend or
-# --no-edit, --fixup/--squash; fixup!/squash!/amend! subjects.
+# --no-edit, --fixup/--squash, --dry-run; fixup!/squash!/amend! subjects.
 # No message source at all would open an editor, which Claude cannot use — denied.
 #
 # Contract: stdin = hook JSON; deny = hookSpecificOutput JSON on stdout, exit 0.
@@ -39,12 +40,15 @@ deny() {
     exit 0
 }
 
+IFS= read -r -d '' input || true  # builtin: works even with a broken PATH
+# Most `git *` calls are not commits: leave them alone even without jq/python3.
+[[ $input == *commit* ]] || exit 0
+
 for bin in jq python3; do
     command -v "$bin" >/dev/null 2>&1 \
         || deny "claude-mini: $bin not found — install it to check commit messages (brew install $bin)."
 done
 
-input=$(cat)
 command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null) || command=""
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null) || cwd=""
 [ -n "$command" ] || exit 0
