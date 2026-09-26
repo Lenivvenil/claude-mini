@@ -75,3 +75,15 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: PLAN P4 put the `critics[{agent,paths,labels}]` section in P4. No component reads it until the review skill arrives in P6, so in P4 it would be config without a reader.
 - Proposed fix: add the section in P6 together with the review skill that reads it, or drop it if the agent descriptions prove enough for delegation.
+
+## No `issue` skill in P5
+- Source: P5, PR for #316
+- Severity: P2
+- What: PLAN P5 and PORT-MAP rows 27, 29, 31, 76 and 106 put issue capture and the ticket audit into a new `issue` skill. Under the selection rule no failure was named that they prevent, so they are KEEP-HISTORY and the skill is not built. `audit-pass` implements ADR-0023.
+- Proposed fix: the owner accepts or reverses. If accepted, P9 marks ADR-0023 superseded when the files go.
+
+## adr-author keeps numeric quotas
+- Source: P5
+- Severity: P2
+- What: `plugin/skills/adr-author/SKILL.md` still refuses to proceed with fewer than three drivers or options, or fewer bad than good consequences. P4 removed the same quotas from `solutions-architect` and `adr-reviewer` asks for real options, not a count.
+- Proposed fix: in P6 or a separate PR, replace the quotas with the reviewer's rule: real options and real costs.

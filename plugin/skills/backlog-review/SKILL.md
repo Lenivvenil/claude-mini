@@ -1,38 +1,22 @@
 ---
 name: backlog-review
-description: Weekly backlog grooming report. Invokes backlog-groomer agent to analyze open GitHub issues and produce a triage report with gh commands. Use when asked to "review backlog", "groom backlog", or "run weekly backlog review". Requires an active GitHub repository with open issues.
+description: Groom the project's open issues. Use when asked to review, groom or clean up the backlog ("что с бэклогом"). Runs the backlog-groomer agent, shows its report, and applies only the batch of commands the owner approves.
 ---
 
 # Backlog review skill
 
-## When to invoke
-
-- "review backlog"
-- "groom backlog"
-- "run weekly backlog review"
-- "что с бэклогом", "прогони backlog groomer"
-
-## Prerequisites
-
-- GitHub repository with open issues (authenticated `gh` CLI in the environment)
-- `@agent-backlog-groomer` available (installed via `./bootstrap/universal-setup.sh --install`)
-
 ## Steps
 
-Invoke `@agent-backlog-groomer` to analyze the current repo's open issues and produce a grooming report.
-
-After the agent returns:
-
-1. Present the report summary.
-2. Remind operator: "The agent does not mutate. Review the `gh` commands in the report and apply manually."
-3. File the report at `docs/backlog/grooming-YYYY-MM-DD.md` (the agent does this).
-4. If the operator agrees with a batch of proposals, offer to execute them one-by-one with confirmation.
+1. Run the `claude-mini:backlog-groomer` agent on the current repository. Pass any thresholds or label rules the owner gave.
+2. Show the owner the summary and the proposed commands, grouped by check.
+3. Save the full report only if the owner asks, where the owner says.
+4. The owner approves commands by naming them or a whole group. Run exactly the approved commands and report each result. Leave the rest.
 
 ## Output
 
-Report filed at `docs/backlog/grooming-YYYY-MM-DD.md`. Summary printed to conversation with list of proposed `gh` commands for operator review.
+The groomer's report summary in chat, and for applied commands a list of what ran and what it returned.
 
 ## Hard rules
 
-- Do NOT apply the agent's proposals without explicit operator confirmation on each.
-- Do NOT edit the report retroactively. If operator disagrees, note in PR/issue, don't rewrite the report.
+- Do NOT run a command that changes the tracker unless the owner approved that command or its group in this conversation.
+- Do NOT rewrite the groomer's findings. Disagreement goes into the conversation or the issue, not into the report.

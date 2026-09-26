@@ -126,4 +126,4 @@ If you want the project's domain loaded automatically when working on it, add an
 
 - `docs/decisions/0027-domain-inversion-meta-vs-target-bc.md` — decision that mandates this separation
 - `docs/domain/meta/vocabulary.md` — meta-pipeline BC vocabulary (reference, do not copy)
-- `bootstrap/skills/domain-discovery/SKILL.md` — the skill this runbook invokes
+- `plugin/skills/domain-discovery/SKILL.md` — the skill this runbook invokes
