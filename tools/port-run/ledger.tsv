@@ -74,7 +74,7 @@ DEPLOY.md	KEEP				p0
 LICENSE	KEEP				-	
 README.md	MODERNISE				p9	
 STATE.md	KEEP-HISTORY				p9	docs/history/STATE.md
-bootstrap/VERSION	MERGE				p9	
+bootstrap/VERSION	MERGE	harness version	plugin/.claude-plugin/plugin.json	claude plugin validate plugin --strict	p9	
 bootstrap/agents/backlog-groomer.md	PORT	on-demand backlog grooming role	plugin/agents/backlog-groomer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/agents/docs-reviewer.md	PORT	on-demand documentation review role	plugin/agents/docs-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/agents/domain-researcher.md	PORT	on-demand domain research role	plugin/agents/domain-researcher.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
@@ -121,7 +121,7 @@ bootstrap/scripts/test-commit-msg-governance.sh	KEEP-HISTORY				p9	docs/history/
 bootstrap/scripts/test-gate-audit.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-gate-audit.sh
 bootstrap/scripts/test-governance-hook.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-governance-hook.sh
 bootstrap/scripts/test-hedging-lint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-hedging-lint.sh
-bootstrap/scripts/test-install-verification.sh	MERGE				p3	
+bootstrap/scripts/test-install-verification.sh	MERGE	the install writes nothing outside its allowed places	tests/setup/run.sh	tests/setup/run.sh (HOME files and the sibling project are unchanged)	p9	
 bootstrap/scripts/test-mini-preflight.sh	MERGE				p2	
 bootstrap/scripts/test-mutation-summary.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-mutation-summary.sh
 bootstrap/scripts/test-posttooluse-hook.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-posttooluse-hook.sh
@@ -168,7 +168,7 @@ bootstrap/tests/verify/fixtures/radon_violation.py	KEEP-HISTORY				p9	docs/histo
 bootstrap/tests/verify/fixtures/todo_violation.py	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/fixtures/todo_violation.py
 bootstrap/tests/verify/run.sh	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/run.sh
 bootstrap/tests/verify/test-notify.sh	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/test-notify.sh
-bootstrap/universal-setup.sh	MERGE				p2	
+bootstrap/universal-setup.sh	MERGE	deploy the harness into a machine and a project, reversibly	setup/harness	tests/setup/run.sh; tests/acceptance/deploy-bare.sh (not yet run)	p9	
 docs/PROJECT-PLAN.md	MERGE				p9	
 docs/adr-audit/2026-W24.md	MERGE				p9	
 docs/anti-patterns.md	MERGE				p9	

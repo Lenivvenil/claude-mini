@@ -33,14 +33,7 @@ jobs:
       - name: Lint prompt artifacts
         run: |
           shopt -s nullglob
-          bash scripts/lint-prompts.sh plugin/agents/*.md bootstrap/commands/*.md bootstrap/skills/*/SKILL.md plugin/skills/*/SKILL.md
-      - name: Validate JSON/YAML
-        run: |
-          for f in bootstrap/templates/*.yml; do
-            python3 -c "import yaml; yaml.safe_load(open('$f'))"
-          done
-      - name: Validate conftest.py template syntax
-        run: python3 -m py_compile bootstrap/templates/conftest.py
+          bash scripts/lint-prompts.sh plugin/agents/*.md plugin/skills/*/SKILL.md
       - name: Validate ADR numbering
         run: |
           expected=1
@@ -52,36 +45,15 @@ jobs:
             fi
             expected=$((expected + 1))
           done
-      - name: Validate Python scripts syntax (SARIF converters + filter)
-        run: |
-          for f in bootstrap/scripts/mutmut-to-sarif.py \
-                   bootstrap/scripts/filter-mypy-invalid.py \
-                   bootstrap/scripts/cargo-mutants-to-sarif.py; do
-            python3 -m py_compile "$f" || { echo "Syntax error in $f"; exit 1; }
-          done
-      - name: Run mutation-summary unit tests
-        run: bash bootstrap/scripts/test-mutation-summary.sh
 
   markdown-links:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: gaurav-nelson/github-action-markdown-link-check@5c5dfc0ac2e225883c0e5f03a85311ec2830d368 # v1
-        with:
-          use-quiet-mode: 'yes'
-          config-file: '.github/markdown-link-check.json'
-          folder-path: 'docs, bootstrap'
-
-  install-verification:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Install prerequisites
+      - name: Links in live docs (docs/history holds archives with their original links)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-      - name: Run install verification test harness
-        run: bash bootstrap/scripts/test-install-verification.sh
+          find docs bootstrap -name '*.md' -not -path 'docs/history/*' -print0 \
+            | xargs -0 -n1 npx -y markdown-link-check@3.15.0 -q -c .github/markdown-link-check.json
 
   plugin-hook:
     runs-on: ubuntu-latest
@@ -139,19 +111,6 @@ jobs:
         run: npm install -g @anthropic-ai/claude-code@2.1.283
       - name: Validate the plugin (strict)
         run: claude plugin validate plugin --strict
-
-  mcp-config-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Install prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-      - name: Lint .mcp.json against ADR-0028 transport security policy
-        run: bash bootstrap/scripts/check-mcp-config.sh .mcp.json
-      - name: Run check-mcp-config unit tests
-        run: bash bootstrap/scripts/test-check-mcp-config.sh
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -232,29 +191,3 @@ jobs:
           sudo apt-get install -y jq
       - name: Run mini-preflight test suite
         run: bash bootstrap/scripts/test-mini-preflight.sh
-
-  gate-audit-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Install prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-      - name: Run gate-audit test suite
-        run: bash bootstrap/scripts/test-gate-audit.sh
-      - name: Validate fixture against aggregation (decision-rule smoke test)
-        run: |
-          bash bootstrap/scripts/gate-audit-aggregate.sh \
-            --events-file docs/gate-audit/fixtures/events-4w-sample.jsonl \
-            --output-dir /tmp/gate-audit-smoke \
-            --dry-run
-
-
-  adr-retirement-audit-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Run ADR retirement audit test suite
-        run: bash bootstrap/scripts/test-adr-retirement-audit.sh
-

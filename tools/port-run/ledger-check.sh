@@ -6,7 +6,8 @@
 #   - the header is exact;
 #   - every tracked path outside docs/decisions/ has exactly one row;
 #   - verdict and phase come from the allowed sets;
-#   - KEEP-HISTORY rows name their own archive file, docs/history/<path>;
+#   - KEEP-HISTORY rows name their own archive file, docs/history/<path>; every file under
+#     docs/history/ is such an archive and needs no row of its own;
 #   - a row whose path is no longer tracked has capability, entry_point and evidence filled (what
 #     survives, where it lives now, which test or command shows it), or is KEEP-HISTORY and its
 #     archive file is tracked. Evidence is recorded here and run by the phase DoD, not by this check.
@@ -24,6 +25,8 @@ VERDICTS = {"KEEP", "PORT", "MODERNISE", "MERGE", "DROP", "KEEP-HISTORY"}
 PHASES = {"-"} | {f"p{i}" for i in range(10)}
 tracked = {f for f in subprocess.run(["git", "-C", repo, "ls-files"], capture_output=True, text=True,
                                      check=True).stdout.split("\n") if f and not f.startswith("docs/decisions/")}
+# Archive copies are accounted for by the KEEP-HISTORY row of their original path, not by rows of their own.
+archives = {f for f in tracked if f.startswith("docs/history/")}
 lines = open(ledger, encoding="utf-8").read().rstrip("\n").split("\n")
 problems = []
 if lines[0] != header:
@@ -50,7 +53,11 @@ for n, line in enumerate(lines[1:], start=2):
                 problems.append(f"line {n}: {path} left, but its archive file {archive!r} is not tracked")
         elif not (capability and entry and evidence):
             problems.append(f"line {n}: {path} left the tree without capability, entry_point and evidence")
-for path in sorted(tracked - set(seen)):
+archived = {cols.split("\t")[6] for cols in lines[1:] if len(cols.split("\t")) == 7
+            and cols.split("\t")[1] == "KEEP-HISTORY"}
+for path in sorted(archives - archived):
+    problems.append(f"archive file {path} has no KEEP-HISTORY row naming it")
+for path in sorted(tracked - archives - set(seen)):
     problems.append(f"no ledger row for tracked path {path}")
 for p in problems:
     print("  " + p)
