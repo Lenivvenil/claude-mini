@@ -182,11 +182,19 @@ def main():
                     dir_stack.append(cur_dir)
                 elif c == ")" and dir_stack:
                     cur_dir = dir_stack.pop()
-        if t == "cd" and i + 1 < len(toks) and not is_sep(toks[i + 1]) and toks[i + 1] != "-":
-            target = os.path.expanduser(toks[i + 1])
-            cur_dir = target if os.path.isabs(target) else os.path.normpath(os.path.join(cur_dir, target))
-            i += 2
-            continue
+        if t == "cd":
+            # cd [-L|-P|-e|-@]... [--] DIR; `cd -` and a bare `cd` leave cur_dir unknown to us,
+            # so they keep it (the hook then checks that the directory exists)
+            k = i + 1
+            while k < len(toks) and toks[k] in ("-L", "-P", "-e", "-@", "-LP", "-PL"):
+                k += 1
+            if k < len(toks) and toks[k] == "--":
+                k += 1
+            if k < len(toks) and not is_sep(toks[k]) and toks[k] != "-":
+                target = os.path.expanduser(toks[k])
+                cur_dir = target if os.path.isabs(target) else os.path.normpath(os.path.join(cur_dir, target))
+                i = k + 1
+                continue
         if t != "git":
             i += 1
             continue
