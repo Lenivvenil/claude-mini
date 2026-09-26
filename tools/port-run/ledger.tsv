@@ -81,14 +81,14 @@ bootstrap/agents/domain-researcher.md	PORT	on-demand domain research role	plugin
 bootstrap/agents/domain-reviewer.md	PORT	on-demand domain-model review role	plugin/agents/domain-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/agents/reliability-reviewer.md	PORT	on-demand reliability review role	plugin/agents/reliability-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/agents/solutions-architect.md	PORT	on-demand solution design role	plugin/agents/solutions-architect.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
-bootstrap/commands/adr.md	MERGE				p5	
+bootstrap/commands/adr.md	MERGE	ADR draft via interview, then separate adr/ branch and PR with type:adr	plugin/skills/adr-author/SKILL.md	plugin/skills/adr-author/SKILL.md Hand-off; scripts/next_adr_number.sh	p9	
 bootstrap/commands/codex-review.md	MODERNISE				p6	
 bootstrap/commands/feature.md	MODERNISE				p6	
 bootstrap/commands/implement.md	MODERNISE				p6	
 bootstrap/commands/intent-check.md	MODERNISE				p6	
-bootstrap/commands/issue-to-task.md	MERGE				p5	
-bootstrap/commands/plan.md	MERGE				p5	
-bootstrap/commands/task-to-issue.md	MODERNISE				p5	
+bootstrap/commands/issue-to-task.md	KEEP-HISTORY				p9	docs/history/bootstrap/commands/issue-to-task.md
+bootstrap/commands/plan.md	MERGE	plan a change: six sections, architectural-significance flag	plugin/skills/plan/SKILL.md	plugin/skills/plan/SKILL.md sections 1-6 and the ADR suggestion; claude plugin validate plugin --strict	p9	
+bootstrap/commands/task-to-issue.md	KEEP-HISTORY				p9	docs/history/bootstrap/commands/task-to-issue.md
 bootstrap/hardware/mac-mini-2018.md	MODERNISE				p2	
 bootstrap/hooks/commit-msg-governance.sh	MERGE				p6	
 bootstrap/hooks/governance-rules-lib.sh	MERGE				p6	
@@ -112,7 +112,7 @@ bootstrap/scripts/mini-session.sh	MERGE				p7
 bootstrap/scripts/mutation-summary.sh	MODERNISE				p6	
 bootstrap/scripts/mutmut-to-sarif.py	MODERNISE				p6	
 bootstrap/scripts/notify.sh	MODERNISE				p6	
-bootstrap/scripts/plan-lint.sh	MODERNISE				p5	
+bootstrap/scripts/plan-lint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/plan-lint.sh
 bootstrap/scripts/review-codex.sh	MODERNISE				p6	
 bootstrap/scripts/sprint.sh	MODERNISE				p6	
 bootstrap/scripts/test-adr-retirement-audit.sh	MODERNISE				p7	
@@ -126,12 +126,12 @@ bootstrap/scripts/test-mini-preflight.sh	MERGE				p2
 bootstrap/scripts/test-mutation-summary.sh	MODERNISE				p6	
 bootstrap/scripts/test-posttooluse-hook.sh	MODERNISE				p6	
 bootstrap/scripts/test-stop-hook.sh	MODERNISE				p6	
-bootstrap/scripts/ticket-audit.sh	MERGE				p5	
+bootstrap/scripts/ticket-audit.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/ticket-audit.sh
 bootstrap/scripts/verify.sh	MODERNISE				p6	
 bootstrap/skills/adr-retirement-audit/SKILL.md	MODERNISE				p7	
-bootstrap/skills/audit-pass/SKILL.md	MERGE				p5	
-bootstrap/skills/backlog-review/SKILL.md	MODERNISE				p5	
-bootstrap/skills/domain-discovery/SKILL.md	MODERNISE				p5	
+bootstrap/skills/audit-pass/SKILL.md	KEEP-HISTORY				p9	docs/history/bootstrap/skills/audit-pass/SKILL.md
+bootstrap/skills/backlog-review/SKILL.md	MODERNISE	backlog grooming entry: runs backlog-groomer, owner-authorized batches	plugin/skills/backlog-review/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p5	
+bootstrap/skills/domain-discovery/SKILL.md	MODERNISE	domain discovery interview; draft by domain-researcher	plugin/skills/domain-discovery/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p5	
 bootstrap/skills/gate-audit/SKILL.md	MODERNISE				p7	
 bootstrap/skills/project-bootstrap/SKILL.md	MODERNISE				p7	
 bootstrap/skills/project-health/SKILL.md	MODERNISE				p7	
@@ -161,8 +161,8 @@ bootstrap/templates/pr-template.md	MODERNISE				p7
 bootstrap/templates/principles.md.template	MODERNISE				p7	
 bootstrap/templates/ruff.toml	MODERNISE				p7	
 bootstrap/tests/fixtures/sprint-orchestrator/README.md	MODERNISE				p6	
-bootstrap/tests/ticket-audit/fixtures/happy.md	PORT				p5	
-bootstrap/tests/ticket-audit/fixtures/no-non-goals.md	PORT				p5	
+bootstrap/tests/ticket-audit/fixtures/happy.md	KEEP-HISTORY				p9	docs/history/bootstrap/tests/ticket-audit/fixtures/happy.md
+bootstrap/tests/ticket-audit/fixtures/no-non-goals.md	KEEP-HISTORY				p9	docs/history/bootstrap/tests/ticket-audit/fixtures/no-non-goals.md
 bootstrap/tests/verify/fixtures/clean.py	MODERNISE				p6	
 bootstrap/tests/verify/fixtures/radon_violation.py	MODERNISE				p6	
 bootstrap/tests/verify/fixtures/todo_violation.py	MODERNISE				p6	
@@ -243,7 +243,9 @@ plugin/scripts/parse-commit.py	KEEP				-
 plugin/scripts/test-commit-msg-check.sh	KEEP				-	
 plugin/skills/adr-author/SKILL.md	KEEP				-	
 plugin/skills/adr-author/scripts/next_adr_number.sh	KEEP				-	
+plugin/skills/backlog-review/SKILL.md	KEEP				p5	
 plugin/skills/codex-review/SKILL.md	KEEP				-	
+plugin/skills/domain-discovery/SKILL.md	KEEP				p5	
 plugin/skills/plan/SKILL.md	KEEP				-	
 scripts/lint-prompts.sh	MODERNISE				p9	
 scripts/sweep-worktree.sh	MODERNISE				p9	

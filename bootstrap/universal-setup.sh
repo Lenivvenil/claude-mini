@@ -414,7 +414,7 @@ done
 
 # --- Copy skills ---
 log "Copying skills..."
-for dir in "$REPO_ROOT"/bootstrap/skills/*/ "$REPO_ROOT"/plugin/skills/adr-author/; do
+for dir in "$REPO_ROOT"/bootstrap/skills/*/ "$REPO_ROOT"/plugin/skills/adr-author/ "$REPO_ROOT"/plugin/skills/backlog-review/ "$REPO_ROOT"/plugin/skills/domain-discovery/; do
     [ -d "$dir" ] || continue
     skill_name=$(basename "$dir")
     if [ "$MODE" = "install" ]; then
