@@ -44,22 +44,26 @@ cat > "$SHIM/brew" <<EOF
 #!/bin/sh
 echo "brew \$*" >> "$T/pm.log"
 case "\$1" in
-  install) [ -f "$STATE/fail-install" ] && exit 1; /bin/cp "$T/proto" "$SHIM/\$2" ;;
-  uninstall) /bin/rm -f "$SHIM/\$2" ;;
-  list) [ -x "$SHIM/\$3" ] && echo "\$3 1.0" && exit 0; exit 1 ;;
+  install) [ -f "$STATE/fail-install" ] && exit 1; [ -f "$STATE/\$2.installed" ] && exit 0
+           /bin/cp "$T/proto" "$SHIM/\$2" ;;
+  uninstall) /bin/rm -f "$SHIM/\$2" "$STATE/\$2.installed" ;;
+  list) [ -f "$STATE/pm-broken" ] && exit 2
+        { [ -x "$SHIM/\$3" ] || [ -f "$STATE/\$3.installed" ]; } && echo "\$3 1.0" && exit 0; exit 1 ;;
 esac
 EOF
 cat > "$SHIM/dpkg-query" <<EOF
 #!/bin/sh
-[ -x "$SHIM/\$3" ] && echo "install ok installed" && exit 0
+[ -f "$STATE/pm-broken" ] && exit 2
+{ [ -x "$SHIM/\$3" ] || [ -f "$STATE/\$3.installed" ]; } && echo "installed" && exit 0
 exit 1
 EOF
 cat > "$SHIM/apt-get" <<EOF
 #!/bin/sh
 echo "apt-get \$*" >> "$T/pm.log"
 case "\$1" in
-  install) [ -f "$STATE/fail-install" ] && exit 1; /bin/cp "$T/proto" "$SHIM/\$3" ;;
-  remove) /bin/rm -f "$SHIM/\$3" ;;
+  install) [ -f "$STATE/fail-install" ] && exit 1; [ -f "$STATE/\$3.installed" ] && exit 0
+           /bin/cp "$T/proto" "$SHIM/\$3" ;;
+  remove) /bin/rm -f "$SHIM/\$3" "$STATE/\$3.installed" ;;
 esac
 EOF
 printf '#!/bin/sh\nexec "$@"\n' > "$SHIM/sudo"
@@ -220,12 +224,38 @@ echo "interrupted install is reconciled"
 p=$(project interrupted)
 mkdir -p "$p/.claude/claude-mini"
 mgr=brew; [ "$(uname)" = Linux ] && mgr=apt
-printf '{"op":"install","item":"jq","path":null,"manager":"%s","package":"jq","state":"started"}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
+printf '{"op":"install","item":"jq","path":null,"manager":"%s","package":"jq","state":"started","present_before":false}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
 run apply --project "$p"
 is "$RC" 0 "apply closes the open install and exits 0"
 has "$OUT" "closed as done" "the report names the reconciliation"
 run uninstall --project "$p"
 has "$OUT" "harness uninstall --item jq" "the reconciled install is owned by setup"
+p=$(project interrupted2)
+mkdir -p "$p/.claude/claude-mini"
+printf '{"op":"install","item":"jq","path":null,"manager":"%s","package":"jq","state":"started"}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
+run apply --project "$p"
+has "$OUT" "closed as not done" "without proof of absence before, the install is not claimed"
+
+echo "a package that was already there is never taken over"
+rm -f "$SHIM/jq"; touch "$STATE/jq.installed"
+p=$(project preexisting)
+run apply --project "$p" --allow-system jq
+is "$RC" 4 "installed-but-not-on-PATH package: apply exits 4"
+has "$OUT" "is installed but its program is not on PATH" "Broken explains why"
+run uninstall --project "$p" --item jq
+is "$RC" 2 "and setup refuses to remove it"
+rm -f "$STATE/jq.installed"; fake jq
+
+echo "an unreadable package state keeps the operation open"
+p=$(project pmbroken)
+mkdir -p "$p/.claude/claude-mini"
+printf '{"op":"uninstall","item":"jq","path":null,"manager":"%s","package":"jq","state":"started"}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
+touch "$STATE/pm-broken"
+run apply --project "$p"
+is "$RC" 4 "a failed package query is Broken, exit 4"
+has "$OUT" "cannot tell its state" "and says so"
+is "$(grep -c '"state"' "$p/.claude/claude-mini/intent.jsonl")" 1 "the interrupted record stays open"
+rm -f "$STATE/pm-broken"
 
 echo "symlinks cannot lead writes outside the project"
 rm -f "$SHIM/jq"

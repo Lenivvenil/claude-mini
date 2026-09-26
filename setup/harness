@@ -116,15 +116,21 @@ def pkg_commands(manager, pkg):
 
 
 def pkg_installed(manager, pkg):
-    """True/False from the package manager itself, None when it cannot tell."""
-    argv = ["brew", "list", "--versions", pkg] if manager == "brew" else \
-        ["dpkg-query", "-W", "-f=${Status}", pkg]
-    r, out = run_probe(argv)
+    """True / False as confirmed by the package manager; None when the query itself failed."""
+    if manager == "brew":
+        r, out = run_probe(["brew", "list", "--versions", pkg])
+        if r is None:
+            return None
+        if r.returncode == 0 and out:
+            return True
+        return False if r.returncode == 1 and not out else None
+    # db:Status-Status is the install state alone (a held package is still "installed")
+    r, out = run_probe(["dpkg-query", "-W", "-f=${db:Status-Status}", pkg])
     if r is None:
         return None
-    if manager == "brew":
-        return r.returncode == 0 and bool(out)
-    return r.returncode == 0 and "install ok installed" in out
+    if r.returncode == 0:
+        return out.strip() == "installed"
+    return False if r.returncode == 1 else None  # 1: no such package; anything else: error
 
 
 def run_pkg(argv):
@@ -149,7 +155,11 @@ def reconcile(t):
             broken.append(f"{r['item']}: interrupted {r['op']} of {r['package']}; the package "
                           f"manager cannot tell its state — check `{r['package']}` by hand")
             continue
-        done = present if r["op"] == "install" else not present
+        if r["op"] == "install":
+            # ours only if the package was confirmed absent before the install started
+            done = present and r.get("present_before") is False
+        else:
+            done = not present
         t.append(dict(base, state="done" if done else "failed", reconciled=True))
         recovered.append(f"{r['item']}: interrupted {r['op']} of {r['package']} closed as "
                          f"{'done' if done else 'not done'} (package manager says "
@@ -345,16 +355,16 @@ def cmd_apply(a):
                     f"{', '.join(sorted(no_package))}")
     t = txn_for(project, cfg)
     work = any(r["installable"] and r["id"] in allow for r in rows) or t.open_records()
-    if a.dry_run or not work:  # nothing to write: no lock file either (no-op rule)
-        return apply_rows(a, t, cfg, manager, rows, items, allow)
+    if a.dry_run or not work:  # read-only path: no recovery, no lock file (no-op rule)
+        return apply_rows(a, t, cfg, manager, rows, items, allow, locked=False)
     with t.locked():
-        return apply_rows(a, t, cfg, manager, rows, items, allow)
+        return apply_rows(a, t, cfg, manager, rows, items, allow, locked=True)
 
 
-def apply_rows(a, t, cfg, manager, rows, items, allow):
+def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
     project = t.project
     recovered, broken = [], []
-    if not a.dry_run:
+    if locked:
         recovered, broken = t.recover()
         rec2, br2 = reconcile(t)
         recovered, broken = recovered + rec2, broken + br2
@@ -362,8 +372,9 @@ def apply_rows(a, t, cfg, manager, rows, items, allow):
     for r in rows:
         if not r["installable"]:
             continue
-        if r["id"] not in allow:
-            refused.append(r["id"])
+        if r["id"] not in allow or not locked:
+            if r["id"] not in allow:
+                refused.append(r["id"])
             continue
         if a.dry_run:
             print(f"would run: {r['fix']}")
@@ -372,18 +383,28 @@ def apply_rows(a, t, cfg, manager, rows, items, allow):
         inst, _, shown, _ = pkg_commands(manager, item["packages"][manager])
         base = {"op": "install", "item": r["id"], "path": None, "manager": manager,
                 "package": item["packages"][manager]}
-        t.append(dict(base, state="started"))
+        before = pkg_installed(manager, base["package"])
+        if before is not False:
+            # present but not on PATH (e.g. an unlinked formula), or state unknown: not ours
+            why = "is installed but its program is not on PATH" if before else \
+                "state could not be read from the package manager"
+            failed.append(f"{r['id']}: package {base['package']} {why}; setup does not install "
+                          "over it — fix by hand")
+            continue
+        t.append(dict(base, state="started", present_before=False))
         code, tail = run_pkg(inst)
-        # Ownership follows the package manager, readiness follows the check: a package that
-        # installed but fails the check is still ours to uninstall.
-        t.append(dict(base, state="done" if code == 0 else "failed", exit=code))
+        after = pkg_installed(manager, base["package"])
+        # Ours = confirmed absent before and present now; readiness is a separate check, so a
+        # package that installed but fails it can still be removed by setup.
+        owned = code == 0 and after is True
+        t.append(dict(base, state="done" if owned else "failed", exit=code))
         status, detail = check_binary(item)
-        if code == 0 and status == "ready":
+        if owned and status == "ready":
             installed.append(r["id"])
         else:
             failed.append(f"{r['id']}: `{shown}` exit {code}, now {status}: {tail or detail}"
                           + (f" — installed by setup; remove with: harness uninstall --item {r['id']}"
-                             if code == 0 else ""))
+                             if owned else ""))
     if a.dry_run:
         for i in refused:
             print(f"needs consent: --allow-system {i}")
