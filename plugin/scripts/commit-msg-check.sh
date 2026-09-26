@@ -9,7 +9,7 @@
 # `git ... commit` and exits 0 otherwise.
 #
 # Checks Rule 1: the commit subject follows Conventional Commits (v1 regex from
-# bootstrap/hooks/governance-rules-lib.sh plus a non-blank subject). Rules 2-3
+# v1 governance-rules-lib.sh, now in git history, plus a non-blank subject). Rules 2-3
 # (issue-ref, ADR-ref) are not applied: projects like likec4 add the PR number at
 # squash time, and file-name heuristics for "architectural" changes proved unreliable
 # (audit 2026-09-25).
