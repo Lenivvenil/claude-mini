@@ -118,12 +118,15 @@ def pkg_commands(manager, pkg):
 def pkg_installed(manager, pkg):
     """True / False as confirmed by the package manager; None when the query itself failed."""
     if manager == "brew":
-        r, out = run_probe(["brew", "list", "--versions", pkg])
-        if r is None:
-            return None
-        if r.returncode == 0 and out:
-            return True
-        return False if r.returncode == 1 and not out else None
+        answers = []
+        for kind in ([], ["--cask"]):  # a package may be a formula or a cask
+            r, out = run_probe(["brew", "list"] + kind + ["--versions", pkg])
+            if r is None:
+                return None
+            if r.returncode == 0 and out:
+                return True
+            answers.append(r.returncode == 1 and not out)
+        return False if all(answers) else None
     # db:Status-Status is the install state alone (a held package is still "installed")
     r, out = run_probe(["dpkg-query", "-W", "-f=${db:Status-Status}", pkg])
     if r is None:
@@ -372,13 +375,14 @@ def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
     for r in rows:
         if not r["installable"]:
             continue
-        if r["id"] not in allow or not locked:
-            if r["id"] not in allow:
-                refused.append(r["id"])
+        if r["id"] not in allow:
+            refused.append(r["id"])
             continue
         if a.dry_run:
             print(f"would run: {r['fix']}")
             continue
+        if not locked:
+            continue  # unreachable by construction: work implies the lock
         item = items[r["id"]]
         inst, _, shown, _ = pkg_commands(manager, item["packages"][manager])
         base = {"op": "install", "item": r["id"], "path": None, "manager": manager,
@@ -397,6 +401,12 @@ def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
         # Ours = confirmed absent before and present now; readiness is a separate check, so a
         # package that installed but fails it can still be removed by setup.
         owned = code == 0 and after is True
+        if code == 0 and after is None:
+            # installed, but the package manager could not confirm it: keep the intent open so
+            # the next run reconciles ownership instead of losing it
+            failed.append(f"{r['id']}: `{shown}` exit 0 but the package state could not be read; "
+                          "rerun apply to reconcile")
+            continue
         t.append(dict(base, state="done" if owned else "failed", exit=code))
         status, detail = check_binary(item)
         if owned and status == "ready":

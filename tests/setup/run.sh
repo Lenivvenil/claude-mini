@@ -147,6 +147,11 @@ run apply --project "$p" --allow-system gh-auth
 is "$RC" 2 "consent for a non-installable item is a usage error"
 run apply --project "$p" --allow-system nope
 is "$RC" 2 "consent for an unknown item is a usage error"
+run apply --project "$p" --allow-system jq --dry-run
+is "$RC" 0 "dry run with consent exits 0"
+has "$OUT" "would run:" "dry run names the install it would do"
+is "$(tree_hash "$p")" "$h0" "dry run writes nothing"
+is "$([ -e "$T/pm.log" ] && echo called || echo none)" none "dry run calls no package manager"
 
 echo "T2 apply with consent, then again"
 p=$(project consent)
