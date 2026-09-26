@@ -92,10 +92,13 @@ session "$T/sibling" "Run exactly this command and nothing else: git commit --al
 if loaded "$T/d.jsonl"; then fail "claude-mini loaded in the sibling"; else ok "not loaded in the sibling"; fi
 check "sibling commit not blocked" "sibling commit blocked" same "$(commits "$T/sibling")" "$((n + 1))"
 
-echo "(e) HOME: only Claude Code's own state and this project's plugin entries changed"
+echo "(e) HOME: only Claude Code's own state, this project's plugin entries and the Codex scratch dir changed"
+# ADR-0032: the one path allowed outside ~/.claude besides p. 3 of ADR-0031. Codex creates its
+# per-run scratch dir there on `codex --version`; codex config and auth files still fail the check.
+CODEX_SCRATCH='^\.codex/tmp/arg0/'
 snapshot "$T/home" "$T/home.after"
 bad=$(diff <(sort "$T/home.before") <(sort "$T/home.after") | sed -n 's/^[<>] //p' | cut -f1 | sort -u \
-    | grep -vE '^\.claude/' || true)
+    | grep -vE '^\.claude/' | grep -vE "$CODEX_SCRATCH" || true)
 check "nothing changed outside HOME/.claude" "changed outside HOME/.claude: $bad" same "$bad" ""
 changed=$(diff <(sort "$T/home.before") <(sort "$T/home.after") | sed -n 's/^[<>] //p' | cut -f1 | grep -cx '.claude/settings.json')
 check "HOME/.claude/settings.json untouched" "HOME/.claude/settings.json changed" same "$changed" 0
