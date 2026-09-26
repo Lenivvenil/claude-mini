@@ -41,7 +41,7 @@ for entry in "${PATTERNS[@]}"; do
         if grep -qF "$path|$id|" "$ALLOW"; then continue; fi
         echo "  $id  $hit"
         findings=$((findings + 1))
-    done <<< "$hits"
+    done < <(printf '%s\n' "$hits")
 done
 
 # Allow entries must still match something, so the list only shrinks.

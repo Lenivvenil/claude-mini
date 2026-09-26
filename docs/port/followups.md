@@ -57,3 +57,9 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: DEPLOY.md lists `setup/harness` commands that do not exist until P2–P3 (it is marked skeleton). PORT-MAP.md and JEV-DESIGN.md are agent reports committed verbatim, without a heading that says what they are and who reads them; PLAN cites their line numbers, so only their links were rewritten.
 - Proposed fix: fill DEPLOY.md in P3; in P9 give both files a short preface and convert PLAN's line citations to anchors.
+
+## No way to publish a finished phase without a new session
+- Source: P0, reliability review of PR #322
+- Severity: P2
+- What: when `finish` blocks after a `done` signal (for example because the owner merged into `main` during the session and the origin check differs), the only way on is `resume`, which deletes the signal and replays the whole session.
+- Proposed fix: a `driver.sh finish <pN>` command that re-runs only the checks, the DoD and the publication on the existing worktree; limit the origin check to `refs/heads/port/*`.

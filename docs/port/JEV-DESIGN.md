@@ -107,7 +107,7 @@ For **calibration**, the repository provides useful seeds but not an existing va
 - Local commit `cd4c6bb` records the #305 worktree mismatch missed by critics and caught by Codex; `48867dc` records #309 parser findings/repairs; `0828e10` records documentation BLOCKs and fixes. Narrative catches also appear in [first-feature-session-log.md:121](../../docs/runbooks/first-feature-session-log.md#L121).
 - [grooming-2026-04-24.md:14](../../docs/backlog/grooming-2026-04-24.md#L14) offers duplicate-versus-related examples; [:94](../../docs/backlog/grooming-2026-04-24.md#L94) records conflicting label schemes.
 - There are only three allowed, unclassified [gate events](../../docs/gate-audit/events.jsonl#L1); critic gates are explicitly uninstrumented: [schema.md:36](../../docs/gate-audit/schema.md#L36).
-- The inspected eval reports no Agent invocation and equal scores in both arms: [aggregate-result.json:82](../../plugin/evals/results/2026-09-25T19-09-21-760Z/aggregate-result.json#L82), [:251](../../plugin/evals/results/2026-09-25T19-09-21-760Z/aggregate-result.json#L251). It does not establish critic benefit.
+- The inspected eval reports no Agent invocation and equal scores in both arms: `plugin/evals/results/2026-09-25T19-09-21-760Z/aggregate-result.json` lines 82 and 251 (a local eval result, gitignored, not in the repository). It does not establish critic benefit.
 - Plans, QA reports and eval results are ignored: [.gitignore:9](../../.gitignore#L9). Complete historical availability is **not verified**. GitHub API reads failed; remote review/issue contents were **not verified**.
 
 The proposed evaluation procedure—**not verified**—is:
