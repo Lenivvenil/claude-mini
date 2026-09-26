@@ -1,6 +1,6 @@
 # 0031. Deliver the harness as a project-scoped Claude Code plugin with a two-layer assess/apply deployment
 
-* Status: proposed
+* Status: accepted (2026-09-26, PR #321 merged)
 * Superseded-by: ~
 * Date: 2026-09-26
 * Deciders: Lenivvenil (operator); draft by Claude

@@ -94,6 +94,29 @@ jobs:
       - name: Plugin commit-msg hook cases (#308)
         run: bash plugin/scripts/test-commit-msg-check.sh
 
+  port-checks:
+    # Port run safety net (docs/port/PLAN.md P0, #311): every tracked file is in the ledger,
+    # and no config-owned value is hardcoded in plugin/, setup/, tools/.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Ledger accounts for every tracked file
+        run: bash tools/port-run/ledger-check.sh
+      - name: No hardcoded config values
+        run: bash tests/lint/no-hardcode.sh
+
+  plugin-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Install Claude Code CLI (pinned)
+        run: npm install -g @anthropic-ai/claude-code@2.1.283
+      - name: Validate the plugin (strict)
+        run: claude plugin validate plugin --strict
+
   mcp-config-lint:
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "base_branch": "main",
+  "timeout_s": 5400,
+  "common": {
+    "allowed_tools": [
+      "Read", "Edit", "Write", "Glob", "Grep", "Agent",
+      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git mv:*)", "Bash(git rm:*)",
+      "Bash(git diff:*)", "Bash(git status:*)", "Bash(git log:*)", "Bash(git show:*)",
+      "Bash(bash tests/*)", "Bash(bash scripts/*)", "Bash(bash tools/port-run/ledger-check.sh)",
+      "Bash(shellcheck:*)", "Bash(python3:*)", "Bash(jq:*)", "Bash(claude plugin validate:*)"
+    ],
+    "disallowed_tools": [
+      "Bash(git push:*)", "Bash(gh:*)", "Bash(rm -rf:*)", "Bash(brew:*)", "Bash(npm install -g:*)",
+      "Bash(claude plugin install:*)", "Bash(claude plugin marketplace:*)", "Bash(git config --global:*)"
+    ],
+    "dod": [
+      "claude plugin validate plugin --strict",
+      "bash tools/port-run/ledger-check.sh",
+      "bash tests/lint/no-hardcode.sh",
+      "bash plugin/scripts/test-commit-msg-check.sh"
+    ]
+  },
+  "phases": [
+    {"id": "p0", "issue": 311, "slug": "safety-net", "driver": false},
+    {"id": "p1", "issue": 312, "slug": "config", "dod": ["bash tests/config/run.sh"]},
+    {"id": "p2", "issue": 313, "slug": "machine-layer", "dod": ["bash tests/setup/run.sh"]},
+    {"id": "p3", "issue": 314, "slug": "project-layer", "dod": ["bash tests/setup/run.sh", "bash tests/acceptance/deploy-bare.sh"]},
+    {"id": "p4", "issue": 315, "slug": "agents", "dod": ["bash tests/acceptance/deploy-bare.sh"]},
+    {"id": "p5", "issue": 316, "slug": "planning-skills", "dod": ["bash tests/acceptance/deploy-bare.sh"]},
+    {"id": "p6", "issue": 317, "slug": "execution-skills", "dod": ["bash tests/acceptance/deploy-bare.sh"]},
+    {"id": "p7", "issue": 318, "slug": "project-skills", "dod": ["bash tests/acceptance/deploy-bare.sh"]},
+    {"id": "p8", "issue": 319, "slug": "jev-plan-advisor", "dod": ["bash tests/jev/run.sh", "bash tests/acceptance/deploy-bare.sh"]},
+    {"id": "p9", "issue": 320, "slug": "removal-docs", "dod": ["bash tests/acceptance/deploy-bare.sh"]}
+  ]
+}

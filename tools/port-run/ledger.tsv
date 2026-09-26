@@ -1,0 +1,251 @@
+path	verdict	capability	entry_point	evidence	phase	archive_dest
+.claude-plugin/marketplace.json	KEEP				-	
+.claude/scratch/handoff-2026-04-29/EXECUTION-ORDER.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/EXECUTION-ORDER.md
+.claude/scratch/handoff-2026-04-29/HANDOFF-BRIEF.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/HANDOFF-BRIEF.md
+.claude/scratch/handoff-2026-04-29/PRINCIPLES-DRAFT.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/PRINCIPLES-DRAFT.md
+.claude/scratch/handoff-2026-04-29/README.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/README.md
+.claude/scratch/handoff-2026-04-29/REPORT.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/REPORT.md
+.claude/scratch/handoff-2026-04-29/_gen_bodies.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_gen_bodies.py
+.claude/scratch/handoff-2026-04-29/_phase2_add_to_project.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase2_add_to_project.py
+.claude/scratch/handoff-2026-04-29/_phase2_create_issues.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase2_create_issues.py
+.claude/scratch/handoff-2026-04-29/_phase2_wire_deps.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase2_wire_deps.py
+.claude/scratch/handoff-2026-04-29/_phase3_set_status.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase3_set_status.py
+.claude/scratch/handoff-2026-04-29/backlog-plan.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/backlog-plan.md
+.claude/scratch/handoff-2026-04-29/bodies/01.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/01.md
+.claude/scratch/handoff-2026-04-29/bodies/02.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/02.md
+.claude/scratch/handoff-2026-04-29/bodies/03.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/03.md
+.claude/scratch/handoff-2026-04-29/bodies/04.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/04.md
+.claude/scratch/handoff-2026-04-29/bodies/05.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/05.md
+.claude/scratch/handoff-2026-04-29/bodies/06.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/06.md
+.claude/scratch/handoff-2026-04-29/bodies/07.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/07.md
+.claude/scratch/handoff-2026-04-29/bodies/08.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/08.md
+.claude/scratch/handoff-2026-04-29/bodies/09.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/09.md
+.claude/scratch/handoff-2026-04-29/bodies/10.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/10.md
+.claude/scratch/handoff-2026-04-29/bodies/11.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/11.md
+.claude/scratch/handoff-2026-04-29/bodies/12.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/12.md
+.claude/scratch/handoff-2026-04-29/bodies/13.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/13.md
+.claude/scratch/handoff-2026-04-29/bodies/14.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/14.md
+.claude/scratch/handoff-2026-04-29/bodies/15.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/15.md
+.claude/scratch/handoff-2026-04-29/bodies/16.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/16.md
+.claude/scratch/handoff-2026-04-29/bodies/17.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/17.md
+.claude/scratch/handoff-2026-04-29/bodies/18.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/18.md
+.claude/scratch/handoff-2026-04-29/bodies/19.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/19.md
+.claude/scratch/handoff-2026-04-29/bodies/20.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/20.md
+.claude/scratch/handoff-2026-04-29/bodies/21.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/21.md
+.claude/scratch/handoff-2026-04-29/bodies/22.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/22.md
+.claude/scratch/handoff-2026-04-29/bodies/23.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/23.md
+.claude/scratch/handoff-2026-04-29/bodies/24.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/24.md
+.claude/scratch/handoff-2026-04-29/bodies/25.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/25.md
+.claude/scratch/handoff-2026-04-29/bodies/26.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/26.md
+.claude/scratch/handoff-2026-04-29/bodies/27.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/27.md
+.claude/scratch/handoff-2026-04-29/bodies/28.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/28.md
+.claude/scratch/handoff-2026-04-29/bodies/29.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/29.md
+.claude/scratch/handoff-2026-04-29/bodies/30.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/30.md
+.claude/scratch/handoff-2026-04-29/bodies/31.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/31.md
+.claude/scratch/handoff-2026-04-29/bodies/32.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/32.md
+.claude/scratch/handoff-2026-04-29/bodies/33.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/33.md
+.claude/scratch/handoff-2026-04-29/bodies/34.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/34.md
+.claude/scratch/handoff-2026-04-29/bodies/35.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/35.md
+.claude/scratch/handoff-2026-04-29/bodies/36.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/36.md
+.claude/scratch/handoff-2026-04-29/bodies/37.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/37.md
+.claude/scratch/handoff-2026-04-29/bodies/38.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/38.md
+.claude/scratch/handoff-2026-04-29/bodies/39.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/39.md
+.claude/scratch/handoff-2026-04-29/bodies/40.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/40.md
+.claude/scratch/handoff-2026-04-29/bodies/41.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/41.md
+.claude/scratch/handoff-2026-04-29/issue-body-principles.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/issue-body-principles.md
+.claude/scratch/handoff-2026-04-29/issue-map.json	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/issue-map.json
+.claude/scratch/handoff-2026-04-29/item-map.json	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/item-map.json
+.claude/scratch/handoff-2026-04-29/labels.sh	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/labels.sh
+.claude/scratch/handoff-2026-04-29/principles.diff	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/principles.diff
+.github/ISSUE_TEMPLATE/bug.md	KEEP				-	
+.github/ISSUE_TEMPLATE/epic.md	KEEP				-	
+.github/ISSUE_TEMPLATE/feature.md	KEEP				-	
+.github/markdown-link-check.json	KEEP				-	
+.github/pull_request_template.md	KEEP				-	
+.github/workflows/ci.yml	KEEP				-	
+.github/workflows/project-board-sync.yml	KEEP				-	
+.gitignore	KEEP				-	
+.mcp.json	KEEP				-	
+.semgrep/hedging.yml	KEEP				-	
+.semgrepignore	KEEP				-	
+AGENTS.md	MODERNISE				p9	
+CLAUDE.md	MODERNISE				p9	
+DEPLOY.md	KEEP				p0	
+LICENSE	KEEP				-	
+README.md	MODERNISE				p9	
+STATE.md	KEEP-HISTORY				p9	docs/history/STATE.md
+bootstrap/VERSION	MERGE				p9	
+bootstrap/agents/backlog-groomer.md	PORT				p4	
+bootstrap/agents/docs-reviewer.md	PORT				p4	
+bootstrap/agents/domain-researcher.md	PORT				p4	
+bootstrap/agents/domain-reviewer.md	PORT				p4	
+bootstrap/agents/reliability-reviewer.md	PORT				p4	
+bootstrap/agents/solutions-architect.md	PORT				p4	
+bootstrap/commands/adr.md	MERGE				p5	
+bootstrap/commands/codex-review.md	MODERNISE				p6	
+bootstrap/commands/feature.md	MODERNISE				p6	
+bootstrap/commands/implement.md	MODERNISE				p6	
+bootstrap/commands/intent-check.md	MODERNISE				p6	
+bootstrap/commands/issue-to-task.md	MERGE				p5	
+bootstrap/commands/plan.md	MERGE				p5	
+bootstrap/commands/task-to-issue.md	MODERNISE				p5	
+bootstrap/hardware/mac-mini-2018.md	MODERNISE				p2	
+bootstrap/hooks/commit-msg-governance.sh	MERGE				p6	
+bootstrap/hooks/governance-rules-lib.sh	MERGE				p6	
+bootstrap/hooks/posttooluse-format.sh	MERGE				p6	
+bootstrap/hooks/pre-commit-governance.sh	MERGE				p6	
+bootstrap/hooks/stop-hook.sh	MERGE				p6	
+bootstrap/scripts/README.md	MODERNISE				p6	
+bootstrap/scripts/adr-retirement-audit.sh	MODERNISE				p7	
+bootstrap/scripts/cargo-mutants-to-sarif.py	MODERNISE				p6	
+bootstrap/scripts/check-mcp-config.sh	MODERNISE				p7	
+bootstrap/scripts/filter-mypy-invalid.py	MODERNISE				p6	
+bootstrap/scripts/forge.sh	MODERNISE				p6	
+bootstrap/scripts/gate-audit-aggregate.sh	MODERNISE				p7	
+bootstrap/scripts/gate-audit-lib.sh	MODERNISE				p7	
+bootstrap/scripts/hedging-lint.sh	MODERNISE				p6	
+bootstrap/scripts/mini-bootstrap-demo.sh	MERGE				p7	
+bootstrap/scripts/mini-bootstrap-project.sh	MERGE				p7	
+bootstrap/scripts/mini-health.sh	MERGE				p2	
+bootstrap/scripts/mini-preflight.sh	MERGE				p2	
+bootstrap/scripts/mini-session.sh	MERGE				p7	
+bootstrap/scripts/mutation-summary.sh	MODERNISE				p6	
+bootstrap/scripts/mutmut-to-sarif.py	MODERNISE				p6	
+bootstrap/scripts/notify.sh	MODERNISE				p6	
+bootstrap/scripts/plan-lint.sh	MODERNISE				p5	
+bootstrap/scripts/review-codex.sh	MODERNISE				p6	
+bootstrap/scripts/sprint.sh	MODERNISE				p6	
+bootstrap/scripts/test-adr-retirement-audit.sh	MODERNISE				p7	
+bootstrap/scripts/test-check-mcp-config.sh	MODERNISE				p7	
+bootstrap/scripts/test-commit-msg-governance.sh	MODERNISE				p6	
+bootstrap/scripts/test-gate-audit.sh	MODERNISE				p7	
+bootstrap/scripts/test-governance-hook.sh	MODERNISE				p6	
+bootstrap/scripts/test-hedging-lint.sh	MODERNISE				p6	
+bootstrap/scripts/test-install-verification.sh	MERGE				p3	
+bootstrap/scripts/test-mini-preflight.sh	MERGE				p2	
+bootstrap/scripts/test-mutation-summary.sh	MODERNISE				p6	
+bootstrap/scripts/test-posttooluse-hook.sh	MODERNISE				p6	
+bootstrap/scripts/test-stop-hook.sh	MODERNISE				p6	
+bootstrap/scripts/ticket-audit.sh	MERGE				p5	
+bootstrap/scripts/verify.sh	MODERNISE				p6	
+bootstrap/skills/adr-retirement-audit/SKILL.md	MODERNISE				p7	
+bootstrap/skills/audit-pass/SKILL.md	MERGE				p5	
+bootstrap/skills/backlog-review/SKILL.md	MODERNISE				p5	
+bootstrap/skills/domain-discovery/SKILL.md	MODERNISE				p5	
+bootstrap/skills/gate-audit/SKILL.md	MODERNISE				p7	
+bootstrap/skills/project-bootstrap/SKILL.md	MODERNISE				p7	
+bootstrap/skills/project-health/SKILL.md	MODERNISE				p7	
+bootstrap/skills/project-health/scripts/collect-metrics.sh	MODERNISE				p7	
+bootstrap/skills/qa/SKILL.md	MODERNISE				p6	
+bootstrap/skills/qa/scripts/find-tests.sh	MODERNISE				p6	
+bootstrap/skills/review/SKILL.md	MODERNISE				p6	
+bootstrap/skills/review/scripts/layer1-gate.sh	MODERNISE				p6	
+bootstrap/templates/.eslintrc.json	MODERNISE				p7	
+bootstrap/templates/.jscpd.json	MODERNISE				p7	
+bootstrap/templates/.semgrep/hedging.yml	MODERNISE				p7	
+bootstrap/templates/.semgrep/llm-antipatterns.yaml	MODERNISE				p7	
+bootstrap/templates/.semgrep/tests/test_llm_commented_block.py	MODERNISE				p7	
+bootstrap/templates/.semgrep/tests/test_llm_todo_without_ticket.py	MODERNISE				p7	
+bootstrap/templates/AGENTS.md.template	MODERNISE				p7	
+bootstrap/templates/CLAUDE.md.template	MODERNISE				p7	
+bootstrap/templates/STATE.md.template	MODERNISE				p7	
+bootstrap/templates/adr-template.md	MODERNISE				p7	
+bootstrap/templates/ci-go.yml	MODERNISE				p7	
+bootstrap/templates/ci-node.yml	MODERNISE				p7	
+bootstrap/templates/ci-python.yml	MODERNISE				p7	
+bootstrap/templates/codex-config.toml	MODERNISE				p7	
+bootstrap/templates/conftest.py	MODERNISE				p7	
+bootstrap/templates/mise.toml.template	MODERNISE				p7	
+bootstrap/templates/mutation.yml	MODERNISE				p7	
+bootstrap/templates/pr-template.md	MODERNISE				p7	
+bootstrap/templates/principles.md.template	MODERNISE				p7	
+bootstrap/templates/ruff.toml	MODERNISE				p7	
+bootstrap/tests/fixtures/sprint-orchestrator/README.md	MODERNISE				p6	
+bootstrap/tests/ticket-audit/fixtures/happy.md	PORT				p5	
+bootstrap/tests/ticket-audit/fixtures/no-non-goals.md	PORT				p5	
+bootstrap/tests/verify/fixtures/clean.py	MODERNISE				p6	
+bootstrap/tests/verify/fixtures/radon_violation.py	MODERNISE				p6	
+bootstrap/tests/verify/fixtures/todo_violation.py	MODERNISE				p6	
+bootstrap/tests/verify/run.sh	MODERNISE				p6	
+bootstrap/tests/verify/test-notify.sh	MODERNISE				p6	
+bootstrap/universal-setup.sh	MERGE				p2	
+docs/PROJECT-PLAN.md	MERGE				p9	
+docs/adr-audit/2026-W24.md	MERGE				p9	
+docs/anti-patterns.md	MERGE				p9	
+docs/architecture/.keep	MERGE				p9	
+docs/architecture/layers.md	MERGE				p9	
+docs/architecture/overview.md	MERGE				p9	
+docs/architecture/sprint-orchestrator.md	MERGE				p9	
+docs/backlog/grooming-2026-04-24.md	MERGE				p9	
+docs/backlog/grooming-2026-04-26.md	MERGE				p9	
+docs/domain/.keep	MERGE				p9	
+docs/domain/context-map.md	MERGE				p9	
+docs/domain/continuity-discovery.md	MERGE				p9	
+docs/domain/meta/overview.md	MERGE				p9	
+docs/domain/meta/vocabulary.md	MERGE				p9	
+docs/domain/scratch/third-voice-vocabulary-draft.md	MERGE				p9	
+docs/domain/session-continuity/overview.md	MERGE				p9	
+docs/gate-audit/events.jsonl	MERGE				p9	
+docs/gate-audit/fixtures/events-4w-sample.jsonl	MERGE				p9	
+docs/gate-audit/schema.md	MERGE				p9	
+docs/metrics/.keep	MERGE				p9	
+docs/metrics/onboarding.md	MERGE				p9	
+docs/onboarding/GETTING-STARTED.md	MERGE				p9	
+docs/onboarding/first-week.md	MERGE				p9	
+docs/port/JEV-DESIGN.md	KEEP				p0	
+docs/port/PLAN.md	KEEP				p0	
+docs/port/PORT-MAP.md	KEEP				p0	
+docs/port/followups.md	KEEP				p0	
+docs/principles.md	MERGE				p9	
+docs/runbooks/adr-trigger.md	MERGE				p9	
+docs/runbooks/adr-workflow.md	MERGE				p9	
+docs/runbooks/advisor-policy.md	MERGE				p9	
+docs/runbooks/banned-terms.md	MERGE				p9	
+docs/runbooks/codex-auth-recovery.md	MERGE				p9	
+docs/runbooks/daily-session.md	MERGE				p9	
+docs/runbooks/dod-checklist.md	MERGE				p9	
+docs/runbooks/feature-pipeline.md	MERGE				p9	
+docs/runbooks/first-feature-session-log.md	MERGE				p9	
+docs/runbooks/hedging-lint.md	MERGE				p9	
+docs/runbooks/incident-recovery.md	MERGE				p9	
+docs/runbooks/macmini-headless-recovery.md	MERGE				p9	
+docs/runbooks/mcp-quarterly-review.md	MERGE				p9	
+docs/runbooks/onboarding-repo.md	MERGE				p9	
+docs/runbooks/qa-pbt.md	MERGE				p9	
+docs/runbooks/resume-drill.md	MERGE				p9	
+docs/runbooks/setup-target-domain.md	MERGE				p9	
+docs/runbooks/sprint.md	MERGE				p9	
+docs/runbooks/vendor-migration.md	MERGE				p9	
+docs/runbooks/weekly-maintenance.md	MERGE				p9	
+docs/skills/audit-pass.md	MERGE				p9	
+docs/synthesis/2026-04-29-pipeline-restructuring.md	MERGE				p9	
+plugin/.claude-plugin/plugin.json	KEEP				-	
+plugin/agents/adr-reviewer.md	KEEP				-	
+plugin/agents/adversarial-critic.md	KEEP				-	
+plugin/agents/security-reviewer.md	KEEP				-	
+plugin/evals/worktree-hook-mismatch/case.yaml	KEEP				-	
+plugin/evals/worktree-hook-mismatch/graders/finds-mismatch.md	KEEP				-	
+plugin/evals/worktree-hook-mismatch/graders/used-critic.md	KEEP				-	
+plugin/evals/worktree-hook-mismatch/prompt.md	KEEP				-	
+plugin/evals/worktree-hook-mismatch/scaffold.sh	KEEP				-	
+plugin/hooks/hooks.json	KEEP				-	
+plugin/scripts/commit-msg-check.sh	KEEP				-	
+plugin/scripts/parse-commit.py	KEEP				-	
+plugin/scripts/test-commit-msg-check.sh	KEEP				-	
+plugin/skills/adr-author/SKILL.md	KEEP				-	
+plugin/skills/adr-author/scripts/next_adr_number.sh	KEEP				-	
+plugin/skills/codex-review/SKILL.md	KEEP				-	
+plugin/skills/plan/SKILL.md	KEEP				-	
+scripts/lint-prompts.sh	MODERNISE				p9	
+scripts/sweep-worktree.sh	MODERNISE				p9	
+session-log/2026/05/2026-05-03.md	KEEP-HISTORY				p9	docs/history/session-log/2026/05/2026-05-03.md
+tests/acceptance/deploy-bare.sh	KEEP				p0	
+tests/lint/no-hardcode.allow	KEEP				p0	
+tests/lint/no-hardcode.sh	KEEP				p0	
+tests/plugin-scope/no-plugin-no-writes.sh	KEEP				p0	
+tools/port-run/driver.sh	KEEP				p0	
+tools/port-run/ledger-check.sh	KEEP				p0	
+tools/port-run/ledger.tsv	KEEP				p0	
+tools/port-run/lib/isolated-claude.sh	KEEP				p0	
+tools/port-run/phases.json	KEEP				p0	
+tools/port-run/prompts/common.md	KEEP				p0	
