@@ -134,7 +134,7 @@ bootstrap/skills/backlog-review/SKILL.md	MODERNISE	backlog grooming entry: runs 
 bootstrap/skills/domain-discovery/SKILL.md	MODERNISE	domain discovery interview; draft by domain-researcher	plugin/skills/domain-discovery/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p5	
 bootstrap/skills/gate-audit/SKILL.md	MODERNISE				p7	
 bootstrap/skills/project-bootstrap/SKILL.md	MODERNISE				p7	
-bootstrap/skills/project-health/SKILL.md	MODERNISE				p7	
+bootstrap/skills/project-health/SKILL.md	MODERNISE	read-only project health report with optional CodeBurn cost	plugin/skills/project-health/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p7	
 bootstrap/skills/project-health/scripts/collect-metrics.sh	MODERNISE				p7	
 bootstrap/skills/qa/SKILL.md	MERGE	run the project's own tests and checks before the PR	plugin/skills/feature/SKILL.md	plugin/skills/feature/SKILL.md step Verify	p9	
 bootstrap/skills/qa/scripts/find-tests.sh	KEEP-HISTORY				p9	docs/history/bootstrap/skills/qa/scripts/find-tests.sh
@@ -149,7 +149,7 @@ bootstrap/templates/.semgrep/tests/test_llm_todo_without_ticket.py	MODERNISE				
 bootstrap/templates/AGENTS.md.template	MODERNISE				p7	
 bootstrap/templates/CLAUDE.md.template	MODERNISE				p7	
 bootstrap/templates/STATE.md.template	MODERNISE	session snapshot template	plugin/skills/handoff/templates/STATE.md	plugin/skills/handoff/SKILL.md reads it; claude plugin validate plugin --strict	p6	
-bootstrap/templates/adr-template.md	MODERNISE				p7	
+bootstrap/templates/adr-template.md	MODERNISE	MADR 4.0 template used by adr-author	plugin/skills/adr-author/templates/adr-template.md	plugin/skills/adr-author/SKILL.md Output; claude plugin validate plugin --strict	p7	
 bootstrap/templates/ci-go.yml	MODERNISE				p7	
 bootstrap/templates/ci-node.yml	MODERNISE				p7	
 bootstrap/templates/ci-python.yml	MODERNISE				p7	
@@ -243,6 +243,7 @@ plugin/scripts/parse-commit.py	KEEP				-
 plugin/scripts/test-commit-msg-check.sh	KEEP				-	
 plugin/skills/adr-author/SKILL.md	KEEP				-	
 plugin/skills/adr-author/scripts/next_adr_number.sh	KEEP				-	
+plugin/skills/adr-author/templates/adr-template.md	KEEP				p7	
 plugin/skills/backlog-review/SKILL.md	KEEP				p5	
 plugin/skills/codex-review/SKILL.md	KEEP				-	
 plugin/skills/domain-discovery/SKILL.md	KEEP				p5	
@@ -250,6 +251,7 @@ plugin/skills/feature/SKILL.md	KEEP				p6
 plugin/skills/handoff/SKILL.md	KEEP				p6	
 plugin/skills/handoff/templates/STATE.md	KEEP				p6	
 plugin/skills/plan/SKILL.md	KEEP				-	
+plugin/skills/project-health/SKILL.md	KEEP				p7	
 scripts/lint-prompts.sh	MODERNISE				p9	
 scripts/sweep-worktree.sh	MODERNISE				p9	
 session-log/2026/05/2026-05-03.md	KEEP-HISTORY				p9	docs/history/session-log/2026/05/2026-05-03.md
