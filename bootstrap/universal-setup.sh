@@ -414,8 +414,10 @@ done
 
 # --- Copy skills ---
 log "Copying skills..."
-for dir in "$REPO_ROOT"/bootstrap/skills/*/ "$REPO_ROOT"/plugin/skills/adr-author/ "$REPO_ROOT"/plugin/skills/backlog-review/ "$REPO_ROOT"/plugin/skills/domain-discovery/; do
+for dir in "$REPO_ROOT"/bootstrap/skills/*/ "$REPO_ROOT"/plugin/skills/adr-author/ "$REPO_ROOT"/plugin/skills/backlog-review/ "$REPO_ROOT"/plugin/skills/domain-discovery/ "$REPO_ROOT"/plugin/skills/project-health/; do
     [ -d "$dir" ] || continue
+    # a skill moved into the plugin can leave its old scripts/ behind; no SKILL.md, nothing to copy
+    [ -f "$dir/SKILL.md" ] || continue
     skill_name=$(basename "$dir")
     if [ "$MODE" = "install" ]; then
         mkdir -p "$CLAUDE_HOME/skills/$skill_name"

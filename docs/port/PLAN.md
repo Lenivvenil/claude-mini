@@ -165,6 +165,8 @@ DoD for P5–P7:
 - validate --strict passes;
 - acceptance is green.
 
+- **As built in P7.** `project-health` moved into the plugin and reports in chat: review time, issue age, ADRs awaiting decision, and AI spend from CodeBurn when `codeburn.enabled`. The ADR template moved into `adr-author`, which uses the project's own template first. `codeburn.version` defaults to 0.9.25, checked on the npm registry (MIT, Node ≥22.13.0). Project bootstrap, the stack templates, gate-audit, adr-retirement-audit and check-mcp-config are KEEP-HISTORY. No ci.yml line changes: none of those files moved.
+
 **P8 — Jev: one advisory plan check** (was P9; now a deliverable, per A#8 and F-req2)
 - Scope is [JEV-DESIGN.md](JEV-DESIGN.md#L46) item 6 (lines 46–50, "Plan quality lint") and rollout step 1 at line 125, cut 1 only: advisory plan lint. There are three Noul questions:
   - unsupported design assertion,
@@ -304,7 +306,7 @@ DoD for P5–P7:
 ## 7. CodeBurn [owner facts: MIT, Node ≥22.13, reads ~/.claude and Codex sessions, writes ~/.cache/codeburn and ~/.config/codeburn]
 - **Machine layer.** A `node` check (≥22.13). CodeBurn itself is never installed globally and runs as `npx -y codeburn@<pinned>`.
 - **Config.** `codeburn.{enabled:false, version:"<pin>", runner:"npx", mcp:false}`. There is **no key that enables `optimize --apply`**. The command is refused in code, because it edits `~/.claude`, moves `~/.claude/skills`, and edits `.mcp.json` and CLAUDE.md [owner].
-- **Project-health.** A read-only report, `codeburn --by-pr --by-work-unit --by-agent --format json`, filtered to the project's sessions [unverified filter flag; if none exists, filter the JSON by project path in code]. When CodeBurn is unavailable → reduced mode (T10).
+- **Project-health.** A read-only report, `codeburn report --project <project root> -p 30days --format json` [verified 2026-09-26 against the 0.9.25 README: `--project` takes an absolute path and selects that project; `report` has no `--by-pr`, `--by-work-unit` or `--by-agent`]. When CodeBurn is unavailable → reduced mode (T10).
 - **MCP.** Opt-in only, and only as `claude mcp add --scope local codeburn -- npx -y codeburn@<pin> mcp` in the target project. Never at user scope.
 - **Run driver.** Uses `codeburn --by-pr --format json` for per-phase and per-PR cost, instead of summing `total_cost_usd`. This fixes the double counting of cumulative resume totals (A budget, F#4). Fallback when CodeBurn is absent: keep the latest `total_cost_usd` per distinct session_id and sum across sessions.
 - **Global dirs.** `~/.cache/codeburn` and `~/.config/codeburn` are part of decision S3.

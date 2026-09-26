@@ -17,7 +17,7 @@
   },
   "codeburn": {
     "enabled": false,
-    "version": ""
+    "version": "0.9.25"
   },
   "output": {
     "language": "en"
