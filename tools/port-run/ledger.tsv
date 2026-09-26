@@ -130,8 +130,8 @@ bootstrap/scripts/ticket-audit.sh	MERGE				p5
 bootstrap/scripts/verify.sh	MODERNISE				p6	
 bootstrap/skills/adr-retirement-audit/SKILL.md	MODERNISE				p7	
 bootstrap/skills/audit-pass/SKILL.md	MERGE				p5	
-bootstrap/skills/backlog-review/SKILL.md	MODERNISE				p5	
-bootstrap/skills/domain-discovery/SKILL.md	MODERNISE				p5	
+bootstrap/skills/backlog-review/SKILL.md	MODERNISE	backlog grooming entry: runs backlog-groomer, owner-authorized batches	plugin/skills/backlog-review/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p5	
+bootstrap/skills/domain-discovery/SKILL.md	MODERNISE	domain discovery interview; draft by domain-researcher	plugin/skills/domain-discovery/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p5	
 bootstrap/skills/gate-audit/SKILL.md	MODERNISE				p7	
 bootstrap/skills/project-bootstrap/SKILL.md	MODERNISE				p7	
 bootstrap/skills/project-health/SKILL.md	MODERNISE				p7	
@@ -243,7 +243,9 @@ plugin/scripts/parse-commit.py	KEEP				-
 plugin/scripts/test-commit-msg-check.sh	KEEP				-	
 plugin/skills/adr-author/SKILL.md	KEEP				-	
 plugin/skills/adr-author/scripts/next_adr_number.sh	KEEP				-	
+plugin/skills/backlog-review/SKILL.md	KEEP				p5	
 plugin/skills/codex-review/SKILL.md	KEEP				-	
+plugin/skills/domain-discovery/SKILL.md	KEEP				p5	
 plugin/skills/plan/SKILL.md	KEEP				-	
 scripts/lint-prompts.sh	MODERNISE				p9	
 scripts/sweep-worktree.sh	MODERNISE				p9	
