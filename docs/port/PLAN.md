@@ -191,7 +191,14 @@ DoD for P5–P7:
   - `setup/harness uninstall [--project DIR] [--item id]`
 
   There is no separate `rollback` verb. `uninstall --item` is the rollback of one item.
-- **Checklist item** (in schema `checklist.items[]`): `{id, layer, kind, handler, args, version_req, applies_if}`. `handler` is one of a fixed set of typed handlers implemented in code, with containment checks:
+
+  As built in P2 (#313):
+  - `verify` is `assess` with a failing exit when a required (not `optional`) applicable item is not ready.
+  - Exit codes: 0 ok, reduced mode included · 1 invalid config or state · 2 usage · 3 `apply`: a program is missing and its id is not in `--allow-system` (nothing installed for it) · 4 a fix failed · 5 `verify`: a required item is not ready. `assess` and `apply --dry-run` exit 0 whatever the statuses.
+  - `--allow-system` naming an unknown item, or one setup cannot install on this OS, is a usage error. Naming an item that is already ready is fine, so the same command can be repeated.
+  - `wrong-version` is never upgraded by setup: an upgrade has no clean rollback. The report gives the upgrade command.
+  - `uninstall` without `--item` changes nothing and lists what `apply` installed. `uninstall --item` removes only a package whose install `apply` logged as done.
+- **Checklist item** (in schema `checklist.items[]`): `{id, layer, handler, applies_if, optional, purpose}` plus the handler's own typed fields: `binary`, `min_version`, `packages.{brew,apt}`, `manual` for `binary-version`; `tool` for `auth-status`. There is no `kind` field: an item with `packages` is a system install and needs consent. P2 implements `binary-version` and `auth-status`, the rest come with the project layer. `handler` is one of a fixed set of typed handlers implemented in code, with containment checks:
   - `binary-version`
   - `auth-status` (gh, claude, codex)
   - `project-file`
@@ -223,6 +230,7 @@ DoD for P5–P7:
   - `plugin-local` is recovered with `claude plugin uninstall … --scope local`;
   - package installs are recovered with `brew uninstall` or `apt remove`, and only if setup installed the package itself.
 - **No-op rule:** a second apply with an empty delta writes nothing, not even a report file. It prints only.
+- **Where T8 runs.** The machine layer changes no files, only packages. The crash-safe file primitive (`setup/lib/txn.py`) is built and fault-tested in P2, and the project-layer items of P3 use it.
 - **Consequences report** (apply and uninstall save it to `reports/<ts>.md`; assess prints it). Every item is re-checked at report time. It has three sections:
   - **Broken:** what, the evidence (command and output), and one fix command plus one rollback command.
   - **Not done:** what failed and why, and what state remains.
