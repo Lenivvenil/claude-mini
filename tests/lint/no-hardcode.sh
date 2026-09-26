@@ -13,7 +13,7 @@ SURFACES=(plugin setup tools)
 
 # id|extended regex
 PATTERNS=(
-    'model-pin|^model: *(opus|sonnet|haiku)([^A-Za-z0-9_-]|$)'
+    'model-pin|^model: *(opus|sonnet|haiku|fable)([^A-Za-z0-9_-]|$)'
     'model-name|(gpt-[0-9]|claude-(opus|sonnet|haiku|fable)-[0-9])'
     'owner-id|Lenivvenil'
     'board-id|PVT_[A-Za-z0-9]'
@@ -30,6 +30,9 @@ findings=0
 for entry in "${PATTERNS[@]}"; do
     id=${entry%%|*}
     re=${entry#*|}
+    # git grep: 0 = hits, 1 = none, anything else = the check itself failed (fail closed)
+    hits=$(git -C "$REPO" grep -nE "$re" -- "${existing[@]}") ; rc=$?
+    [ "$rc" -le 1 ] || { echo "no-hardcode: git grep failed (exit $rc) on pattern $id" >&2; exit 2; }
     while IFS= read -r hit; do
         [ -n "$hit" ] || continue
         path=${hit%%:*}
@@ -38,7 +41,7 @@ for entry in "${PATTERNS[@]}"; do
         if grep -qF "$path|$id|" "$ALLOW"; then continue; fi
         echo "  $id  $hit"
         findings=$((findings + 1))
-    done < <(git -C "$REPO" grep -nE "$re" -- "${existing[@]}" 2>/dev/null)
+    done <<< "$hits"
 done
 
 # Allow entries must still match something, so the list only shrinks.

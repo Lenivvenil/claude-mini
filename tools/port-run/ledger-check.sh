@@ -6,9 +6,10 @@
 #   - the header is exact;
 #   - every tracked path outside docs/decisions/ has exactly one row;
 #   - verdict and phase come from the allowed sets;
-#   - KEEP-HISTORY rows name an archive_dest;
-#   - a row whose path is no longer tracked has entry_point and evidence filled (the capability
-#     landed somewhere and is proven), or is KEEP-HISTORY with a tracked archive_dest.
+#   - KEEP-HISTORY rows name their own archive file, docs/history/<path>;
+#   - a row whose path is no longer tracked has capability, entry_point and evidence filled (what
+#     survives, where it lives now, which test or command shows it), or is KEEP-HISTORY and its
+#     archive file is tracked. Evidence is recorded here and run by the phase DoD, not by this check.
 # Exit 0 ok · 1 findings.
 set -uo pipefail
 
@@ -41,14 +42,14 @@ for n, line in enumerate(lines[1:], start=2):
         problems.append(f"line {n}: unknown verdict {verdict!r}")
     if phase not in PHASES:
         problems.append(f"line {n}: unknown phase {phase!r}")
-    if verdict == "KEEP-HISTORY" and not archive:
-        problems.append(f"line {n}: KEEP-HISTORY without archive_dest: {path}")
+    if verdict == "KEEP-HISTORY" and archive != "docs/history/" + path:
+        problems.append(f"line {n}: KEEP-HISTORY archive_dest must be docs/history/{path}, got {archive!r}")
     if path not in tracked:
         if verdict == "KEEP-HISTORY":
-            if not any(t.startswith(archive.rstrip("/") + "/") or t == archive for t in tracked):
-                problems.append(f"line {n}: {path} left, but archive_dest {archive!r} holds nothing")
-        elif not (entry and evidence):
-            problems.append(f"line {n}: {path} left the tree without entry_point and evidence")
+            if archive not in tracked:
+                problems.append(f"line {n}: {path} left, but its archive file {archive!r} is not tracked")
+        elif not (capability and entry and evidence):
+            problems.append(f"line {n}: {path} left the tree without capability, entry_point and evidence")
 for path in sorted(tracked - set(seen)):
     problems.append(f"no ledger row for tracked path {path}")
 for p in problems:

@@ -1,62 +1,62 @@
 path	verdict	capability	entry_point	evidence	phase	archive_dest
 .claude-plugin/marketplace.json	KEEP				-	
-.claude/scratch/handoff-2026-04-29/EXECUTION-ORDER.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/HANDOFF-BRIEF.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/PRINCIPLES-DRAFT.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/README.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/REPORT.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/_gen_bodies.py	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/_phase2_add_to_project.py	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/_phase2_create_issues.py	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/_phase2_wire_deps.py	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/_phase3_set_status.py	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/backlog-plan.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/01.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/02.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/03.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/04.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/05.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/06.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/07.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/08.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/09.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/10.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/11.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/12.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/13.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/14.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/15.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/16.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/17.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/18.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/19.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/20.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/21.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/22.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/23.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/24.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/25.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/26.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/27.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/28.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/29.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/30.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/31.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/32.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/33.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/34.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/35.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/36.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/37.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/38.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/39.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/40.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/bodies/41.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/issue-body-principles.md	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/issue-map.json	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/item-map.json	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/labels.sh	KEEP-HISTORY				p9	docs/history/
-.claude/scratch/handoff-2026-04-29/principles.diff	KEEP-HISTORY				p9	docs/history/
+.claude/scratch/handoff-2026-04-29/EXECUTION-ORDER.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/EXECUTION-ORDER.md
+.claude/scratch/handoff-2026-04-29/HANDOFF-BRIEF.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/HANDOFF-BRIEF.md
+.claude/scratch/handoff-2026-04-29/PRINCIPLES-DRAFT.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/PRINCIPLES-DRAFT.md
+.claude/scratch/handoff-2026-04-29/README.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/README.md
+.claude/scratch/handoff-2026-04-29/REPORT.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/REPORT.md
+.claude/scratch/handoff-2026-04-29/_gen_bodies.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_gen_bodies.py
+.claude/scratch/handoff-2026-04-29/_phase2_add_to_project.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase2_add_to_project.py
+.claude/scratch/handoff-2026-04-29/_phase2_create_issues.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase2_create_issues.py
+.claude/scratch/handoff-2026-04-29/_phase2_wire_deps.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase2_wire_deps.py
+.claude/scratch/handoff-2026-04-29/_phase3_set_status.py	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/_phase3_set_status.py
+.claude/scratch/handoff-2026-04-29/backlog-plan.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/backlog-plan.md
+.claude/scratch/handoff-2026-04-29/bodies/01.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/01.md
+.claude/scratch/handoff-2026-04-29/bodies/02.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/02.md
+.claude/scratch/handoff-2026-04-29/bodies/03.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/03.md
+.claude/scratch/handoff-2026-04-29/bodies/04.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/04.md
+.claude/scratch/handoff-2026-04-29/bodies/05.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/05.md
+.claude/scratch/handoff-2026-04-29/bodies/06.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/06.md
+.claude/scratch/handoff-2026-04-29/bodies/07.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/07.md
+.claude/scratch/handoff-2026-04-29/bodies/08.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/08.md
+.claude/scratch/handoff-2026-04-29/bodies/09.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/09.md
+.claude/scratch/handoff-2026-04-29/bodies/10.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/10.md
+.claude/scratch/handoff-2026-04-29/bodies/11.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/11.md
+.claude/scratch/handoff-2026-04-29/bodies/12.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/12.md
+.claude/scratch/handoff-2026-04-29/bodies/13.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/13.md
+.claude/scratch/handoff-2026-04-29/bodies/14.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/14.md
+.claude/scratch/handoff-2026-04-29/bodies/15.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/15.md
+.claude/scratch/handoff-2026-04-29/bodies/16.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/16.md
+.claude/scratch/handoff-2026-04-29/bodies/17.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/17.md
+.claude/scratch/handoff-2026-04-29/bodies/18.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/18.md
+.claude/scratch/handoff-2026-04-29/bodies/19.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/19.md
+.claude/scratch/handoff-2026-04-29/bodies/20.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/20.md
+.claude/scratch/handoff-2026-04-29/bodies/21.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/21.md
+.claude/scratch/handoff-2026-04-29/bodies/22.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/22.md
+.claude/scratch/handoff-2026-04-29/bodies/23.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/23.md
+.claude/scratch/handoff-2026-04-29/bodies/24.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/24.md
+.claude/scratch/handoff-2026-04-29/bodies/25.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/25.md
+.claude/scratch/handoff-2026-04-29/bodies/26.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/26.md
+.claude/scratch/handoff-2026-04-29/bodies/27.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/27.md
+.claude/scratch/handoff-2026-04-29/bodies/28.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/28.md
+.claude/scratch/handoff-2026-04-29/bodies/29.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/29.md
+.claude/scratch/handoff-2026-04-29/bodies/30.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/30.md
+.claude/scratch/handoff-2026-04-29/bodies/31.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/31.md
+.claude/scratch/handoff-2026-04-29/bodies/32.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/32.md
+.claude/scratch/handoff-2026-04-29/bodies/33.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/33.md
+.claude/scratch/handoff-2026-04-29/bodies/34.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/34.md
+.claude/scratch/handoff-2026-04-29/bodies/35.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/35.md
+.claude/scratch/handoff-2026-04-29/bodies/36.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/36.md
+.claude/scratch/handoff-2026-04-29/bodies/37.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/37.md
+.claude/scratch/handoff-2026-04-29/bodies/38.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/38.md
+.claude/scratch/handoff-2026-04-29/bodies/39.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/39.md
+.claude/scratch/handoff-2026-04-29/bodies/40.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/40.md
+.claude/scratch/handoff-2026-04-29/bodies/41.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/bodies/41.md
+.claude/scratch/handoff-2026-04-29/issue-body-principles.md	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/issue-body-principles.md
+.claude/scratch/handoff-2026-04-29/issue-map.json	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/issue-map.json
+.claude/scratch/handoff-2026-04-29/item-map.json	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/item-map.json
+.claude/scratch/handoff-2026-04-29/labels.sh	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/labels.sh
+.claude/scratch/handoff-2026-04-29/principles.diff	KEEP-HISTORY				p9	docs/history/.claude/scratch/handoff-2026-04-29/principles.diff
 .github/ISSUE_TEMPLATE/bug.md	KEEP				-	
 .github/ISSUE_TEMPLATE/epic.md	KEEP				-	
 .github/ISSUE_TEMPLATE/feature.md	KEEP				-	
@@ -73,7 +73,7 @@ CLAUDE.md	MODERNISE				p9
 DEPLOY.md	KEEP				p0	
 LICENSE	KEEP				-	
 README.md	MODERNISE				p9	
-STATE.md	KEEP-HISTORY				p9	docs/history/
+STATE.md	KEEP-HISTORY				p9	docs/history/STATE.md
 bootstrap/VERSION	MERGE				p9	
 bootstrap/agents/backlog-groomer.md	PORT				p4	
 bootstrap/agents/docs-reviewer.md	PORT				p4	
@@ -238,7 +238,7 @@ plugin/skills/codex-review/SKILL.md	KEEP				-
 plugin/skills/plan/SKILL.md	KEEP				-	
 scripts/lint-prompts.sh	MODERNISE				p9	
 scripts/sweep-worktree.sh	MODERNISE				p9	
-session-log/2026/05/2026-05-03.md	KEEP-HISTORY				p9	docs/history/
+session-log/2026/05/2026-05-03.md	KEEP-HISTORY				p9	docs/history/session-log/2026/05/2026-05-03.md
 tests/acceptance/deploy-bare.sh	KEEP				p0	
 tests/lint/no-hardcode.allow	KEEP				p0	
 tests/lint/no-hardcode.sh	KEEP				p0	

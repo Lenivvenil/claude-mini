@@ -34,7 +34,6 @@ git -C "$T/B" add readme.txt
 (cd "$T/A" && claude plugin marketplace add --scope local "$REPO" >/dev/null 2>&1 \
     && claude plugin install claude-mini@claude-mini --scope local >/dev/null 2>&1) \
     || { echo "  FAIL could not install the plugin at local scope in project A"; exit 1; }
-hash_a=$(tree_hash "$T/A")
 
 # Positive control: the plugin really is loaded in A, otherwise the checks in B prove nothing.
 (cd "$T/A" && timeout 300 claude -p "Reply with exactly: ok" --output-format stream-json --verbose \

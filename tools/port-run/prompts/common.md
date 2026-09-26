@@ -20,6 +20,8 @@ Hard rules:
 - Write the PR title to `.port-run/<phase>.pr-title.txt` and the PR body, following
   `.github/pull_request_template.md` verbatim with `Closes #<issue>`, to `.port-run/<phase>.pr.md`.
   Mark non-applicable DoD items "n/a" without a checkmark.
+- When the phase is complete, everything is committed and the DoD passes, write
+  `{"status":"done"}` to `.port-run/<phase>.signal.json`. Without it the driver publishes nothing.
 - If you must stop (a system program is needed, a new architectural decision appears, a P0/P1
   stays unresolved after two rounds, the same failure repeats three times, scope grows beyond the
   phase), write `{"status":"blocked","question":"<plain question for the owner>"}` to
