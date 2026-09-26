@@ -14,7 +14,8 @@ File change, per item:
 temp file is removed; the target has sha_candidate -> the original comes back from the backup (or
 the new file is removed when there was none); anything else -> reported as broken, left alone.
 
-Package installs are logged the same way (op: install / uninstall) by setup/harness.
+Package installs are logged the same way (op: install / uninstall) by setup/harness, which also
+reconciles interrupted ones against the package manager.
 
 Fault injection for tests: CLAUDE_MINI_SETUP_FAULT=<point> makes the process exit(99) at that
 point without cleanup. Points: after-intent, before-swap, after-swap, after-done.
@@ -23,7 +24,9 @@ import hashlib
 import json
 import os
 import shutil
+import tempfile
 import time
+from contextlib import contextmanager
 
 FAULT_ENV = "CLAUDE_MINI_SETUP_FAULT"
 
@@ -65,21 +68,52 @@ def _fsync_dir(path):
 class Txn:
     def __init__(self, project, run_dir):
         self.project = os.path.realpath(project)
-        self.run_dir = self.contain(run_dir)
-        self.log = os.path.join(self.run_dir, "intent.jsonl")
+        self.run_rel = os.path.normpath(run_dir)
+        self.run_dir = self.contain(self.run_rel)
+        self.log = self.contain(os.path.join(self.run_rel, "intent.jsonl"))
 
     def contain(self, rel):
-        """Absolute path of rel inside the project; refuses anything that resolves outside."""
+        """Absolute path of rel inside the project. Refused: absolute paths, `..` that leaves the
+        project, and any existing component that is a symlink (it could point outside)."""
         if os.path.isabs(rel):
             raise TxnError(f"{rel}: absolute paths are not accepted")
-        path = os.path.realpath(os.path.join(self.project, rel))
+        path = os.path.normpath(os.path.join(self.project, rel))
         if path != self.project and not path.startswith(self.project + os.sep):
             raise TxnError(f"{rel}: resolves outside the project")
+        cur = self.project
+        for part in os.path.relpath(path, self.project).split(os.sep):
+            if part in ("", "."):
+                continue
+            cur = os.path.join(cur, part)
+            if os.path.islink(cur):
+                raise TxnError(f"{rel}: {os.path.relpath(cur, self.project)} is a symlink; refused")
+            if not os.path.lexists(cur):
+                break
         return path
+
+    def run_path(self, *parts):
+        """A checked path under the run directory."""
+        return self.contain(os.path.join(self.run_rel, *parts))
+
+    @contextmanager
+    def locked(self):
+        """One apply or uninstall at a time per project (flock on <run_dir>/lock)."""
+        import fcntl
+        os.makedirs(self.run_dir, exist_ok=True)
+        fd = os.open(self.run_path("lock"), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o644)
+        try:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                raise TxnError("another setup/harness run holds the lock for this project") from None
+            yield
+        finally:
+            os.close(fd)
 
     # --- intent log -------------------------------------------------------------------------
     def append(self, record):
         os.makedirs(self.run_dir, exist_ok=True)
+        self.log = self.contain(os.path.join(self.run_rel, "intent.jsonl"))
         record = dict(record, ts=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
         with open(self.log, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -123,10 +157,10 @@ class Txn:
         if before == candidate:
             return False  # nothing to do, nothing written
         stamp = f"{os.getpid()}-{int(time.time() * 1000)}"
-        tmp = os.path.join(directory, f".{os.path.basename(path)}.claude-mini-{stamp}.tmp")
+        tmp = self.contain(os.path.join(os.path.dirname(rel), f".{os.path.basename(path)}.claude-mini-{stamp}.tmp"))
         backup = None
         if before is not None:
-            backup = os.path.join(self.run_dir, "backups", stamp, rel)
+            backup = self.run_path("backups", stamp, rel)
         base = {"op": "file", "item": item, "path": rel}
         self.append(dict(base, state="started", sha_before=before, sha_candidate=candidate,
                          tmp=os.path.relpath(tmp, self.project),
@@ -163,9 +197,7 @@ class Txn:
         recovered, broken = [], []
         for r in self.open_records():
             if r.get("op") != "file":
-                broken.append(f"{r.get('item')}: interrupted {r.get('op')} of {r.get('path')}; "
-                              "check it by hand")
-                continue
+                continue  # package operations are reconciled by setup/harness
             path = self.contain(r["path"])
             tmp = self.contain(r["tmp"])
             now = sha_of(path)
@@ -182,8 +214,11 @@ class Txn:
                         broken.append(f"{r['item']}: {r['path']} changed, backup missing or "
                                       "altered; restore by hand")
                         continue
-                    shutil.copy2(backup, path + ".claude-mini-restore")
-                    os.replace(path + ".claude-mini-restore", path)
+                    fd, restore = tempfile.mkstemp(dir=os.path.dirname(path),
+                                                   prefix=f".{os.path.basename(path)}.claude-mini-restore-")
+                    os.close(fd)
+                    shutil.copy2(backup, restore)
+                    os.replace(restore, path)
                 else:
                     os.unlink(path)
                 self.append({"op": "file", "item": r["item"], "path": r["path"],

@@ -46,7 +46,13 @@ echo "brew \$*" >> "$T/pm.log"
 case "\$1" in
   install) [ -f "$STATE/fail-install" ] && exit 1; /bin/cp "$T/proto" "$SHIM/\$2" ;;
   uninstall) /bin/rm -f "$SHIM/\$2" ;;
+  list) [ -x "$SHIM/\$3" ] && echo "\$3 1.0" && exit 0; exit 1 ;;
 esac
+EOF
+cat > "$SHIM/dpkg-query" <<EOF
+#!/bin/sh
+[ -x "$SHIM/\$3" ] && echo "install ok installed" && exit 0
+exit 1
 EOF
 cat > "$SHIM/apt-get" <<EOF
 #!/bin/sh
@@ -57,7 +63,7 @@ case "\$1" in
 esac
 EOF
 printf '#!/bin/sh\nexec "$@"\n' > "$SHIM/sudo"
-chmod +x "$SHIM/brew" "$SHIM/apt-get" "$SHIM/sudo"
+chmod +x "$SHIM/brew" "$SHIM/apt-get" "$SHIM/sudo" "$SHIM/dpkg-query"
 for b in jq gh claude codex node; do fake "$b"; done
 echo 22.14.0 > "$STATE/node.ver"
 
@@ -193,6 +199,68 @@ is "$(printf '%s' "$OUT" | "$PY" -c 'import json,sys; print([r["status"] for r i
    not-applicable "a disabled capability is not-applicable, not missing"
 fake codex; echo 22.14.0 > "$STATE/node.ver"
 
+echo "probe failures and ownership"
+printf '#!/bin/sh\nexit 1\n' > "$SHIM/jq"; chmod +x "$SHIM/jq"
+p=$(project brokenjq)
+run verify --project "$p"
+is "$RC" 5 "a program whose --version fails is not ready"
+has "$OUT" "--version\` failed" "the report says the probe failed"
+fake jq
+rm -f "$SHIM/node"; echo 20.1.0 > "$STATE/node.ver"
+p=$(project oldpkg)
+printf '{"schema_version":1,"checklist":{"items":[{"id":"node2","layer":"machine","handler":"binary-version","binary":"node","min_version":"22.13","packages":{"brew":"node","apt":"node"}}]}}\n' > "$p/.claude/claude-mini.json"
+run apply --project "$p" --allow-system node2
+is "$RC" 4 "installed but too old: apply exits 4"
+has "$OUT" "installed by setup; remove with: harness uninstall --item node2" "Broken says setup owns it"
+run uninstall --project "$p" --item node2
+is "$RC" 0 "the package setup installed can be removed although it failed the check"
+fake node; echo 22.14.0 > "$STATE/node.ver"
+
+echo "interrupted install is reconciled"
+p=$(project interrupted)
+mkdir -p "$p/.claude/claude-mini"
+mgr=brew; [ "$(uname)" = Linux ] && mgr=apt
+printf '{"op":"install","item":"jq","path":null,"manager":"%s","package":"jq","state":"started"}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
+run apply --project "$p"
+is "$RC" 0 "apply closes the open install and exits 0"
+has "$OUT" "closed as done" "the report names the reconciliation"
+run uninstall --project "$p"
+has "$OUT" "harness uninstall --item jq" "the reconciled install is owned by setup"
+
+echo "symlinks cannot lead writes outside the project"
+rm -f "$SHIM/jq"
+p=$(project linklog)
+mkdir -p "$p/.claude/claude-mini"; : > "$T/outside.log"
+ln -s "$T/outside.log" "$p/.claude/claude-mini/intent.jsonl"
+run apply --project "$p" --allow-system jq
+is "$RC" 1 "a symlinked intent log is refused"
+is "$(wc -c < "$T/outside.log" | tr -d ' ')" 0 "the file outside is untouched"
+p=$(project linkreports)
+mkdir -p "$p/.claude/claude-mini" "$T/outside-reports"
+ln -s "$T/outside-reports" "$p/.claude/claude-mini/reports"
+run apply --project "$p" --allow-system jq
+is "$(find "$T/outside-reports" -mindepth 1 | wc -l | tr -d ' ')" 0 "a symlinked reports directory gets no report"
+p=$(project linkrun)
+mkdir -p "$T/outside-run"; ln -s "$T/outside-run" "$p/.claude/claude-mini"
+run apply --project "$p" --allow-system jq
+is "$RC" 1 "a symlinked run directory is refused"
+is "$(find "$T/outside-run" -mindepth 1 | wc -l | tr -d ' ')" 0 "nothing written through it"
+fake jq
+
+echo "one run at a time"
+rm -f "$SHIM/jq"
+p=$(project locked)
+mkdir -p "$p/.claude/claude-mini"
+"$PY" -c 'import fcntl,os,sys,time; fd=os.open(sys.argv[1],os.O_RDWR|os.O_CREAT); fcntl.flock(fd,fcntl.LOCK_EX); open(sys.argv[2],"w").close(); time.sleep(20)' \
+    "$p/.claude/claude-mini/lock" "$T/locked.ready" &
+holder=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -e "$T/locked.ready" ] && break; sleep 0.5; done
+run apply --project "$p" --allow-system jq
+is "$RC" 1 "a second apply while one holds the lock exits 1"
+has "$OUT" "holds the lock" "and says why"
+kill "$holder" 2>/dev/null; wait "$holder" 2>/dev/null
+fake jq
+
 echo "config and usage errors"
 p=$(project badcfg)
 printf '{"schema_version":1,"checklist":{"items":[{"id":"x","layer":"machine","handler":"shell"}]}}\n' > "$p/.claude/claude-mini.json"
@@ -230,6 +298,10 @@ printf 'old\n' > "$p/target.txt"
 is "$(t8 after-done)" "exit 99" "after-done: died after the change was recorded"
 is "$(recover)" "0 0" "after-done: nothing to recover"
 is "$(cat "$p/target.txt")" "new" "after-done: the finished change stays"
+printf 'old\n' > "$p/target.txt"; printf 'keep\n' > "$p/target.txt.claude-mini-restore"
+t8 after-swap >/dev/null; recover >/dev/null
+is "$(cat "$p/target.txt.claude-mini-restore")" "keep" "recovery never overwrites an unrelated file"
+is "$(cat "$p/target.txt")" "old" "and still restores the target"
 rm -f "$p/fresh.txt"
 env CLAUDE_MINI_SETUP_FAULT=after-swap "$PY" - "$REPO/setup/lib" "$p" <<'PYEOF'
 import sys; sys.path.insert(0, sys.argv[1]); import txn

@@ -98,7 +98,8 @@ def package_manager():
     """The system package manager setup may use on this OS, or None."""
     if sys.platform == "darwin" and shutil.which("brew"):
         return "brew"
-    if sys.platform.startswith("linux") and shutil.which("apt-get"):
+    if sys.platform.startswith("linux") and shutil.which("apt-get") \
+            and (os.geteuid() == 0 or shutil.which("sudo")):
         return "apt"
     return None
 
@@ -108,9 +109,52 @@ def pkg_commands(manager, pkg):
     if manager == "brew":
         inst, rem = ["brew", "install", pkg], ["brew", "uninstall", pkg]
     else:
-        inst = ["sudo", "apt-get", "install", "-y", pkg]
-        rem = ["sudo", "apt-get", "remove", "-y", pkg]
+        sudo = [] if os.geteuid() == 0 else ["sudo"]
+        inst = sudo + ["apt-get", "install", "-y", pkg]
+        rem = sudo + ["apt-get", "remove", "-y", pkg]
     return inst, rem, " ".join(inst), " ".join(rem)
+
+
+def pkg_installed(manager, pkg):
+    """True/False from the package manager itself, None when it cannot tell."""
+    argv = ["brew", "list", "--versions", pkg] if manager == "brew" else \
+        ["dpkg-query", "-W", "-f=${Status}", pkg]
+    r, out = run_probe(argv)
+    if r is None:
+        return None
+    if manager == "brew":
+        return r.returncode == 0 and bool(out)
+    return r.returncode == 0 and "install ok installed" in out
+
+
+def run_pkg(argv):
+    """(exit code, last lines of output); a program that cannot start is exit 127."""
+    try:
+        res = subprocess.run(argv, capture_output=True, text=True)
+    except OSError as e:
+        return 127, f"{argv[0]}: {e.strerror}"
+    return res.returncode, " | ".join((res.stdout + res.stderr).strip().splitlines()[-3:])
+
+
+def reconcile(t):
+    """Close package operations interrupted before their end record, by asking the package
+    manager what actually happened. Returns (recovered, broken) human lines."""
+    recovered, broken = [], []
+    for r in t.open_records():
+        if r.get("op") not in ("install", "uninstall"):
+            continue
+        present = pkg_installed(r["manager"], r["package"])
+        base = {k: r[k] for k in ("op", "item", "path", "manager", "package")}
+        if present is None:
+            broken.append(f"{r['item']}: interrupted {r['op']} of {r['package']}; the package "
+                          f"manager cannot tell its state — check `{r['package']}` by hand")
+            continue
+        done = present if r["op"] == "install" else not present
+        t.append(dict(base, state="done" if done else "failed", reconciled=True))
+        recovered.append(f"{r['item']}: interrupted {r['op']} of {r['package']} closed as "
+                         f"{'done' if done else 'not done'} (package manager says "
+                         f"{'installed' if present else 'not installed'})")
+    return recovered, broken
 
 
 # --- handlers ----------------------------------------------------------------------------------
@@ -135,6 +179,9 @@ def check_binary(item):
     if not path:
         return "missing", f"{b} not found on PATH"
     r, out = run_probe([b, "--version"])
+    if r is None or r.returncode != 0:
+        code = "no exit" if r is None else f"exit {r.returncode}"
+        return "needs-manual", f"{path} is present but `{b} --version` failed ({code}): {out[:200]}"
     first = out.splitlines()[0] if out else ""
     if "min_version" not in item:
         return "ready", f"{path} ({first})" if first else path
@@ -244,12 +291,17 @@ def report(rows, cfg, broken=(), extra_works=(), extra_notdone=()):
 
 
 def save_report(t, text):
-    d = os.path.join(t.run_dir, "reports")
-    os.makedirs(d, exist_ok=True)
-    path = os.path.join(d, time.strftime("%Y%m%dT%H%M%S") + ".md")
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(text)
-    return path
+    stamp = time.strftime("%Y%m%dT%H%M%S")
+    for n in range(1000):  # two reports in one second get -1, -2, ...
+        path = t.run_path("reports", f"{stamp}{'-' + str(n) if n else ''}.md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            with open(path, "x", encoding="utf-8") as fh:
+                fh.write(text)
+            return path
+        except FileExistsError:
+            continue
+    raise txn.TxnError("could not allocate a report file name")
 
 
 def txn_for(project, cfg):
@@ -292,7 +344,20 @@ def cmd_apply(a):
         raise Usage("--allow-system names items that setup cannot install on this OS: "
                     f"{', '.join(sorted(no_package))}")
     t = txn_for(project, cfg)
-    recovered, broken = ([], []) if a.dry_run else t.recover()
+    work = any(r["installable"] and r["id"] in allow for r in rows) or t.open_records()
+    if a.dry_run or not work:  # nothing to write: no lock file either (no-op rule)
+        return apply_rows(a, t, cfg, manager, rows, items, allow)
+    with t.locked():
+        return apply_rows(a, t, cfg, manager, rows, items, allow)
+
+
+def apply_rows(a, t, cfg, manager, rows, items, allow):
+    project = t.project
+    recovered, broken = [], []
+    if not a.dry_run:
+        recovered, broken = t.recover()
+        rec2, br2 = reconcile(t)
+        recovered, broken = recovered + rec2, broken + br2
     refused, failed, installed = [], [], []
     for r in rows:
         if not r["installable"]:
@@ -308,16 +373,17 @@ def cmd_apply(a):
         base = {"op": "install", "item": r["id"], "path": None, "manager": manager,
                 "package": item["packages"][manager]}
         t.append(dict(base, state="started"))
-        res = subprocess.run(inst, capture_output=True, text=True)
-        tail = (res.stdout + res.stderr).strip().splitlines()[-3:]
+        code, tail = run_pkg(inst)
+        # Ownership follows the package manager, readiness follows the check: a package that
+        # installed but fails the check is still ours to uninstall.
+        t.append(dict(base, state="done" if code == 0 else "failed", exit=code))
         status, detail = check_binary(item)
-        if res.returncode == 0 and status == "ready":
-            t.append(dict(base, state="done"))
+        if code == 0 and status == "ready":
             installed.append(r["id"])
         else:
-            t.append(dict(base, state="failed", exit=res.returncode))
-            failed.append(f"{r['id']}: `{shown}` exit {res.returncode}, now {status}: "
-                          f"{' | '.join(tail) or detail}")
+            failed.append(f"{r['id']}: `{shown}` exit {code}, now {status}: {tail or detail}"
+                          + (f" — installed by setup; remove with: harness uninstall --item {r['id']}"
+                             if code == 0 else ""))
     if a.dry_run:
         for i in refused:
             print(f"needs consent: --allow-system {i}")
@@ -340,6 +406,16 @@ def cmd_uninstall(a):
     project = project_dir(a.project)
     cfg, manager, _ = assess(project, "all")
     t = txn_for(project, cfg)
+    if not a.item and not t.open_records():  # a listing writes nothing
+        return uninstall_locked(a, t, cfg, project)
+    with t.locked():
+        return uninstall_locked(a, t, cfg, project)
+
+
+def uninstall_locked(a, t, cfg, project):
+    recovered, broken = reconcile(t)
+    for line in recovered + broken:
+        print(line)
     installs = {}
     for r in t.records():
         if r.get("op") in ("install", "uninstall") and r.get("state") == "done":
@@ -359,14 +435,14 @@ def cmd_uninstall(a):
     r = installs.get(a.item)
     if not r:
         raise Usage(f"{a.item}: setup did not install it for this project; not touched")
-    inst_argv, rem_argv, _, rem = pkg_commands(r["manager"], r["package"])
+    _, rem_argv, _, rem = pkg_commands(r["manager"], r["package"])
     base = {"op": "uninstall", "item": a.item, "path": None, "manager": r["manager"],
             "package": r["package"]}
     t.append(dict(base, state="started"))
-    res = subprocess.run(rem_argv, capture_output=True, text=True)
-    if res.returncode != 0:
-        t.append(dict(base, state="failed", exit=res.returncode))
-        print(f"`{rem}` exit {res.returncode}: {(res.stdout + res.stderr).strip()[-300:]}")
+    code, tail = run_pkg(rem_argv)
+    if code != 0:
+        t.append(dict(base, state="failed", exit=code))
+        print(f"`{rem}` exit {code}: {tail}")
         return 4
     t.append(dict(base, state="done"))
     _, _, rows = assess(project, "all")
@@ -425,6 +501,9 @@ def main(argv):
         return 2
     except (Invalid, txn.TxnError) as e:
         print(f"harness: {e}", file=sys.stderr)
+        return 1
+    except OSError as e:
+        print(f"harness: {e.filename or ''}: {e.strerror}", file=sys.stderr)
         return 1
 
 
