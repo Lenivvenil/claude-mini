@@ -297,7 +297,7 @@ DoD for P5–P7:
 - **Isolated run config.** Every run session uses `CLAUDE_CONFIG_DIR=<repo>/.port-run/claude-config` (persistent across phases, gitignored), plus:
   - `--setting-sources project,local` (user settings and hooks are not loaded);
   - `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`;
-  - `HOME` pointed at `.port-run/agent-home`, so the agent sees no shell profile, git or gh credentials of the owner; git identity is copied into a sandbox `GIT_CONFIG_GLOBAL`.
+  - `HOME` pointed at `.port-run/agent-home`, and `GIT_CONFIG_NOSYSTEM=1`, so the agent sees no shell profile, git or gh credentials of the owner (the macOS system gitconfig sets the keychain credential helper); git identity is copied into a sandbox `GIT_CONFIG_GLOBAL`. After the session, any branch or tag on origin that is new or moved, `main` excepted, blocks publication.
 
   Transcripts, local permissions and the user's own hooks stay out of `~/.claude`. Git writes that go into the shared `.git` of the main checkout (worktree metadata, refs) are documented and permitted.
 - **Allowed writes:**

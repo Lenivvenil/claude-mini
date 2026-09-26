@@ -56,7 +56,8 @@ prev_phase() { jq -r --arg id "$1" '[.phases[].id] as $ids | ($ids | index($id))
 watch_hash() {
     local f
     for f in "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile" \
-             "$HOME/.gitconfig" "$HOME/.config/git/ignore" "$HOME/.claude/settings.json"; do
+             "$HOME/.gitconfig" "$HOME/.config/git/ignore" "$HOME/.claude/settings.json" \
+             "$HOME/.claude/plugins/installed_plugins.json" "$HOME/.claude/plugins/known_marketplaces.json"; do
         if [ -e "$f" ]; then printf '%s %s\n' "$(shasum -a 256 < "$f" | cut -c1-64)" "$f"; else printf 'absent %s\n' "$f"; fi
     done
 }
@@ -69,7 +70,10 @@ require_tools() {  # everything the run needs, checked before anything is create
     . "$REPO/tools/port-run/lib/isolated-claude.sh"
     iso_require_token
 }
-remote_ports() { git -C "$REPO" ls-remote -q origin 'refs/heads/port/*' 'refs/heads/main'; }
+# Branches and tags on origin, main excluded (the owner merges there while phases run).
+remote_refs() { git -C "$REPO" ls-remote -q origin 'refs/heads/*' 'refs/tags/*' | grep -v $'\trefs/heads/main$' | sort; }
+# A ref that is new or moved since the snapshot (deletions are the owner's cleanup).
+remote_new() { comm -13 "$RUN/$1.remote" <(remote_refs); }
 
 watch_same() { [ "$(watch_hash)" = "$(cat "$RUN/$1.watch")" ]; }
 
@@ -99,13 +103,14 @@ launch() {  # launch <pN> <worktree> <session-id> [--resume]
     mkdir -p "$wt/.port-run" "$RUN/agent-home"
     rm -f "$wt/.port-run/$id.signal.json"
     # The agent gets a throw-away HOME: no shell profile, git or gh credentials of the owner.
-    # Only the git identity is copied, so its commits carry the owner's name.
+    # GIT_CONFIG_NOSYSTEM drops the system gitconfig too (on macOS it sets the keychain
+    # credential helper). Only the git identity is copied, so commits carry the owner's name.
     local gitcfg="$RUN/agent-home/.gitconfig"
     : > "$gitcfg"
     git config -f "$gitcfg" user.name "$(git -C "$REPO" config user.name)"
     git config -f "$gitcfg" user.email "$(git -C "$REPO" config user.email)"
     state_set "$id" '.status = "running" | .updated = (now | todate)'
-    (cd "$wt" && HOME="$RUN/agent-home" GIT_CONFIG_GLOBAL="$gitcfg" CLAUDE_CONFIG_DIR="$RUN/claude-config" \
+    (cd "$wt" && HOME="$RUN/agent-home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$gitcfg" CLAUDE_CONFIG_DIR="$RUN/claude-config" \
         timeout "$(cfg .timeout_s)" claude "${args[@]}") > "$RUN/$id.out.json" 2> "$RUN/$id.err"
     local rc=$?
     state_set "$id" '.last_exit = $rc' --argjson rc "$rc"
@@ -141,7 +146,8 @@ finish() {  # finish <pN> <worktree> <session-rc>: signal, boundary, DoD, push, 
     [ -z "$(git -C "$wt" status --porcelain)" ] || block "$id" "uncommitted work left in the worktree"
     run_dod "$id" "$wt" || { state_set "$id" '.status = "dod-failed"'; die "$id: DoD failed"; }
     watch_same "$id" || block "$id" "files outside the project changed during the DoD run (watch list)"
-    [ "$(remote_ports)" = "$(cat "$RUN/$id.remote")" ] || block "$id" "port branches or main on origin changed during the session"
+    local moved; moved=$(remote_new "$id") || die "ls-remote failed"
+    [ -z "$moved" ] || block "$id" "refs on origin created or moved during the session: $(printf '%s' "$moved" | cut -f2 | paste -sd' ' -)"
     local body="$wt/.port-run/$id.pr.md" title="$wt/.port-run/$id.pr-title.txt"
     local pr; pr=$(gh pr list --head "$branch" --state open --json number -q '.[0].number') || die "gh pr list failed"
     [ -n "$pr" ] || { [ -s "$body" ] && [ -s "$title" ]; } || block "$id" "the agent did not write the PR title and body"
@@ -192,7 +198,7 @@ cmd_start() {
     require_tools
     compose_prompt "$id" "$RUN/$id.prompt.md" || die "cannot compose the prompt for $id (issue text)"
     watch_hash > "$RUN/$id.watch"
-    remote_ports > "$RUN/$id.remote" || die "ls-remote failed"
+    remote_refs > "$RUN/$id.remote" || die "ls-remote failed"
     git -C "$REPO" worktree add -q "$wt" -b "$branch" "$base_sha" || die "worktree add failed"
     sid=$(uuidgen | tr '[:upper:]' '[:lower:]')
     state_set "$id" '. + {issue: $issue, branch: $b, base_ref: $br, base_sha: $bs, worktree: $wt, session_id: $sid, status: "starting"}' \
@@ -208,7 +214,7 @@ cmd_resume() {
     wt=$(state_get "$id" .worktree); sid=$(state_get "$id" .session_id)
     { [ -n "$wt" ] && [ -n "$sid" ] && [ -f "$RUN/$id.prompt.md" ] && [ -f "$RUN/$id.watch" ]; } \
         || die "$id has no recorded worktree, session, prompt or watch snapshot"
-    remote_ports > "$RUN/$id.remote" || die "ls-remote failed"
+    remote_refs > "$RUN/$id.remote" || die "ls-remote failed"
     local rc=0; launch "$id" "$wt" "$sid" --resume || rc=$?
     finish "$id" "$wt" "$rc"
 }

@@ -63,3 +63,9 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: when `finish` blocks after a `done` signal (for example because the owner merged into `main` during the session and the origin check differs), the only way on is `resume`, which deletes the signal and replays the whole session.
 - Proposed fix: a `driver.sh finish <pN>` command that re-runs only the checks, the DoD and the publication on the existing worktree; limit the origin check to `refs/heads/port/*`.
+
+## Watch snapshot is not refreshed on resume
+- Source: P0, reliability re-check of PR #322
+- Severity: P2
+- What: the watch-list snapshot is taken at `start` only. An owner edit to a watched file (for example `~/.zshrc`) between `start` and `resume` blocks publication, although no agent made it.
+- Proposed fix: on `resume`, show the difference and ask the owner to confirm a new snapshot; never refresh it silently, because a crashed first session may have made the change.
