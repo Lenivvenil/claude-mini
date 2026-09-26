@@ -58,9 +58,10 @@
               "properties": {
                 "id": {"type": "string", "pattern": "[a-z][a-z0-9-]*"},
                 "layer": {"type": "enum", "values": ["machine", "project"]},
-                "handler": {"type": "enum", "values": ["binary-version", "auth-status"], "doc": "Typed handler implemented in setup/harness; no shell strings."},
+                "handler": {"type": "enum", "values": ["binary-version", "auth-status", "plugin-local", "git-exclude"], "doc": "Typed handler implemented in setup/harness; no shell strings."},
                 "binary": {"type": "string", "pattern": "[A-Za-z0-9._+-]+", "doc": "binary-version: program looked up on PATH, asked for --version."},
                 "min_version": {"type": "string", "pattern": "[0-9]+(\\.[0-9]+)*", "doc": "binary-version: lowest accepted version."},
+                "patterns": {"type": "array", "min_items": 1, "items": {"type": "string", "pattern": "[^\\s#!][^\\n]*"}, "doc": "git-exclude: lines that must be in the project's .git/info/exclude."},
                 "tool": {"type": "enum", "values": ["gh", "claude", "codex"], "doc": "auth-status: whose login status is checked."},
                 "packages": {
                   "type": "object",

@@ -68,7 +68,37 @@ esac
 EOF
 printf '#!/bin/sh\nexec "$@"\n' > "$SHIM/sudo"
 chmod +x "$SHIM/brew" "$SHIM/apt-get" "$SHIM/sudo" "$SHIM/dpkg-query"
-for b in jq gh claude codex node; do fake "$b"; done
+for b in jq gh codex node; do fake "$b"; done
+# Fake claude: --version, auth status, and the four plugin commands setup uses. It edits
+# <cwd>/.claude/settings.local.json the way Claude Code does and leaves empty objects on removal.
+cat > "$SHIM/claude" <<EOF
+#!$PY
+import json, os, sys
+a = sys.argv[1:]
+open("$T/claude.log", "a").write(" ".join(a) + "\\n")
+if a[:1] == ["--version"]:
+    print("2.1.283 (Claude Code)"); sys.exit(0)
+if a[:2] == ["auth", "status"]:
+    sys.exit(int(open("$STATE/claude.auth").read()) if os.path.exists("$STATE/claude.auth") else 0)
+p = os.path.join(os.getcwd(), ".claude", "settings.local.json")
+d = json.load(open(p)) if os.path.exists(p) else {}
+if a[:3] == ["plugin", "marketplace", "add"]:
+    src = a[-1]; name = json.load(open(os.path.join(src, ".claude-plugin", "marketplace.json")))["name"]
+    d.setdefault("extraKnownMarketplaces", {})[name] = {"source": {"source": "directory", "path": src}}
+elif a[:2] == ["plugin", "install"]:
+    if os.path.exists("$STATE/claude.fail-install"): sys.exit(1)
+    if a[2].split("@")[1] not in d.get("extraKnownMarketplaces", {}): sys.exit(1)
+    d.setdefault("enabledPlugins", {})[a[2]] = True
+elif a[:2] == ["plugin", "uninstall"]:
+    d.setdefault("enabledPlugins", {}).pop(a[2], None)
+elif a[:3] == ["plugin", "marketplace", "remove"]:
+    d.setdefault("extraKnownMarketplaces", {}).pop(a[3], None)
+else:
+    sys.exit(0)
+os.makedirs(os.path.dirname(p), exist_ok=True)
+json.dump(d, open(p, "w"), indent=2)
+EOF
+chmod +x "$SHIM/claude"
 echo 22.14.0 > "$STATE/node.ver"
 
 CHECKLIST='"checklist":{"items":[
@@ -364,6 +394,65 @@ PYEOF
 )
 is "$out" refused "a path outside the project is refused"
 is "$([ -e "$T/escape.txt" ] && echo present || echo absent)" absent "nothing written outside the project"
+
+echo "project layer"
+PROJECT_ITEMS='"checklist":{"items":[
+ {"id":"git-exclude","layer":"project","handler":"git-exclude","patterns":[".claude/settings.local.json",".claude/claude-mini/"]},
+ {"id":"plugin","layer":"project","handler":"plugin-local"}]}'
+pproject() {  # a project whose override holds only the project items
+    local d="$T/$1"
+    mkdir -p "$d/.claude" && "$GIT" -C "$d" init -q
+    printf '{"schema_version":1,%s}\n' "$PROJECT_ITEMS" > "$d/.claude/claude-mini.json"
+    echo "$d"
+}
+full_hash() { echo "$(tree_hash "$1") $(cksum < "$1/.git/info/exclude" 2>/dev/null)"; }
+p=$(pproject proj)
+h0=$(full_hash "$p")
+run apply --project "$p"
+is "$RC" 0 "apply sets up the project layer"
+is "$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["enabledPlugins"]["claude-mini@claude-mini"])' "$p/.claude/settings.local.json")" \
+   True "plugin enabled in the project's local settings"
+has "$(cat "$p/.git/info/exclude")" ".claude/claude-mini/" "exclude file lists setup's state"
+h1=$(full_hash "$p"); calls=$(wc -l < "$T/claude.log")
+run apply --project "$p"
+is "$RC" 0 "second apply exits 0"
+is "$(full_hash "$p")" "$h1" "second apply writes nothing"
+is "$(wc -l < "$T/claude.log")" "$calls" "second apply runs no claude plugin command"
+run verify --project "$p" --layer project
+is "$RC" 0 "verify passes"
+run uninstall --project "$p"
+is "$RC" 0 "uninstall exits 0"
+is "$(full_hash "$p")" "$h0" "T9: after uninstall the project and its exclude file are byte-identical"
+
+p=$(pproject keepsettings)
+printf '{\n  "permissions": {"allow": ["Bash(ls)"]}\n}\n' > "$p/.claude/settings.local.json"
+h0=$(full_hash "$p")
+run apply --project "$p"; run uninstall --project "$p"
+is "$(full_hash "$p")" "$h0" "existing local settings come back byte for byte"
+
+p=$(pproject useredit)
+run apply --project "$p"
+echo "my-own-line" >> "$p/.git/info/exclude"
+run uninstall --project "$p"
+has "$(cat "$p/.git/info/exclude")" "my-own-line" "T11: a user edit after apply survives uninstall"
+has "$OUT" "was edited after setup; left as is" "and uninstall says so"
+is "$([ -d "$p/.claude/claude-mini" ] && echo kept)" kept "the log is kept while something is left undone"
+
+p=$(pproject foreign)
+printf '{"extraKnownMarketplaces":{"claude-mini":{"source":{"source":"github","repo":"x/y"}}}}\n' > "$p/.claude/settings.local.json"
+before=$(cksum < "$p/.claude/settings.local.json")
+run assess --project "$p" --layer project
+has "$OUT" "setup does not replace it" "a marketplace declared from elsewhere is left to a person"
+run apply --project "$p" --layer project
+is "$(cksum < "$p/.claude/settings.local.json")" "$before" "and apply does not touch the settings"
+
+p=$(pproject failing-plugin)
+touch "$STATE/claude.fail-install"
+run apply --project "$p"
+is "$RC" 4 "a failed plugin install exits 4"
+rm -f "$STATE/claude.fail-install"
+run apply --project "$p"
+is "$RC" 0 "the next apply finishes the job"
 
 echo "T4 watch list"
 is "$(tree_hash "$T/home")$(tree_hash "$T/sibling")" "$watch_before" "HOME files and the sibling project are unchanged"

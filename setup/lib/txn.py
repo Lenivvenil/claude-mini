@@ -191,6 +191,37 @@ class Txn:
         fault("after-done")
         return True
 
+    def revert(self, item):
+        """Undo the last finished file change of `item`, only if the file still has the bytes setup
+        wrote. Returns (done, message)."""
+        last = None
+        for r in self.records():
+            if r.get("op") == "file" and r.get("item") == item:
+                if r.get("state") == "done":
+                    last = r
+                elif r.get("state") == "reverted":
+                    last = None
+        if last is None:
+            return True, f"{item}: nothing to undo"
+        path = self.contain(last["path"])
+        started = [r for r in self.records() if r.get("op") == "file" and r.get("item") == item
+                   and r.get("state") == "started" and r.get("path") == last["path"]][-1]
+        if sha_of(path) != last["sha_after"]:
+            return False, f"{item}: {last['path']} was edited after setup; left as is"
+        if started.get("backup"):
+            backup = self.contain(started["backup"])
+            if sha_of(backup) != started["sha_before"]:
+                return False, f"{item}: backup of {last['path']} is missing or altered; left as is"
+            fd, restore = tempfile.mkstemp(dir=os.path.dirname(path),
+                                           prefix=f".{os.path.basename(path)}.claude-mini-restore-")
+            os.close(fd)
+            shutil.copy2(backup, restore)
+            os.replace(restore, path)
+        else:
+            os.unlink(path)
+        self.append({"op": "file", "item": item, "path": last["path"], "state": "reverted"})
+        return True, f"{item}: {last['path']} restored to its state before setup"
+
     # --- recovery ---------------------------------------------------------------------------
     def recover(self):
         """Resolve interrupted changes. Returns (recovered, broken): lists of human lines."""

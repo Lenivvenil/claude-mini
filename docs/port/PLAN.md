@@ -233,6 +233,7 @@ DoD for P5–P7:
   - `plugin-local` is recovered with `claude plugin uninstall … --scope local`;
   - package installs are recovered with `brew uninstall` or `apt remove`, and only if setup installed the package itself.
 - **No-op rule:** a second apply with an empty delta writes nothing, not even a report file. It prints only.
+- **As built in P3 (#314).** The project layer has two items, both applied without `--allow-system` because they write inside the project: `git-exclude` (Claude Code's local settings file and setup's run directory join `.git/info/exclude`) and `plugin-local` (Claude Code's own `marketplace add` and `install` with `--scope local`). `uninstall` without `--item` disables the plugin, returns `.claude/settings.local.json` and the exclude file to their bytes unless edited since, and removes the run directory last; packages setup installed stay until `uninstall --item`. Handlers `project-file`, `project-json-merge` and `mise-pin` are not built: no item needs them under the selection rule. The optional git hook of ADR-0031 п. 9 is not built yet (default off); see followups.
 - **Where T8 runs.** The machine layer changes no files, only packages. The crash-safe file primitive (`setup/lib/txn.py`) is built and fault-tested in P2, and the project-layer items of P3 use it.
 - **Consequences report** (apply and uninstall save it to `reports/<ts>.md`; assess prints it). Every item is re-checked at report time. It has three sections:
   - **Broken:** what, the evidence (command and output), and one fix command plus one rollback command.

@@ -13,8 +13,8 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 ## Test projects live inside the repository
 - Source: P0, reliability review of PR #322
 - Severity: P2
-- What: tests that start Claude create temp projects under `.port-run/tmp` inside this repository. Claude Code loads CLAUDE.md files from parent directories, so such a session also reads this repository's CLAUDE.md.
-- Proposed fix: in P3, put the acceptance test's temp projects outside the repository (a temp directory) and check that no CLAUDE.md or AGENTS.md sits above them.
+- What: `tests/plugin-scope/no-plugin-no-writes.sh` still creates its temp projects under `.port-run/tmp` inside this repository, so a session there also reads the repository's AGENTS.md. The acceptance test (P3) already uses a temp directory outside and checks that no instructions file sits above it.
+- Proposed fix: move the plugin-scope test to the same outside temp directory.
 
 ## No-plugin test is not wired and its hook check is indirect
 - Source: P0, reliability review of PR #322
@@ -57,3 +57,9 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: `--project` is resolved to the git top level, so pointing it at a subdirectory targets the whole enclosing repository.
 - Proposed fix: say so in DEPLOY.md (P3) and print the resolved project in every report header.
+
+## Optional git hook (ADR-0031 п. 9) not built
+- Source: P3
+- Severity: P2
+- What: ADR-0031 п. 9 makes a hook in `.git/hooks` an optional project item, off by default, for commits made by people. P3 does not build it: the plugin hook already checks every commit made from Claude, and no request for checking human commits exists yet.
+- Proposed fix: add a `git-hook` project item when a project asks for it; it installs a `commit-msg` hook that calls the plugin's check, through the same txn primitive.
