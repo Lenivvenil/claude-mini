@@ -13,7 +13,12 @@
     "modes": ["base", "uncommitted"]
   },
   "jev": {
-    "enabled": false
+    "enabled": false,
+    "model": "jev-1.13.0",
+    "endpoint": "https://api.typesafe.ai/v1/systemone",
+    "key_env": "TYPESAFE_API_KEY",
+    "timeout_ms": 3000,
+    "finding_threshold_pct": 80
   },
   "codeburn": {
     "enabled": false,

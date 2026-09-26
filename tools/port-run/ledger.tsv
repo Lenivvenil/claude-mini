@@ -230,6 +230,7 @@ plugin/agents/reliability-reviewer.md	KEEP				p4
 plugin/agents/security-reviewer.md	KEEP				-	
 plugin/agents/solutions-architect.md	KEEP				p4	
 plugin/bin/config	KEEP				p1	
+plugin/bin/jev-check	KEEP				p8	
 plugin/config/defaults.json	KEEP				p1	
 plugin/config/schema.json	KEEP				p1	
 plugin/evals/worktree-hook-mismatch/case.yaml	KEEP				-	
@@ -251,6 +252,7 @@ plugin/skills/feature/SKILL.md	KEEP				p6
 plugin/skills/handoff/SKILL.md	KEEP				p6	
 plugin/skills/handoff/templates/STATE.md	KEEP				p6	
 plugin/skills/plan/SKILL.md	KEEP				-	
+plugin/skills/plan/jev-questions.v1.json	KEEP				p8	
 plugin/skills/project-health/SKILL.md	KEEP				p7	
 scripts/lint-prompts.sh	MODERNISE				p9	
 scripts/sweep-worktree.sh	MODERNISE				p9	
@@ -259,6 +261,7 @@ setup/harness	KEEP				p2
 setup/lib/txn.py	KEEP				p2	
 tests/acceptance/deploy-bare.sh	KEEP				p0	
 tests/config/run.sh	KEEP				p1	
+tests/jev/run.sh	KEEP				p8	
 tests/lint/no-hardcode.allow	KEEP				p0	
 tests/lint/no-hardcode.sh	KEEP				p0	
 tests/plugin-scope/no-plugin-no-writes.sh	KEEP				p0	
