@@ -71,6 +71,8 @@ cfg="$_self_dir/../bin/config"
 rules_root=""
 load_rules() {  # load_rules <dir>: sets types_alt, scope, skips for that repository
     local root
+    # A directory we cannot see is not guessed: defaults would apply the wrong project's rules.
+    [ -d "$1" ] || deny "claude-mini: cannot resolve the commit's directory '$1' — run the commit from the project directory."
     root=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) || root="$1"
     [ "$root" = "$rules_root" ] && return 0
     local types

@@ -75,6 +75,10 @@ p=$(project brokencfg '{"commit":{"types":"feat"}}')
 is "$(hook "$p" 'git log --grep=commit')" allow "broken config does not block commands without a commit"
 q=$(project onlyfix '{"commit":{"types":["fix"]}}')
 is "$(hook "$p" "git -C $q commit -m 'fix: x'")" allow "git -C uses the target repository's config"
+c=$(project custom '{"commit":{"types":["custom"]}}')
+is "$(hook "$c" "cd -- . && git commit -m 'custom: x'")" allow "cd -- keeps the project's config (custom allowed)"
+is "$(hook "$c" "cd -P -- . && git commit -m 'fix: x'")" deny "cd -P -- keeps the project's config (fix denied)"
+is "$(hook "$c" "cd /nonexistent-dir-xyz && git commit -m 'custom: x'")" deny "unknown commit directory is denied, not defaulted"
 r=$(project plain2)
 is "$(hook "$r" "cd $q && git commit -m 'feat: x'")" deny "cd target's config applies (feat not allowed there)"
 
