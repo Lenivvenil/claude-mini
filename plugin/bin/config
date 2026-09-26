@@ -70,6 +70,8 @@ def check(node, value, where, errors, partial):
     elif t == "int":
         if isinstance(value, bool) or not isinstance(value, int):
             errors.append(f"{where}: expected int")
+        elif not node.get("min", value) <= value <= node.get("max", value):
+            errors.append(f"{where}: {value} outside {node.get('min', '')}..{node.get('max', '')}")
     elif t == "bool":
         if not isinstance(value, bool):
             errors.append(f"{where}: expected bool")

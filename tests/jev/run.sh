@@ -20,7 +20,7 @@ is() {  # is <got> <want> <label>
 status() { printf '%s' "$1" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' 2>/dev/null || echo "not-json"; }
 
 # The stub answers by mode file: ok | high | outofrange | sleep | garbage | http401 | redirect |
-# disconnect. It records the last
+# disconnect | trickle. It records the last
 # Authorization header it saw, so the test can check the key went to the server and nowhere else.
 cat > "$T/stub.py" <<'PY'
 import http.server, json, sys, time, os
@@ -38,6 +38,14 @@ class H(http.server.BaseHTTPRequestHandler):
             self.close_connection = True; self.connection.shutdown(2); return
         if mode == "sleep":
             time.sleep(6)
+        if mode == "trickle":
+            self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers()
+            try:
+                for _ in range(24):
+                    self.wfile.write(b" "); self.wfile.flush(); time.sleep(0.25)
+            except OSError:
+                pass  # the client gave up, as it should
+            return
         if mode == "http401":
             self.send_response(401); self.end_headers(); self.wfile.write(b'{"error":"bad key"}'); return
         if mode == "garbage":
@@ -134,6 +142,20 @@ took=$(python3 -c "import time; print(round(time.time() - $start, 2))")
 is "$(status "$o")" timeout "slow server → timeout"
 if python3 -c "import sys; sys.exit(0 if $took < 3.5 else 1)"; then ok "timeout within 3.5 s ($took s)"; else fail "timeout took $took s"; fi
 is "$rc" 0 "exit 0 even on timeout (advisory)"
+
+echo trickle > "$T/mode"
+start=$(python3 -c 'import time; print(time.time())')
+o=$(JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" --project "$p")
+took=$(python3 -c "import time; print(round(time.time() - $start, 2))")
+is "$(status "$o")" timeout "server trickling bytes → timeout"
+if python3 -c "import sys; sys.exit(0 if $took < 3.5 else 1)"; then ok "trickle stopped within 3.5 s ($took s)"; else fail "trickle took $took s"; fi
+
+b=$(proj noscheme '{"enabled": true, "endpoint": "api.typesafe.ai/v1/systemone", "key_env": "JEV_TEST_KEY"}')
+o=$(JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" --project "$b" 2>"$T/err")
+is "$(status "$o")" unavailable "endpoint without scheme → unavailable JSON"
+if grep -q Traceback "$T/err"; then fail "endpoint without scheme: traceback"; else ok "endpoint without scheme: no traceback"; fi
+b=$(proj badpct "{\"enabled\": true, \"endpoint\": \"http://127.0.0.1:$PORT/v1/systemone\", \"key_env\": \"JEV_TEST_KEY\", \"finding_threshold_pct\": 101}")
+is "$(status "$(JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" --project "$b")")" unavailable "threshold 101 rejected by config → unavailable"
 
 python3 -c 'print("# Plan\n" + "word " * 40000)' > "$T/big.md"
 rm -f "$T/request.json"

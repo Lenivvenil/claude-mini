@@ -19,6 +19,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import urllib.error
 import urllib.request
 
@@ -33,6 +34,31 @@ BYTES_PER_TOKEN = 4
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None  # urllib then raises HTTPError with the 3xx code
+
+
+def fetch(endpoint, body, key, timeout):
+    """POST and read the whole answer within one deadline. The socket timeout alone bounds each
+    read, not the total: a server that trickles bytes would keep the caller waiting. The request
+    runs in a daemon thread; if it outlives the deadline, the process exits and the thread dies."""
+    def work():
+        try:
+            req = urllib.request.Request(endpoint, data=body, method="POST", headers={
+                "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+            # No redirects: urllib would carry the Authorization header to whatever host a 3xx names.
+            with urllib.request.build_opener(NoRedirect).open(req, timeout=timeout) as resp:
+                result["raw"] = resp.read()
+        except BaseException as e:  # noqa: BLE001 — handed to the caller, which sanitizes it
+            result["err"] = e
+
+    result = {}
+    worker = threading.Thread(target=work, daemon=True)
+    worker.start()
+    worker.join(timeout)
+    if worker.is_alive():
+        raise TimeoutError
+    if "err" in result:
+        raise result["err"]
+    return result["raw"]
 
 
 def out(status, **extra):
@@ -84,13 +110,9 @@ def main(argv):
         out("oversized_state", reason=f"state plus longest question exceeds about {STATE_TOKEN_LIMIT} tokens")
 
     body = json.dumps({"state": state, "model": jev["model"], "questions": questions}).encode()
-    req = urllib.request.Request(jev["endpoint"], data=body, method="POST", headers={
-        "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    # No redirects: urllib would carry the Authorization header to whatever host a 3xx names.
-    opener = urllib.request.build_opener(NoRedirect)
+    timeout = jev["timeout_ms"] / 1000
     try:
-        with opener.open(req, timeout=jev["timeout_ms"] / 1000) as resp:
-            raw = resp.read()
+        raw = fetch(jev["endpoint"], body, key, timeout)
     except urllib.error.HTTPError as e:
         out("unavailable", reason=f"HTTP {e.code}")
     except (TimeoutError, socket.timeout):

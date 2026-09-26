@@ -32,10 +32,10 @@
         "properties": {
           "enabled": {"type": "bool", "doc": "Advisory only (ADR-0031 §6). Off by default."},
           "model": {"type": "string", "doc": "Pinned Jev model id (docs.typesafe.ai/models)."},
-          "endpoint": {"type": "string", "doc": "System One endpoint."},
+          "endpoint": {"type": "string", "pattern": "https?://.+", "doc": "System One endpoint, with scheme."},
           "key_env": {"type": "string", "doc": "Name of the environment variable that holds the API key. The key itself never goes into config."},
-          "timeout_ms": {"type": "int", "doc": "Network timeout for one plan check."},
-          "finding_threshold_pct": {"type": "int", "doc": "Probability, in percent, at which a Noul answer becomes an advisory finding. Uncalibrated."}
+          "timeout_ms": {"type": "int", "min": 1, "max": 60000, "doc": "Network timeout for one plan check."},
+          "finding_threshold_pct": {"type": "int", "min": 0, "max": 100, "doc": "Probability, in percent, at which a Noul answer becomes an advisory finding. Uncalibrated."}
         }
       },
       "codeburn": {
