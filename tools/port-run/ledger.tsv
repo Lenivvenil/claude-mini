@@ -96,29 +96,29 @@ bootstrap/hooks/posttooluse-format.sh	KEEP-HISTORY				p9	docs/history/bootstrap/
 bootstrap/hooks/pre-commit-governance.sh	MERGE	immediate feedback on a bad commit subject	plugin/scripts/commit-msg-check.sh	plugin/scripts/test-commit-msg-check.sh	p9	
 bootstrap/hooks/stop-hook.sh	MERGE	journal first, then snapshot; warning on unfilled snapshot fields; tests before handoff	plugin/skills/handoff/SKILL.md	plugin/skills/handoff/SKILL.md; plugin/skills/feature/SKILL.md step Verify	p9	
 bootstrap/scripts/README.md	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/README.md
-bootstrap/scripts/adr-retirement-audit.sh	MODERNISE				p7	
+bootstrap/scripts/adr-retirement-audit.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/adr-retirement-audit.sh
 bootstrap/scripts/cargo-mutants-to-sarif.py	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/cargo-mutants-to-sarif.py
-bootstrap/scripts/check-mcp-config.sh	MODERNISE				p7	
+bootstrap/scripts/check-mcp-config.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/check-mcp-config.sh
 bootstrap/scripts/filter-mypy-invalid.py	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/filter-mypy-invalid.py
 bootstrap/scripts/forge.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/forge.sh
-bootstrap/scripts/gate-audit-aggregate.sh	MODERNISE				p7	
-bootstrap/scripts/gate-audit-lib.sh	MODERNISE				p7	
+bootstrap/scripts/gate-audit-aggregate.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/gate-audit-aggregate.sh
+bootstrap/scripts/gate-audit-lib.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/gate-audit-lib.sh
 bootstrap/scripts/hedging-lint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/hedging-lint.sh
-bootstrap/scripts/mini-bootstrap-demo.sh	MERGE				p7	
-bootstrap/scripts/mini-bootstrap-project.sh	MERGE				p7	
+bootstrap/scripts/mini-bootstrap-demo.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mini-bootstrap-demo.sh
+bootstrap/scripts/mini-bootstrap-project.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mini-bootstrap-project.sh
 bootstrap/scripts/mini-health.sh	MERGE				p2	
 bootstrap/scripts/mini-preflight.sh	MERGE				p2	
-bootstrap/scripts/mini-session.sh	MERGE				p7	
+bootstrap/scripts/mini-session.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mini-session.sh
 bootstrap/scripts/mutation-summary.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mutation-summary.sh
 bootstrap/scripts/mutmut-to-sarif.py	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mutmut-to-sarif.py
 bootstrap/scripts/notify.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/notify.sh
 bootstrap/scripts/plan-lint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/plan-lint.sh
 bootstrap/scripts/review-codex.sh	MERGE	Codex second opinion over branch and uncommitted work	plugin/skills/codex-review/SKILL.md	plugin/skills/codex-review/SKILL.md	p9	
 bootstrap/scripts/sprint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/sprint.sh
-bootstrap/scripts/test-adr-retirement-audit.sh	MODERNISE				p7	
-bootstrap/scripts/test-check-mcp-config.sh	MODERNISE				p7	
+bootstrap/scripts/test-adr-retirement-audit.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-adr-retirement-audit.sh
+bootstrap/scripts/test-check-mcp-config.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-check-mcp-config.sh
 bootstrap/scripts/test-commit-msg-governance.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-commit-msg-governance.sh
-bootstrap/scripts/test-gate-audit.sh	MODERNISE				p7	
+bootstrap/scripts/test-gate-audit.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-gate-audit.sh
 bootstrap/scripts/test-governance-hook.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-governance-hook.sh
 bootstrap/scripts/test-hedging-lint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-hedging-lint.sh
 bootstrap/scripts/test-install-verification.sh	MERGE				p3	
@@ -128,38 +128,38 @@ bootstrap/scripts/test-posttooluse-hook.sh	KEEP-HISTORY				p9	docs/history/boots
 bootstrap/scripts/test-stop-hook.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-stop-hook.sh
 bootstrap/scripts/ticket-audit.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/ticket-audit.sh
 bootstrap/scripts/verify.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/verify.sh
-bootstrap/skills/adr-retirement-audit/SKILL.md	MODERNISE				p7	
+bootstrap/skills/adr-retirement-audit/SKILL.md	KEEP-HISTORY				p9	docs/history/bootstrap/skills/adr-retirement-audit/SKILL.md
 bootstrap/skills/audit-pass/SKILL.md	KEEP-HISTORY				p9	docs/history/bootstrap/skills/audit-pass/SKILL.md
 bootstrap/skills/backlog-review/SKILL.md	MODERNISE	backlog grooming entry: runs backlog-groomer, owner-authorized batches	plugin/skills/backlog-review/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p5	
 bootstrap/skills/domain-discovery/SKILL.md	MODERNISE	domain discovery interview; draft by domain-researcher	plugin/skills/domain-discovery/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p5	
-bootstrap/skills/gate-audit/SKILL.md	MODERNISE				p7	
-bootstrap/skills/project-bootstrap/SKILL.md	MODERNISE				p7	
+bootstrap/skills/gate-audit/SKILL.md	KEEP-HISTORY				p9	docs/history/bootstrap/skills/gate-audit/SKILL.md
+bootstrap/skills/project-bootstrap/SKILL.md	KEEP-HISTORY				p9	docs/history/bootstrap/skills/project-bootstrap/SKILL.md
 bootstrap/skills/project-health/SKILL.md	MODERNISE	read-only project health report with optional CodeBurn cost	plugin/skills/project-health/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p7	
-bootstrap/skills/project-health/scripts/collect-metrics.sh	MODERNISE				p7	
+bootstrap/skills/project-health/scripts/collect-metrics.sh	MERGE	review cycle, issue age and open ADR metrics via gh	plugin/skills/project-health/SKILL.md	plugin/skills/project-health/SKILL.md steps 1-3	p9	
 bootstrap/skills/qa/SKILL.md	MERGE	run the project's own tests and checks before the PR	plugin/skills/feature/SKILL.md	plugin/skills/feature/SKILL.md step Verify	p9	
 bootstrap/skills/qa/scripts/find-tests.sh	KEEP-HISTORY				p9	docs/history/bootstrap/skills/qa/scripts/find-tests.sh
 bootstrap/skills/review/SKILL.md	MERGE	critics chosen by what the change touches, plus Codex	plugin/skills/feature/SKILL.md	plugin/skills/feature/SKILL.md step Review	p9	
 bootstrap/skills/review/scripts/layer1-gate.sh	KEEP-HISTORY				p9	docs/history/bootstrap/skills/review/scripts/layer1-gate.sh
-bootstrap/templates/.eslintrc.json	MODERNISE				p7	
-bootstrap/templates/.jscpd.json	MODERNISE				p7	
-bootstrap/templates/.semgrep/hedging.yml	MODERNISE				p7	
-bootstrap/templates/.semgrep/llm-antipatterns.yaml	MODERNISE				p7	
-bootstrap/templates/.semgrep/tests/test_llm_commented_block.py	MODERNISE				p7	
-bootstrap/templates/.semgrep/tests/test_llm_todo_without_ticket.py	MODERNISE				p7	
-bootstrap/templates/AGENTS.md.template	MODERNISE				p7	
-bootstrap/templates/CLAUDE.md.template	MODERNISE				p7	
+bootstrap/templates/.eslintrc.json	KEEP-HISTORY				p9	docs/history/bootstrap/templates/.eslintrc.json
+bootstrap/templates/.jscpd.json	KEEP-HISTORY				p9	docs/history/bootstrap/templates/.jscpd.json
+bootstrap/templates/.semgrep/hedging.yml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/.semgrep/hedging.yml
+bootstrap/templates/.semgrep/llm-antipatterns.yaml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/.semgrep/llm-antipatterns.yaml
+bootstrap/templates/.semgrep/tests/test_llm_commented_block.py	KEEP-HISTORY				p9	docs/history/bootstrap/templates/.semgrep/tests/test_llm_commented_block.py
+bootstrap/templates/.semgrep/tests/test_llm_todo_without_ticket.py	KEEP-HISTORY				p9	docs/history/bootstrap/templates/.semgrep/tests/test_llm_todo_without_ticket.py
+bootstrap/templates/AGENTS.md.template	KEEP-HISTORY				p9	docs/history/bootstrap/templates/AGENTS.md.template
+bootstrap/templates/CLAUDE.md.template	KEEP-HISTORY				p9	docs/history/bootstrap/templates/CLAUDE.md.template
 bootstrap/templates/STATE.md.template	MODERNISE	session snapshot template	plugin/skills/handoff/templates/STATE.md	plugin/skills/handoff/SKILL.md reads it; claude plugin validate plugin --strict	p6	
 bootstrap/templates/adr-template.md	MODERNISE	MADR 4.0 template used by adr-author	plugin/skills/adr-author/templates/adr-template.md	plugin/skills/adr-author/SKILL.md Output; claude plugin validate plugin --strict	p7	
-bootstrap/templates/ci-go.yml	MODERNISE				p7	
-bootstrap/templates/ci-node.yml	MODERNISE				p7	
-bootstrap/templates/ci-python.yml	MODERNISE				p7	
-bootstrap/templates/codex-config.toml	MODERNISE				p7	
-bootstrap/templates/conftest.py	MODERNISE				p7	
-bootstrap/templates/mise.toml.template	MODERNISE				p7	
-bootstrap/templates/mutation.yml	MODERNISE				p7	
-bootstrap/templates/pr-template.md	MODERNISE				p7	
-bootstrap/templates/principles.md.template	MODERNISE				p7	
-bootstrap/templates/ruff.toml	MODERNISE				p7	
+bootstrap/templates/ci-go.yml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/ci-go.yml
+bootstrap/templates/ci-node.yml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/ci-node.yml
+bootstrap/templates/ci-python.yml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/ci-python.yml
+bootstrap/templates/codex-config.toml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/codex-config.toml
+bootstrap/templates/conftest.py	KEEP-HISTORY				p9	docs/history/bootstrap/templates/conftest.py
+bootstrap/templates/mise.toml.template	KEEP-HISTORY				p9	docs/history/bootstrap/templates/mise.toml.template
+bootstrap/templates/mutation.yml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/mutation.yml
+bootstrap/templates/pr-template.md	KEEP-HISTORY				p9	docs/history/bootstrap/templates/pr-template.md
+bootstrap/templates/principles.md.template	KEEP-HISTORY				p9	docs/history/bootstrap/templates/principles.md.template
+bootstrap/templates/ruff.toml	KEEP-HISTORY				p9	docs/history/bootstrap/templates/ruff.toml
 bootstrap/tests/fixtures/sprint-orchestrator/README.md	KEEP-HISTORY				p9	docs/history/bootstrap/tests/fixtures/sprint-orchestrator/README.md
 bootstrap/tests/ticket-audit/fixtures/happy.md	KEEP-HISTORY				p9	docs/history/bootstrap/tests/ticket-audit/fixtures/happy.md
 bootstrap/tests/ticket-audit/fixtures/no-non-goals.md	KEEP-HISTORY				p9	docs/history/bootstrap/tests/ticket-audit/fixtures/no-non-goals.md
