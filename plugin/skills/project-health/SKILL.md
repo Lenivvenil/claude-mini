@@ -9,7 +9,7 @@ description: Read-only health report for this project - pull request review time
 
 1. **Review time.** `gh pr list --state merged --limit 50 --json createdAt,mergedAt`. Median and 90th percentile from open to merge.
 2. **Issue age.** `gh issue list --state open --limit 500 --json number,createdAt,updatedAt`. Median age, 90th percentile, and the count with no activity for 60 days.
-3. **ADRs awaiting decision.** ADR files in `docs/decisions/` whose status is proposed or draft. Count and the oldest.
+3. **ADRs awaiting decision.** Open pull requests that add files under `docs/decisions/` (`gh pr list --state open --json number,title,createdAt,files`), plus ADR files on the current branch whose status is proposed or draft. Count and the oldest.
 4. **AI spend.** Only if `"${CLAUDE_PLUGIN_ROOT}/bin/config" get codeburn.enabled` prints `true`. Then run
 
    ```bash
