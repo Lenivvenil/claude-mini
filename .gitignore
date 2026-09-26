@@ -25,3 +25,6 @@ __pycache__/
 
 # claude plugin eval run output
 plugin/evals/results/
+
+# port run state, logs, worktrees, isolated config (docs/port/PLAN.md)
+.port-run/
