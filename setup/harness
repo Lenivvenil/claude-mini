@@ -30,6 +30,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 sys.dont_write_bytecode = True  # no __pycache__ next to the harness
@@ -585,9 +586,15 @@ def apply_project_item(t, item):
         code, tail = run_claude(argv, project)
         if code != 0:
             # undo what already succeeded, so a failed setup leaves nothing half-done
-            if not declared and argv[2] == "install" and known is False \
-                    and marketplace_in_use(mkt, project) is False:
-                run_claude(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"], project)
+            if not declared and argv[2] == "install":
+                if known is False and marketplace_in_use(mkt, project) is False:
+                    run_claude(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"], project)
+                else:
+                    try:
+                        undeclare_marketplace(t, mkt)
+                    except txn.TxnError as e:
+                        t.append(dict(base, state="failed", exit=code))
+                        return f"{item['id']}: `{' '.join(argv)}` exit {code}: {tail}; then {e}"
             restore_settings(t, dict(base, sha_before=before,
                                      backup=os.path.relpath(backup, project) if backup else None))
             t.append(dict(base, state="failed", exit=code))
@@ -693,7 +700,10 @@ def undo_plugin(t, item_id):
                 return None, f"{item_id}: `{' '.join(argv)}` exit {code}: {tail}"
         else:
             # Only this project's declaration goes; the machine-wide marketplace stays.
-            undeclare_marketplace(project, mkt)
+            try:
+                undeclare_marketplace(t, mkt)
+            except txn.TxnError as e:
+                return None, f"{item_id}: plugin disabled, but {e}"
             kept = (f"; marketplace {mkt} kept: " +
                     ("it was on this machine before setup" if started.get("marketplace_known_before")
                      else "another project uses it" if in_use
@@ -703,16 +713,17 @@ def undo_plugin(t, item_id):
     return True, f"{item_id}: disabled for this project{kept}"
 
 
-def undeclare_marketplace(project, mkt):
-    """Drop the marketplace from this project's local settings, as `marketplace remove` would there."""
-    data = read_settings_local(project)
+def undeclare_marketplace(t, mkt):
+    """Drop the marketplace from this project's local settings, as `marketplace remove` would there.
+    The path goes through t.contain (no symlinks), the new bytes through a fresh temp file."""
+    path = t.contain(SETTINGS_LOCAL)
+    data = read_settings_local(t.project)
     known = (data or {}).get("extraKnownMarketplaces")
     if not isinstance(known, dict) or mkt not in known:
         return
     del known[mkt]
-    path = os.path.join(project, SETTINGS_LOCAL)
-    tmp = path + ".claude-mini.tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=f".{os.path.basename(path)}.claude-mini-")
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)
         fh.write("\n")
     os.replace(tmp, path)

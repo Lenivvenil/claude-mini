@@ -485,6 +485,15 @@ rm -f "$STATE/claude.registry.json"
 pc=$(pproject alone)
 run apply --project "$pc"; run uninstall --project "$pc"
 is "$(mkts)" "-" "the only project removes the marketplace it added"
+pd=$(pproject shared-d); pe=$(pproject shared-e)
+run apply --project "$pd"
+touch "$STATE/claude.fail-install"
+run apply --project "$pe"
+rm -f "$STATE/claude.fail-install"
+is "$RC" 4 "a failed install next to a shared marketplace exits 4"
+is "$(find "$pe/.claude" -maxdepth 1 -name '*.local.json' | wc -l | tr -d ' ')" 0 "and leaves no marketplace declaration in the project"
+is "$(users)" "shared-d" "while the other project keeps its plugin"
+run uninstall --project "$pd"
 pc=$(pproject nolist)
 run apply --project "$pc"
 touch "$STATE/claude.fail-list"

@@ -183,7 +183,8 @@ then ok "Broken is empty ($r)"; else fail "report missing or Broken not empty"; 
 
 echo "(g) uninstall returns the project"
 python3 "$REPO/setup/harness" uninstall --project "$T/proj" > "$T/uninstall.out" 2>&1 || fail "uninstall exit $?"
-git -C "$T/proj" reset -q --hard "$(git -C "$T/proj" rev-list --max-parents=0 HEAD)"  # drop the commits from (b)
+# drop the commits from (b), history only: files uninstall left behind stay visible to the snapshot
+git -C "$T/proj" reset -q --soft "$(git -C "$T/proj" rev-list --max-parents=0 HEAD)"
 snapshot "$T/proj" "$T/proj.after"
 check "project files back to their bytes" "project files differ after uninstall" cmp -s "$T/proj.before" "$T/proj.after"
 check "exclude file restored" "exclude file differs" cmp -s "$T/exclude.before" "$T/proj/.git/info/exclude"
