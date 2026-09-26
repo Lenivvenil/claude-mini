@@ -219,22 +219,11 @@ bootstrap/
 </details>
 
 <details>
-<summary>AGENTS.md + CLAUDE.md — два файла, два читателя</summary>
+<summary>AGENTS.md — один файл для всех агентов</summary>
 
-```mermaid
-graph LR
-    A["AGENTS.md\nvendor-neutral"] --> Codex["Codex CLI"]
-    A --> Goose["Goose"]
-    A --> OC["opencode / Aider / Cursor"]
-    C["CLAUDE.md\n@AGENTS.md + специфика"] -- "разворачивает импорт" --> CC["Claude Code"]
-    A -.-> CC
-```
+**AGENTS.md** содержит структуру репо, правила и workflow для любого агента: Codex CLI, Goose, opencode, Aider, Cursor. Claude Code читает его сам, отдельный CLAUDE.md не нужен (проверено на 2.1.283).
 
-**AGENTS.md** содержит всё vendor-neutral: структуру репо, workflow-стадии, правила, governance hook, MCP-серверы. Написан в формате [AGENTS.md](https://aaif.ai/), совместимом с AAIF-стандартом.
-
-**CLAUDE.md** — тонкий stub. Начинается с `@AGENTS.md` и добавляет только то, что специфично для Claude Code: slash-команды, таблицу субагентов, advisor policy.
-
-**Если нужно мигрировать на другой инструмент:** большая часть pipeline переносится без усилий. Подробности — `docs/runbooks/vendor-migration.md`.
+**Если нужно мигрировать на другой инструмент:** подробности — `docs/runbooks/vendor-migration.md`.
 
 </details>
 

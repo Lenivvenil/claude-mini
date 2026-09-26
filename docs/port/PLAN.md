@@ -73,6 +73,8 @@
   - degrade gracefully without Codex, Jev, CodeBurn or network.
 - **Every failure found in use becomes a test or eval case,** in the PR that fixes it.
 
+- **No CLAUDE.md.** Claude Code 2.1.283 loads AGENTS.md by itself (probe 2026-09-26: AGENTS.md-only project, file tools disallowed, zero tool calls, the file's codeword returned). The repository has no CLAUDE.md, and the project layer never creates one.
+
 ## 3. Phases (one branch `port/p<N>-<slug>`, one PR, one issue each)
 Every PR runs `claude plugin validate plugin --strict`, and passes today. From P2 on, it also runs `tests/setup/run.sh`. From P3 on, it also runs `tests/acceptance/deploy-bare.sh` (mode A).
 

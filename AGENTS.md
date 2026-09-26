@@ -1,26 +1,6 @@
 # AGENTS.md — claude-mini
 
-> Этот файл читается любым AI-агентом: Claude Code, Codex CLI, Goose, opencode, Aider, Cursor и другими.
-> Он содержит только то, что работает независимо от инструмента.
-> Claude Code-специфика (slash-команды, subagents, advisor) — в `CLAUDE.md`.
-
-## Кто читает что
-
-```mermaid
-graph LR
-    A["AGENTS.md\n(этот файл)\nvendor-neutral"]
-    C["CLAUDE.md\nClaude Code stub\n@AGENTS.md + специфика"]
-
-    A --> Codex["Codex CLI"]
-    A --> Goose["Goose"]
-    A --> OC["opencode"]
-    A --> Aider["Aider / Cursor"]
-    C -- "разворачивает @AGENTS.md\nи добавляет свою специфику" --> CC["Claude Code"]
-    A -.-> CC
-```
-
-Если твой инструмент не понимает `@`-импорты — прочти этот файл напрямую.
-Если понимает — `CLAUDE.md` уже включает его содержимое автоматически.
+> Инструкции для любого агента: Claude Code (читает этот файл сам, CLAUDE.md не нужен), Codex CLI, Goose, opencode, Aider, Cursor.
 
 ---
 

@@ -69,7 +69,7 @@ path	verdict	capability	entry_point	evidence	phase	archive_dest
 .semgrep/hedging.yml	KEEP				-	
 .semgrepignore	KEEP				-	
 AGENTS.md	MODERNISE				p9	
-CLAUDE.md	MODERNISE				p9	
+CLAUDE.md	MERGE	project instructions reach Claude Code	AGENTS.md	probe 2026-09-26, Claude Code 2.1.283: project with AGENTS.md only, file tools disallowed, zero tool calls in stream-json, codeword returned; empty project returns NONE	p9	
 DEPLOY.md	KEEP				p0	
 LICENSE	KEEP				-	
 README.md	MODERNISE				p9	
