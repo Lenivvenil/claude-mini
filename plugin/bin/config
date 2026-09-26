@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""claude-mini config (ADR-0031 §4, #312). Python standard library only.
+
+Usage:
+  config validate [FILE]            validate FILE (default: the effective config) against the schema
+  config effective [--project DIR]  print defaults deep-merged with DIR/.claude/claude-mini.json
+  config get KEY [--project DIR]    print one value (dotted key); arrays one item per line
+
+Defaults: plugin/config/defaults.json. Override: <project>/.claude/claude-mini.json, where the
+project is --project, else the git top level of the current directory, else the current directory.
+Merge: objects deep-merge, everything else (arrays included) is replaced by the override.
+Exit: 0 ok · 1 invalid config or unknown key · 2 usage error.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCHEMA = os.path.join(PLUGIN, "config", "schema.json")
+DEFAULTS = os.path.join(PLUGIN, "config", "defaults.json")
+OVERRIDE = os.path.join(".claude", "claude-mini.json")
+
+
+class ConfigError(Exception):
+    pass
+
+
+def load(path):
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except OSError as e:
+        raise ConfigError(f"{path}: cannot read ({e.strerror})") from None
+    except ValueError as e:
+        raise ConfigError(f"{path}: not valid JSON ({e})") from None
+
+
+def check(node, value, where, errors, partial):
+    t = node["type"]
+    if t == "object":
+        if not isinstance(value, dict):
+            errors.append(f"{where}: expected object")
+            return
+        props = node.get("properties", {})
+        for key in value:
+            if key not in props:
+                errors.append(f"{where}.{key}: unknown key" if where else f"{key}: unknown key")
+        if not partial:
+            for key in node.get("required", []):
+                if key not in value:
+                    errors.append(f"{where}.{key}: required" if where else f"{key}: required")
+        for key, sub in value.items():
+            if key in props:
+                check(props[key], sub, f"{where}.{key}" if where else key, errors, partial)
+    elif t == "array":
+        if not isinstance(value, list):
+            errors.append(f"{where}: expected array")
+            return
+        if len(value) < node.get("min_items", 0):
+            errors.append(f"{where}: needs at least {node['min_items']} item(s)")
+        for i, item in enumerate(value):
+            check(node["items"], item, f"{where}[{i}]", errors, partial)
+    elif t == "string":
+        if not isinstance(value, str):
+            errors.append(f"{where}: expected string")
+        elif "pattern" in node and not re.fullmatch(node["pattern"], value):
+            errors.append(f"{where}: {value!r} does not match {node['pattern']!r}")
+    elif t == "int":
+        if isinstance(value, bool) or not isinstance(value, int):
+            errors.append(f"{where}: expected int")
+    elif t == "bool":
+        if not isinstance(value, bool):
+            errors.append(f"{where}: expected bool")
+    elif t == "enum":
+        if value not in node["values"]:
+            errors.append(f"{where}: {value!r} not in {node['values']}")
+    else:
+        errors.append(f"{where}: schema has unknown node type {t!r}")
+
+
+def validate(data, label, partial=False):
+    schema = load(SCHEMA)
+    errors = []
+    check(schema["root"], data, "", errors, partial)
+    if "schema_version" in data and data["schema_version"] != schema["schema_version"]:
+        errors.append(f"schema_version {data['schema_version']} != plugin schema {schema['schema_version']}:"
+                      " migrate the override to the plugin's schema")
+    if errors:
+        raise ConfigError(f"{label}:\n  " + "\n  ".join(errors))
+
+
+def merge(base, over):
+    if isinstance(base, dict) and isinstance(over, dict):
+        out = dict(base)
+        for k, v in over.items():
+            out[k] = merge(base[k], v) if k in base else v
+        return out
+    return over
+
+
+def project_root(explicit):
+    if explicit:
+        return explicit
+    try:
+        return subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True,
+                              text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return os.getcwd()
+
+
+def effective(project):
+    data = load(DEFAULTS)
+    validate(data, DEFAULTS)
+    path = os.path.join(project_root(project), OVERRIDE)
+    if os.path.exists(path):
+        over = load(path)
+        validate(over, path, partial=True)
+        data = merge(data, over)
+        validate(data, "effective config")
+    return data
+
+
+def get(data, key):
+    cur = data
+    for part in key.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            raise ConfigError(f"{key}: unknown key")
+        cur = cur[part]
+    return cur
+
+
+def main(argv):
+    args = list(argv)
+    project = None
+    if "--project" in args:
+        i = args.index("--project")
+        if i + 1 >= len(args):
+            print("config: --project needs a directory", file=sys.stderr)
+            return 2
+        project = args[i + 1]
+        del args[i:i + 2]
+    if not args or args[0] not in ("validate", "effective", "get"):
+        print(__doc__.strip().split("\n\n")[1], file=sys.stderr)
+        return 2
+    try:
+        if args[0] == "validate":
+            if len(args) > 1:
+                data = load(args[1])
+                # the defaults file must be complete; any other file is an override
+                validate(data, args[1], partial=os.path.abspath(args[1]) != os.path.abspath(DEFAULTS))
+            else:
+                effective(project)
+            print("config: valid")
+        elif args[0] == "effective":
+            print(json.dumps(effective(project), indent=2, ensure_ascii=False))
+        else:
+            if len(args) != 2:
+                print("config: get needs exactly one key", file=sys.stderr)
+                return 2
+            value = get(effective(project), args[1])
+            if isinstance(value, list):
+                print("\n".join(str(v) for v in value))
+            elif isinstance(value, bool):
+                print("true" if value else "false")
+            elif isinstance(value, dict):
+                print(json.dumps(value, ensure_ascii=False))
+            else:
+                print(value)
+    except ConfigError as e:
+        print(f"config: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

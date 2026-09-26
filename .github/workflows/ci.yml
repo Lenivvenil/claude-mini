@@ -104,6 +104,8 @@ jobs:
         run: bash tools/port-run/ledger-check.sh
       - name: No hardcoded config values
         run: bash tests/lint/no-hardcode.sh
+      - name: Config contract (validator, merge, hook reads config)
+        run: bash tests/config/run.sh
 
   plugin-validate:
     runs-on: ubuntu-latest

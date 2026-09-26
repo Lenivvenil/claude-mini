@@ -30,7 +30,7 @@ claude plugin install claude-mini@claude-mini --scope local # только эт�
 | `/claude-mini:codex-review [base]` | второе мнение `codex review --base`; модель — из `~/.codex/config.toml` |
 | агенты | `adversarial-critic`, `security-reviewer`, `adr-reviewer` — только чтение |
 
-Версии моделей не закреплены: агенты указывают псевдонимы `sonnet`/`opus`, которые Claude Code сам разрешает в текущие версии; Codex берёт модель из `~/.codex/config.toml`.
+Модели не закреплены: агенты наследуют модель сессии (`model: inherit`), Codex берёт модель из `~/.codex/config.toml`. Настройки харнесса — `plugin/config/defaults.json`, допустимые ключи — `plugin/config/schema.json`. Проект переопределяет только нужное в `.claude/claude-mini.json`, например `{"schema_version": 1, "commit": {"types": ["feat", "fix", "docs"]}}`; неизвестный ключ — ошибка. Проверка — `plugin/bin/config validate .claude/claude-mini.json`, итог слияния — `plugin/bin/config effective`.
 Плагин живёт в `plugin/`, каталог-маркетплейс — `.claude-plugin/marketplace.json` в корне. Проверка: `claude plugin validate plugin`; поведение — `cd plugin && claude plugin eval . --scaffold --allow-tools "Bash(git diff:*)"` (кейсы в `plugin/evals/`). Установка копирует плагин в кеш: после правок — `claude plugin uninstall` и `install` заново.
 
 Установка v1 ниже остаётся до переноса остального и удаления installer'а.

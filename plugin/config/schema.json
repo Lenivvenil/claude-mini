@@ -1,0 +1,57 @@
+{
+  "$comment": "claude-mini config schema (ADR-0031 §4). A deliberately small typed subset, not JSON Schema: node types object|string|int|bool|array|enum; object nodes list 'properties' and 'required'; array nodes give 'items' and optional 'min_items'; string nodes may give 'pattern' (Python regex, whole value); enum nodes give 'values'. Unknown keys are rejected. Validated by plugin/bin/config.",
+  "schema_version": 1,
+  "root": {
+    "type": "object",
+    "required": ["schema_version"],
+    "properties": {
+      "schema_version": {"type": "int", "doc": "Must equal the plugin's schema_version."},
+      "git": {
+        "type": "object",
+        "properties": {
+          "base_branch": {"type": "string", "doc": "Branch reviews and diffs compare against."}
+        }
+      },
+      "commit": {
+        "type": "object",
+        "properties": {
+          "types": {"type": "array", "min_items": 1, "items": {"type": "string", "pattern": "[a-z][a-z0-9-]*"}, "doc": "Allowed Conventional Commits types; plain words, matched literally."},
+          "scope_pattern": {"type": "string", "doc": "ERE for the optional (scope), without parentheses."},
+          "skip_prefixes": {"type": "array", "items": {"type": "string", "pattern": ".+"}, "doc": "Subjects starting with these are not checked (git autosquash markers)."}
+        }
+      },
+      "codex": {
+        "type": "object",
+        "properties": {
+          "enabled": {"type": "bool"},
+          "modes": {"type": "array", "items": {"type": "enum", "values": ["base", "uncommitted"]}}
+        }
+      },
+      "jev": {
+        "type": "object",
+        "properties": {
+          "enabled": {"type": "bool", "doc": "Advisory only (ADR-0031 §6). Off by default."}
+        }
+      },
+      "codeburn": {
+        "type": "object",
+        "properties": {
+          "enabled": {"type": "bool"},
+          "version": {"type": "string", "doc": "Pinned npm version run via npx; never installed globally."}
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "language": {"type": "string", "doc": "Language for reports shown to the user, e.g. en, ru."}
+        }
+      },
+      "paths": {
+        "type": "object",
+        "properties": {
+          "run_dir": {"type": "string", "doc": "Project-relative directory for harness state, reports and backups."}
+        }
+      }
+    }
+  }
+}

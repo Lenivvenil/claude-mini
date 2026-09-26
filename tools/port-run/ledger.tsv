@@ -223,6 +223,9 @@ plugin/.claude-plugin/plugin.json	KEEP				-
 plugin/agents/adr-reviewer.md	KEEP				-	
 plugin/agents/adversarial-critic.md	KEEP				-	
 plugin/agents/security-reviewer.md	KEEP				-	
+plugin/bin/config	KEEP				p1	
+plugin/config/defaults.json	KEEP				p1	
+plugin/config/schema.json	KEEP				p1	
 plugin/evals/worktree-hook-mismatch/case.yaml	KEEP				-	
 plugin/evals/worktree-hook-mismatch/graders/finds-mismatch.md	KEEP				-	
 plugin/evals/worktree-hook-mismatch/graders/used-critic.md	KEEP				-	
@@ -240,6 +243,7 @@ scripts/lint-prompts.sh	MODERNISE				p9
 scripts/sweep-worktree.sh	MODERNISE				p9	
 session-log/2026/05/2026-05-03.md	KEEP-HISTORY				p9	docs/history/session-log/2026/05/2026-05-03.md
 tests/acceptance/deploy-bare.sh	KEEP				p0	
+tests/config/run.sh	KEEP				p1	
 tests/lint/no-hardcode.allow	KEEP				p0	
 tests/lint/no-hardcode.sh	KEEP				p0	
 tests/plugin-scope/no-plugin-no-writes.sh	KEEP				p0	

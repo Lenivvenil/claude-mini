@@ -5,7 +5,9 @@ Input: env CMD (the command), CWD (the session's working directory).
 Output, one line per commit invocation found, in order:
     ALLOW                      no subject to check (reuse / fixup / squash / amend / dry run)
     NOMSG                      no message source: git would open an editor
-    SUBJECT<TAB><subject>      first line of the first message source
+    SUBJECT<TAB><dir><TAB><subject>  first line of the first message source; <dir> is the
+                               effective directory of that commit (cd, subshell, git -C)
+    BADDIR                     that directory contains a tab or newline (hook denies)
 Nothing is printed when the command runs no `git ... commit`.
 
 Top-level heredoc bodies are cut out before tokenising (they are data, not commands)
@@ -180,11 +182,19 @@ def main():
                     dir_stack.append(cur_dir)
                 elif c == ")" and dir_stack:
                     cur_dir = dir_stack.pop()
-        if t == "cd" and i + 1 < len(toks) and not is_sep(toks[i + 1]) and toks[i + 1] != "-":
-            target = os.path.expanduser(toks[i + 1])
-            cur_dir = target if os.path.isabs(target) else os.path.normpath(os.path.join(cur_dir, target))
-            i += 2
-            continue
+        if t == "cd":
+            # cd [-L|-P|-e|-@]... [--] DIR; `cd -` and a bare `cd` leave cur_dir unknown to us,
+            # so they keep it (the hook then checks that the directory exists)
+            k = i + 1
+            while k < len(toks) and toks[k] in ("-L", "-P", "-e", "-@", "-LP", "-PL"):
+                k += 1
+            if k < len(toks) and toks[k] == "--":
+                k += 1
+            if k < len(toks) and not is_sep(toks[k]) and toks[k] != "-":
+                target = os.path.expanduser(toks[k])
+                cur_dir = target if os.path.isabs(target) else os.path.normpath(os.path.join(cur_dir, target))
+                i = k + 1
+                continue
         if t != "git":
             i += 1
             continue
@@ -213,7 +223,13 @@ def main():
                 continue
             args.append(toks[k])
             k += 1
-        print(analyse(args, git_dir, body))
+        verdict = analyse(args, git_dir, body)
+        if verdict.startswith("SUBJECT\t"):
+            if "\t" in git_dir or "\n" in git_dir:
+                verdict = "BADDIR"
+            else:
+                verdict = "SUBJECT\t" + git_dir + "\t" + verdict[len("SUBJECT\t"):]
+        print(verdict)
         i = k
     return 0
 
