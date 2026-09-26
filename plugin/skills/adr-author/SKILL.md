@@ -75,7 +75,7 @@ Ask:
 
 ## Output
 
-Write `docs/decisions/NNNN-<slug>.md` filling in `docs/decisions/adr-template.md`. NNNN from `scripts/next_adr_number.sh`.
+Write `docs/decisions/NNNN-<slug>.md` from the project's `docs/decisions/adr-template.md` if it has one, else from `${CLAUDE_PLUGIN_ROOT}/skills/adr-author/templates/adr-template.md`. NNNN from `${CLAUDE_PLUGIN_ROOT}/skills/adr-author/scripts/next_adr_number.sh`.
 
 ## Hand-off
 

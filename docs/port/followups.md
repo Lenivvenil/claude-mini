@@ -93,3 +93,15 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: `bootstrap/commands/feature.md` became the plugin skill `feature`, so `universal-setup.sh --target` stops copying a `/feature` command into projects. The plugin skill replaces it where the plugin is enabled. Board status transitions with fixed project IDs were dropped with it; `tracker.*` config is not built.
 - Proposed fix: none while the plugin is the delivery path; P9 removes the v1 installer.
+
+## `npx` writes its package cache outside the project
+- Source: P7, PR for #318
+- Severity: P2
+- What: `project-health` runs CodeBurn with `npx -y codeburn@<pin>`. npx keeps the package in the npm cache under the home directory, which the closed list of ADR-0031 §3 does not name. It happens only when `codeburn.enabled` is true and the report runs, and npm uses the registry from the user's own npm config.
+- Proposed fix: the owner decides whether the npm cache joins the closed list next to `~/.cache/codeburn`, or CodeBurn runs with `npm_config_cache` inside the run directory.
+
+## Run driver cost by PR
+- Source: P7
+- Severity: P3
+- What: PLAN §7 planned per-PR cost from `codeburn --by-pr`. CodeBurn 0.9.25 `report` has no such flag, and the run driver was removed on 2026-09-26.
+- Proposed fix: none needed now. If per-PR cost is wanted, filter `report --format json` by date range of the PR.

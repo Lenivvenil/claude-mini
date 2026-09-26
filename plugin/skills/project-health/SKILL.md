@@ -1,72 +1,28 @@
 ---
 name: project-health
-description: Weekly project health report with four metrics: review cycle time, open-issue age, open ADRs, and dependency age. Writes docs/metrics/health-YYYY-WW.md. Use when asked to "run project health", "generate health report", or "weekly health check". Requires gh CLI and an active GitHub repository.
+description: Read-only health report for this project - pull request review time, open-issue age, ADRs awaiting decision, and AI spend from CodeBurn when enabled. Use for "project health", "метрики проекта", "сколько мы тратим".
 ---
 
 # Project health skill
 
-## When to invoke
-
-- "run project health", "generate health report", "weekly health check"
-- "еженедельный health отчёт", "метрики проекта"
-- Weekly (out-of-band from feature pipeline)
-
-## Prerequisites
-
-- Authenticated `gh` CLI
-- Active GitHub repository with issues and PRs
-- `docs/metrics/` directory (created if absent)
-
 ## Steps
 
-Current week: `date +%Y-W%V`
+1. **Review time.** `gh pr list --state merged --limit 50 --json createdAt,mergedAt`. Median and 90th percentile from open to merge.
+2. **Issue age.** `gh issue list --state open --limit 500 --json number,createdAt,updatedAt`. Median age, 90th percentile, and the count with no activity for 60 days.
+3. **ADRs awaiting decision.** ADR files in `docs/decisions/` whose status is proposed or draft. Count and the oldest.
+4. **AI spend.** Only if `"${CLAUDE_PLUGIN_ROOT}/bin/config" get codeburn.enabled` prints `true`. Then run
 
-Collect raw data for metrics 1–3 using the bundled script:
-```bash
-bash ~/.claude/skills/project-health/scripts/collect-metrics.sh
-```
-If the script is unavailable, run the three `gh` queries inline (see script source). Metric #4 (dependency age) is always done inline — it requires local file reads and an optional Dependabot API call that the script does not perform.
+   ```bash
+   npx -y codeburn@<codeburn.version> report --project "$(git rev-parse --show-toplevel)" -p 30days --format json
+   ```
 
-### 1. Review cycle time (PR open → merge)
-
-From the `review_cycle` field in the script output: compute median, P90, and trend vs prior week if `docs/metrics/health-*.md` files exist.
-
-### 2. Open-issue age distribution
-
-From the `issue_age` field: compute median, P90, count > 60 days.
-
-### 3. Open ADRs awaiting decision
-
-From the `open_adrs` field: count, oldest open.
-
-### 4. Dependency age (if applicable)
-
-Check `package.json`, `pyproject.toml`, `go.mod` — last update. Pair with Dependabot alerts from `gh api repos/:owner/:repo/dependabot/alerts` if available.
+   with the version from `"${CLAUDE_PLUGIN_ROOT}/bin/config" get codeburn.version`. Report cost, sessions, top models and cost per session for this project. If Node or CodeBurn is unavailable, write "AI spend: not available" with the reason.
 
 ## Output
 
-Written to `docs/metrics/health-YYYY-WW.md`:
-
-```markdown
-# Project health — YYYY, week WW
-
-## Summary
-- Review cycle median: {X}h
-- Open issues P90 age: {X} days
-- Open ADRs: {N} (oldest: #{M}, {X} days)
-- Dependency age flag: {Y/N}
-
-## Threshold breaches
-- [ ] {metric} exceeded {threshold}
-
-## Details
-{per-metric breakdown}
-
-## Actions
-- {concrete next step per breach}
-```
+A short report in chat, one section per metric, `N/A` with the reason where data is missing. Save it to a file only if the owner asks, where the owner says.
 
 ## Hard rules
 
-- Do NOT write synthetic numbers for "looks good" reports. If data is insufficient, write `N/A` and say why.
-- DO write N/A honestly for young repos — no CI yet is not a failure, it's a known gap.
+- Read only. Of CodeBurn, run only `report`. Never `optimize --apply`, `guard`, `act` or `mcp` from this skill: they change `~/.claude` or settings.
+- No invented numbers. Missing data is `N/A` with the reason.
