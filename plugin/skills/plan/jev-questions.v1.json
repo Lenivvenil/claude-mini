@@ -9,7 +9,7 @@
   },
   "adr_claim_unsupported": {
     "type": "noul",
-    "instructions": "Does the plan claim that an ADR or project rule supports a choice, while the quoted or cited text does not say so?",
+    "instructions": "Does the plan claim that an ADR or project rule supports a choice, while the sentence the plan quotes from it does not say so?",
     "criteria": {
       "true": "A cited ADR or rule does not support the claim made about it",
       "false": "Every cited ADR or rule supports the claim, or none is cited"

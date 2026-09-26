@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """jev-check — advisory plan check by Jev (TypeSafe System One). Never blocks anything.
 
-Usage: jev-check PLAN_FILE [ISSUE_FILE] [--project DIR]
+Usage: jev-check PLAN_FILE [ISSUE_FILE|-] [--project DIR]    (- reads the issue from stdin)
 
 Prints one JSON object: {"status": ..., "findings": [...], ...}. Exit 0 whatever the status, so the
 caller always goes on. Status is one of: ok, disabled, unavailable, timeout, invalid_response,
@@ -28,6 +28,11 @@ QUESTIONS = os.path.join(HERE, "..", "skills", "plan", "jev-questions.v1.json")
 # conservative estimate for English text; the check refuses before sending rather than truncating.
 STATE_TOKEN_LIMIT = 32000
 BYTES_PER_TOKEN = 4
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # urllib then raises HTTPError with the 3xx code
 
 
 def out(status, **extra):
@@ -59,14 +64,16 @@ def main(argv):
     jev = effective_config(project).get("jev", {})
     if not jev.get("enabled"):
         out("disabled")
-    key = os.environ.get(jev.get("key_env", ""), "")
+    key = os.environ.get(jev.get("key_env", ""), "").strip()
     if not key:
         out("unavailable", reason=f"no key in ${jev.get('key_env', '')}")
+    if not key.isprintable() or " " in key:
+        out("unavailable", reason=f"key in ${jev.get('key_env', '')} is malformed")
 
     try:
         state = {"plan": open(argv[0], encoding="utf-8").read()}
         if len(argv) == 2:
-            state["issue"] = open(argv[1], encoding="utf-8").read()
+            state["issue"] = sys.stdin.read() if argv[1] == "-" else open(argv[1], encoding="utf-8").read()
     except OSError as e:
         out("unavailable", reason=f"cannot read input: {e.strerror}")
     with open(QUESTIONS, encoding="utf-8") as f:
@@ -79,8 +86,10 @@ def main(argv):
     body = json.dumps({"state": state, "model": jev["model"], "questions": questions}).encode()
     req = urllib.request.Request(jev["endpoint"], data=body, method="POST", headers={
         "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    # No redirects: urllib would carry the Authorization header to whatever host a 3xx names.
+    opener = urllib.request.build_opener(NoRedirect)
     try:
-        with urllib.request.urlopen(req, timeout=jev["timeout_ms"] / 1000) as resp:
+        with opener.open(req, timeout=jev["timeout_ms"] / 1000) as resp:
             raw = resp.read()
     except urllib.error.HTTPError as e:
         out("unavailable", reason=f"HTTP {e.code}")
@@ -89,7 +98,10 @@ def main(argv):
     except urllib.error.URLError as e:
         if isinstance(e.reason, (TimeoutError, socket.timeout)):
             out("timeout", reason=f"no answer within {jev['timeout_ms']} ms")
-        out("unavailable", reason=f"network: {e.reason}")
+        out("unavailable", reason="network error")
+    except Exception as e:  # noqa: BLE001 — any transport failure is advice-unavailable
+        # Only the class name: some exception messages quote the request headers, key included.
+        out("unavailable", reason=f"transport: {type(e).__name__}")
 
     try:
         data = json.loads(raw)

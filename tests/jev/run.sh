@@ -9,7 +9,8 @@ BASE="${PORT_RUN_TMP:-$REPO/.port-run/tmp}"
 mkdir -p "$BASE"
 T=$(mktemp -d "$BASE/jev.XXXXXX")
 STUB_PID=""
-trap '[ -n "$STUB_PID" ] && { kill "$STUB_PID"; wait "$STUB_PID"; } 2>/dev/null; rm -rf "$T"' EXIT
+TRAP_PID=""
+trap 'for p in $STUB_PID $TRAP_PID; do { kill "$p"; wait "$p"; } 2>/dev/null; done; rm -rf "$T"' EXIT
 FAIL=0
 ok() { echo "  ok   $*"; }
 fail() { echo "  FAIL $*"; FAIL=$((FAIL + 1)); }
@@ -18,7 +19,8 @@ is() {  # is <got> <want> <label>
 }
 status() { printf '%s' "$1" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' 2>/dev/null || echo "not-json"; }
 
-# The stub answers by mode file: ok | high | outofrange | sleep | garbage | http401. It records the last
+# The stub answers by mode file: ok | high | outofrange | sleep | garbage | http401 | redirect |
+# disconnect. It records the last
 # Authorization header it saw, so the test can check the key went to the server and nowhere else.
 cat > "$T/stub.py" <<'PY'
 import http.server, json, sys, time, os
@@ -30,6 +32,10 @@ class H(http.server.BaseHTTPRequestHandler):
         open(os.path.join(d, "auth"), "w").write(self.headers.get("Authorization", ""))
         open(os.path.join(d, "request.json"), "w").write(json.dumps(body))
         mode = open(os.path.join(d, "mode")).read().strip()
+        if mode == "redirect":
+            self.send_response(302); self.send_header("Location", open(os.path.join(d, "trap_url")).read()); self.end_headers(); return
+        if mode == "disconnect":
+            self.close_connection = True; self.connection.shutdown(2); return
         if mode == "sleep":
             time.sleep(6)
         if mode == "http401":
@@ -49,6 +55,23 @@ PY
 python3 "$T/stub.py" "$T" & STUB_PID=$!
 for _ in $(seq 1 50); do [ -s "$T/port" ] && break; sleep 0.1; done
 PORT=$(cat "$T/port")
+# A second server stands in for a foreign host a redirect points at; it records any header it gets.
+mkdir -p "$T/trap"
+python3 -c '
+import http.server, os, sys
+d = sys.argv[1]
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self): self._r()
+    def do_GET(self): self._r()
+    def _r(self):
+        open(os.path.join(d, "auth"), "w").write(self.headers.get("Authorization", "none"))
+        self.send_response(200); self.end_headers()
+s = http.server.HTTPServer(("127.0.0.1", 0), H)
+open(os.path.join(d, "port"), "w").write(str(s.server_port))
+s.serve_forever()' "$T/trap" & TRAP_PID=$!
+for _ in $(seq 1 50); do [ -s "$T/trap/port" ] && break; sleep 0.1; done
+printf 'http://localhost:%s/steal' "$(cat "$T/trap/port")" > "$T/trap_url"
 
 proj() {  # proj <name> <jev-override-json>
     mkdir -p "$T/$1/.claude" && git -C "$T/$1" init -q
@@ -86,6 +109,23 @@ is "$(status "$(JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" --project "$p")")" invalid
 
 echo http401 > "$T/mode"
 is "$(status "$(JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" --project "$p")")" unavailable "HTTP 401 → unavailable"
+
+echo redirect > "$T/mode"
+is "$(status "$(JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" --project "$p")")" unavailable "redirect → unavailable"
+if [ -e "$T/trap/auth" ]; then fail "redirect was followed (trap saw: $(cat "$T/trap/auth" | cut -c1-12)...)"; else ok "redirect not followed, key stays with the endpoint"; fi
+
+echo disconnect > "$T/mode"
+o=$(JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" --project "$p" 2>"$T/err")
+is "$(status "$o")" unavailable "dropped connection → unavailable JSON"
+if [ -s "$T/err" ]; then fail "dropped connection wrote to stderr"; else ok "dropped connection: no traceback"; fi
+
+echo ok > "$T/mode"
+o=$(JEV_TEST_KEY="$(printf 'abc\ndef-%s' "$KEY")" "$JEV" "$T/plan.md" --project "$p" 2>"$T/err")
+is "$(status "$o")" unavailable "key with an embedded newline → unavailable"
+if grep -qF "$KEY" "$T/err" || printf '%s' "$o" | grep -qF "$KEY"; then fail "malformed key leaked"; else ok "malformed key not in output"; fi
+
+printf 'AC: the export includes totals\n' | JEV_TEST_KEY=$KEY "$JEV" "$T/plan.md" - --project "$p" >/dev/null
+is "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["state"].get("issue", "").strip())' "$T/request.json")" "AC: the export includes totals" "issue from stdin goes into the state"
 
 echo sleep > "$T/mode"
 start=$(python3 -c 'import time; print(time.time())')
