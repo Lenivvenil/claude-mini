@@ -63,3 +63,9 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: ADR-0031 п. 9 makes a hook in `.git/hooks` an optional project item, off by default, for commits made by people. P3 does not build it: the plugin hook already checks every commit made from Claude, and no request for checking human commits exists yet.
 - Proposed fix: add a `git-hook` project item when a project asks for it; it installs a `commit-msg` hook that calls the plugin's check, through the same txn primitive.
+
+## A plugin entry that was false before setup is not restored
+- Source: P3, Codex review
+- Severity: P2
+- What: if `.claude/settings.local.json` already had `enabledPlugins["claude-mini@claude-mini"] = false`, apply enables it and Claude Code's uninstall removes the entry, so the file no longer equals the original and setup leaves it (reported as disabled, bytes differ).
+- Proposed fix: restore the owned keys to their original values, not only the whole file when nothing else changed.

@@ -90,6 +90,7 @@ elif a[:2] == ["plugin", "install"]:
     if a[2].split("@")[1] not in d.get("extraKnownMarketplaces", {}): sys.exit(1)
     d.setdefault("enabledPlugins", {})[a[2]] = True
 elif a[:2] == ["plugin", "uninstall"]:
+    if os.path.exists("$STATE/claude.fail-uninstall"): sys.exit(1)
     d.setdefault("enabledPlugins", {}).pop(a[2], None)
 elif a[:3] == ["plugin", "marketplace", "remove"]:
     d.setdefault("extraKnownMarketplaces", {}).pop(a[3], None)
@@ -130,8 +131,8 @@ for d, dirs, files in os.walk(root):
 print(h.hexdigest())
 PYEOF
 }
-run() {  # run <args...> ; sets OUT and RC
-    OUT=$(cd "$T" && env -i PATH="$SHIM" HOME="$T/home" "$PY" "$H" "$@" 2>&1); RC=$?
+run() {  # run <args...> ; sets OUT and RC (FAULT=<point> injects a crash, see setup/lib/txn.py)
+    OUT=$(cd "$T" && env -i PATH="$SHIM" HOME="$T/home" ${FAULT:+CLAUDE_MINI_SETUP_FAULT=$FAULT} "$PY" "$H" "$@" 2>&1); RC=$?
 }
 
 # T4 watch list: a sibling project and the files setup must never touch.
@@ -257,7 +258,7 @@ fake node; echo 22.14.0 > "$STATE/node.ver"
 
 echo "interrupted install is reconciled"
 p=$(project interrupted)
-mkdir -p "$p/.claude/claude-mini"
+mkdir -p "$p/.claude/claude-mini" && : > "$p/.claude/claude-mini/.claude-mini-run"
 mgr=brew; [ "$(uname)" = Linux ] && mgr=apt
 printf '{"op":"install","item":"jq","path":null,"manager":"%s","package":"jq","state":"started","present_before":false}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
 run apply --project "$p"
@@ -266,7 +267,7 @@ has "$OUT" "closed as done" "the report names the reconciliation"
 run uninstall --project "$p"
 has "$OUT" "harness uninstall --item jq" "the reconciled install is owned by setup"
 p=$(project interrupted2)
-mkdir -p "$p/.claude/claude-mini"
+mkdir -p "$p/.claude/claude-mini" && : > "$p/.claude/claude-mini/.claude-mini-run"
 printf '{"op":"install","item":"jq","path":null,"manager":"%s","package":"jq","state":"started"}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
 run apply --project "$p"
 has "$OUT" "closed as not done" "without proof of absence before, the install is not claimed"
@@ -283,7 +284,7 @@ rm -f "$STATE/jq.installed"; fake jq
 
 echo "an unreadable package state keeps the operation open"
 p=$(project pmbroken)
-mkdir -p "$p/.claude/claude-mini"
+mkdir -p "$p/.claude/claude-mini" && : > "$p/.claude/claude-mini/.claude-mini-run"
 printf '{"op":"uninstall","item":"jq","path":null,"manager":"%s","package":"jq","state":"started"}\n' "$mgr" > "$p/.claude/claude-mini/intent.jsonl"
 touch "$STATE/pm-broken"
 run apply --project "$p"
@@ -315,7 +316,7 @@ fake jq
 echo "one run at a time"
 rm -f "$SHIM/jq"
 p=$(project locked)
-mkdir -p "$p/.claude/claude-mini"
+mkdir -p "$p/.claude/claude-mini" && : > "$p/.claude/claude-mini/.claude-mini-run"
 "$PY" -c 'import fcntl,os,sys,time; fd=os.open(sys.argv[1],os.O_RDWR|os.O_CREAT); fcntl.flock(fd,fcntl.LOCK_EX); open(sys.argv[2],"w").close(); time.sleep(20)' \
     "$p/.claude/claude-mini/lock" "$T/locked.ready" &
 holder=$!
@@ -450,9 +451,63 @@ p=$(pproject failing-plugin)
 touch "$STATE/claude.fail-install"
 run apply --project "$p"
 is "$RC" 4 "a failed plugin install exits 4"
+is "$([ -e "$p/.claude/settings.local.json" ] && echo left || echo clean)" clean "a failed install leaves no half-registered marketplace"
 rm -f "$STATE/claude.fail-install"
 run apply --project "$p"
 is "$RC" 0 "the next apply finishes the job"
+
+echo "project layer: rollback edge cases"
+p=$(pproject rootrun)
+printf '{"schema_version":1,%s,"paths":{"run_dir":"."}}\n' "$PROJECT_ITEMS" > "$p/.claude/claude-mini.json"
+h0=$(full_hash "$p")
+run apply --project "$p"
+is "$RC" 1 "run_dir at the project root is refused"
+run uninstall --project "$p"
+is "$([ -d "$p/.git" ] && echo intact)" intact "uninstall with run_dir . does not delete the project"
+p=$(pproject foreignrun)
+printf '{"schema_version":1,%s,"paths":{"run_dir":".claude"}}\n' "$PROJECT_ITEMS" > "$p/.claude/claude-mini.json"
+run apply --project "$p"
+is "$RC" 1 "an existing directory setup did not create is not taken over"
+
+p=$(pproject crash)
+h0=$(full_hash "$p")
+FAULT=after-swap run apply --project "$p"
+is "$RC" 99 "apply died right after swapping the exclude file"
+run uninstall --project "$p"
+is "$(full_hash "$p")" "$h0" "uninstall after the crash recovers first and returns the bytes"
+p=$(pproject crash2)
+FAULT=after-swap run apply --project "$p"
+run apply --project "$p"
+is "$RC" 0 "the next apply recovers and then sets the item up"
+has "$(cat "$p/.git/info/exclude")" ".claude/claude-mini/" "and the exclude lines are there"
+
+p=$(pproject renamed)
+h0=$(full_hash "$p")
+run apply --project "$p"
+printf '{"schema_version":1,"checklist":{"items":[]}}\n' > "$p/.claude/claude-mini.json"
+run uninstall --project "$p"
+printf '{"schema_version":1,%s}\n' "$PROJECT_ITEMS" > "$p/.claude/claude-mini.json"
+is "$(full_hash "$p")" "$h0" "items dropped from the checklist are still undone (from the log)"
+
+p=$(pproject twice)
+h0=$(full_hash "$p")
+printf '{"schema_version":1,"checklist":{"items":[{"id":"git-exclude","layer":"project","handler":"git-exclude","patterns":["a"]}]}}\n' > "$p/.claude/claude-mini.json"
+run apply --project "$p"
+printf '{"schema_version":1,"checklist":{"items":[{"id":"git-exclude","layer":"project","handler":"git-exclude","patterns":["a","b"]}]}}\n' > "$p/.claude/claude-mini.json"
+run apply --project "$p"
+run uninstall --project "$p"
+printf '{"schema_version":1,%s}\n' "$PROJECT_ITEMS" > "$p/.claude/claude-mini.json"
+is "$(full_hash "$p")" "$h0" "two successive changes unwind to the file before setup"
+
+p=$(pproject nativefail)
+run apply --project "$p"
+touch "$STATE/claude.fail-uninstall"
+run uninstall --project "$p"
+is "$RC" 4 "a failed native plugin removal exits 4"
+is "$([ -d "$p/.claude/claude-mini" ] && echo kept)" kept "and the log is kept for the next try"
+rm -f "$STATE/claude.fail-uninstall"
+run uninstall --project "$p"
+is "$RC" 0 "the next uninstall finishes"
 
 echo "T4 watch list"
 is "$(tree_hash "$T/home")$(tree_hash "$T/sibling")" "$watch_before" "HOME files and the sibling project are unchanged"

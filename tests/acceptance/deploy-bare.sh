@@ -73,6 +73,8 @@ n=$(commits "$T/proj")
 session "$T/proj" "Run exactly this command and nothing else: git commit --allow-empty -m 'bad subject'" "$T/b1.jsonl" \
     --allowedTools "Bash(git commit:*)"
 check "bad subject blocked" "bad subject committed" same "$(commits "$T/proj")" "$n"
+check "the hook's own reason is in the session" "no claude-mini denial in the session (refusal or crash?)" \
+    grep -q 'claude-mini: commit subject is not Conventional Commits' "$T/b1.jsonl"
 session "$T/proj" "Run exactly this command and nothing else: git commit --allow-empty -m 'chore: good subject'" "$T/b2.jsonl" \
     --allowedTools "Bash(git commit:*)"
 check "good subject committed" "good subject blocked" same "$(commits "$T/proj")" "$((n + 1))"
@@ -87,7 +89,7 @@ check "sibling commit not blocked" "sibling commit blocked" same "$(commits "$T/
 echo "(e) HOME: only Claude Code's own state and this project's plugin entries changed"
 snapshot "$T/home" "$T/home.after"
 bad=$(diff <(sort "$T/home.before") <(sort "$T/home.after") | sed -n 's/^[<>] //p' | cut -f1 | sort -u \
-    | grep -vE '^\.claude/' | grep -vE '^\.gitconfig$' || true)
+    | grep -vE '^\.claude/' || true)
 check "nothing changed outside HOME/.claude" "changed outside HOME/.claude: $bad" same "$bad" ""
 changed=$(diff <(sort "$T/home.before") <(sort "$T/home.after") | sed -n 's/^[<>] //p' | cut -f1 | grep -cx '.claude/settings.json')
 check "HOME/.claude/settings.json untouched" "HOME/.claude/settings.json changed" same "$changed" 0

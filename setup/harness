@@ -463,6 +463,8 @@ def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
         recovered, broken = t.recover()
         rec2, br2 = reconcile(t)
         recovered, broken = recovered + rec2, broken + br2
+        if recovered:  # recovery may have put a file back: decide the delta on the state now
+            _, _, rows = assess(project, a.layer)
     refused, failed, installed = [], [], []
     for r in rows:
         if r["auto"]:
@@ -574,20 +576,49 @@ def apply_project_item(t, item):
     steps = [] if declared else [["claude", "plugin", "marketplace", "add", "--scope", "local", HARNESS_ROOT]]
     steps.append(["claude", "plugin", "install", pid, "--scope", "local"])
     for argv in steps:
-        try:
-            res = subprocess.run(argv, cwd=project, capture_output=True, text=True, timeout=300)
-            code, tail = res.returncode, (res.stdout + res.stderr).strip().splitlines()[-2:]
-        except (OSError, subprocess.TimeoutExpired) as e:
-            code, tail = 127, [str(e)]
+        code, tail = run_claude(argv, project)
         if code != 0:
+            # undo what already succeeded, so a failed setup leaves nothing half-done
+            if not declared and argv[2] == "install":
+                run_claude(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"], project)
+            restore_settings(t, dict(base, sha_before=before,
+                                     backup=os.path.relpath(backup, project) if backup else None))
             t.append(dict(base, state="failed", exit=code))
-            return f"{item['id']}: `{' '.join(argv)}` exit {code}: {' | '.join(tail)}"
+            return f"{item['id']}: `{' '.join(argv)}` exit {code}: {tail}"
     status, detail = check_plugin_local(item, {"project": project})
     if status != "ready":
         t.append(dict(base, state="failed"))
         return f"{item['id']}: commands succeeded but the check says {status}: {detail}"
     t.append(dict(base, state="done"))
     return None
+
+
+def run_claude(argv, project):
+    try:
+        res = subprocess.run(argv, cwd=project, capture_output=True, text=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 127, str(e)
+    return res.returncode, " | ".join((res.stdout + res.stderr).strip().splitlines()[-2:])
+
+
+def restore_settings(t, started):
+    """Claude Code leaves empty objects behind; if nothing else in the local settings changed since
+    setup, put the original bytes back (or remove a file setup's commands created)."""
+    settings = t.contain(SETTINGS_LOCAL)
+    now = read_settings_local(t.project)
+    if now is None:
+        return
+    trimmed = {k: v for k, v in now.items()
+               if not (k in ("extraKnownMarketplaces", "enabledPlugins") and v == {})}
+    orig = {}
+    if started.get("backup"):
+        with open(t.contain(started["backup"]), encoding="utf-8") as fh:
+            orig = json.load(fh)
+    if trimmed == orig:
+        if started.get("backup"):
+            shutil.copy2(t.contain(started["backup"]), settings)
+        elif os.path.exists(settings):
+            os.unlink(settings)
 
 
 def undo_plugin(t, item_id):
@@ -610,28 +641,10 @@ def undo_plugin(t, item_id):
     if not started.get("declared_before"):
         steps.append(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"])
     for argv in steps:
-        try:
-            res = subprocess.run(argv, cwd=project, capture_output=True, text=True, timeout=300)
-            code = res.returncode
-        except (OSError, subprocess.TimeoutExpired):
-            code = 127
+        code, tail = run_claude(argv, project)
         if code != 0:
-            return False, f"{item_id}: `{' '.join(argv)}` exit {code}; plugin may still be enabled"
-    # Claude Code leaves empty objects behind; if nothing else changed, restore the original bytes
-    settings = t.contain(SETTINGS_LOCAL)
-    now = read_settings_local(project)
-    if now is not None:
-        trimmed = {k: v for k, v in now.items()
-                   if not (k in ("extraKnownMarketplaces", "enabledPlugins") and v == {})}
-        orig = {}
-        if started.get("backup"):
-            with open(t.contain(started["backup"]), encoding="utf-8") as fh:
-                orig = json.load(fh)
-        if trimmed == orig:
-            if started.get("backup"):
-                shutil.copy2(t.contain(started["backup"]), settings)
-            elif os.path.exists(settings):
-                os.unlink(settings)
+            return None, f"{item_id}: `{' '.join(argv)}` exit {code}: {tail}; plugin may still be enabled"
+    restore_settings(t, started)
     t.append({"op": "plugin", "item": item_id, "path": SETTINGS_LOCAL, "state": "removed"})
     return True, f"{item_id}: disabled for this project"
 
@@ -648,8 +661,10 @@ def cmd_uninstall(a):
 
 
 def uninstall_locked(a, t, cfg, project):
-    recovered, broken = reconcile(t)
-    for line in recovered + broken:
+    recovered, broken = t.recover()
+    rec2, br2 = reconcile(t)
+    recovered, broken = recovered + rec2, broken + br2
+    for line in recovered:
         print(line)
     installs = {}
     for r in t.records():
@@ -659,24 +674,27 @@ def uninstall_locked(a, t, cfg, project):
             else:
                 installs.pop(r["item"], None)
     if not a.item:
-        works, notdone = [], []
-        for i in cfg["checklist"]["items"]:
-            if i["layer"] != "project":
-                continue
-            ok, msg = undo_plugin(t, i["id"]) if i["handler"] == "plugin-local" else t.revert(i["id"])
-            (works if ok else notdone).append(msg)
+        works, notdone, failed = [], [], list(broken)
+        # what setup did comes from the log, not from today's checklist
+        owned = {}
+        for r in t.records():
+            if r.get("op") in ("file", "plugin") and r.get("state") == "done":
+                owned[r["item"]] = r["op"]
+        for item_id, op in owned.items():
+            ok, msg = undo_plugin(t, item_id) if op == "plugin" else t.revert(item_id)
+            (works if ok else failed if ok is None else notdone).append(msg)
         for item, r in installs.items():
             _, _, _, rem = pkg_commands(r["manager"], r["package"])
             notdone.append(f"{item}: package {r['package']} installed by setup stays — remove with: "
                            f"harness uninstall --item {item} (runs `{rem}`)")
         _, _, rows = assess(project, "project")
-        text = report(rows, cfg, extra_works=works, extra_notdone=notdone)
+        text = report(rows, cfg, broken=failed, extra_works=works, extra_notdone=notdone)
         print(text, end="")
-        if notdone:
+        if notdone or failed:
             print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
-            return 0
+            return 4 if failed else 0
         # everything undone: the run directory (log, backups, reports) goes last
-        shutil.rmtree(t.run_dir)
+        t.remove_run_dir()
         print(f"removed {os.path.relpath(t.run_dir, project)}")
         return 0
     r = installs.get(a.item)
