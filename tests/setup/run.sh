@@ -499,6 +499,23 @@ run uninstall --project "$p"
 printf '{"schema_version":1,%s}\n' "$PROJECT_ITEMS" > "$p/.claude/claude-mini.json"
 is "$(full_hash "$p")" "$h0" "two successive changes unwind to the file before setup"
 
+p=$(pproject between)
+printf '{"schema_version":1,"checklist":{"items":[{"id":"git-exclude","layer":"project","handler":"git-exclude","patterns":["a"]}]}}\n' > "$p/.claude/claude-mini.json"
+run apply --project "$p"
+echo "users-rule" >> "$p/.git/info/exclude"
+printf '{"schema_version":1,"checklist":{"items":[{"id":"git-exclude","layer":"project","handler":"git-exclude","patterns":["a","b"]}]}}\n' > "$p/.claude/claude-mini.json"
+run apply --project "$p"
+run uninstall --project "$p"
+has "$(cat "$p/.git/info/exclude")" "users-rule" "a user rule added between two applies survives uninstall"
+has "$OUT" "edited between two setup runs" "and uninstall says why it left the file"
+
+p=$(pproject premarker)
+run apply --project "$p"
+rm -f "$p/.claude/claude-mini/.claude-mini-run"
+run uninstall --project "$p"
+is "$RC" 0 "a run directory from before the marker is adopted by its valid log"
+is "$([ -d "$p/.claude/claude-mini" ] && echo kept || echo removed)" removed "and uninstall completes"
+
 p=$(pproject nativefail)
 run apply --project "$p"
 touch "$STATE/claude.fail-uninstall"

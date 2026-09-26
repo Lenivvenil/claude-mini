@@ -119,6 +119,14 @@ class Txn:
         """Create the run directory; the marker says setup owns it (only then may it be removed).
         An existing directory without the marker is refused rather than taken over."""
         if os.path.isdir(self.run_dir) and not os.path.exists(self.marker) and os.listdir(self.run_dir):
+            # a directory from a setup version before the marker: adopt it if its log reads cleanly
+            if os.path.isfile(self.log) and not os.path.islink(self.log):
+                try:
+                    if self.records():
+                        open(self.marker, "w").close()
+                        return
+                except TxnError:
+                    pass
             raise TxnError(f"{self.run_rel} exists and was not created by setup/harness; choose "
                            "another paths.run_dir")
         os.makedirs(self.run_dir, exist_ok=True)
@@ -127,6 +135,7 @@ class Txn:
 
     def remove_run_dir(self):
         """Remove the run directory, only if setup's marker is in it."""
+        self.ensure_run_dir()  # adopts a pre-marker directory with a valid log, refuses others
         if not os.path.exists(self.marker):
             raise TxnError(f"{self.run_rel} has no setup marker; not removed")
         shutil.rmtree(self.run_dir)
@@ -217,15 +226,19 @@ class Txn:
         # newest finished change, and the start record of the first finished change since the
         # last undo: its backup is the file as it was before setup touched it
         last = first = pending = None
+        chain_ok = True  # each change must start from the bytes the previous one left
         for r in self.records():
             if r.get("op") != "file" or r.get("item") != item:
                 continue
             state = r.get("state")
             if state == "reverted":
                 last = first = pending = None
+                chain_ok = True
             elif state == "started":
                 pending = r
             elif state == "done":
+                if last is not None and pending.get("sha_before") != last.get("sha_after"):
+                    chain_ok = False  # someone edited the file between two applies
                 last = r
                 if first is None:
                     first = pending
@@ -235,6 +248,8 @@ class Txn:
         started = first  # its backup is the file as it was before setup touched it
         if sha_of(path) != last["sha_after"]:
             return False, f"{item}: {last['path']} was edited after setup; left as is"
+        if not chain_ok:
+            return False, f"{item}: {last['path']} was edited between two setup runs; left as is"
         if started.get("backup"):
             backup = self.contain(started["backup"])
             if sha_of(backup) != started["sha_before"]:

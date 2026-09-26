@@ -697,6 +697,8 @@ def uninstall_locked(a, t, cfg, project):
         t.remove_run_dir()
         print(f"removed {os.path.relpath(t.run_dir, project)}")
         return 0
+    for line in broken:
+        print(f"Broken: {line}")
     r = installs.get(a.item)
     if not r:
         raise Usage(f"{a.item}: setup did not install it for this project; not touched")
@@ -711,10 +713,10 @@ def uninstall_locked(a, t, cfg, project):
         return 4
     t.append(dict(base, state="done"))
     _, _, rows = assess(project, "all")
-    text = report(rows, cfg, extra_works=[f"{a.item}: removed with `{rem}`"])
+    text = report(rows, cfg, broken=broken, extra_works=[f"{a.item}: removed with `{rem}`"])
     print(text, end="")
     print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
-    return 0
+    return 4 if broken else 0
 
 
 # --- arguments ---------------------------------------------------------------------------------
