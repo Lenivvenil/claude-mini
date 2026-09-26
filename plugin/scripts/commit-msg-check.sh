@@ -59,7 +59,18 @@ _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 result=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py") \
     || deny "claude-mini: commit message parser failed — see stderr."
 
-CC_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr)(\([a-z0-9_.-]+\))?!?:[[:space:]]+[^[:space:]]'
+# Commit rules come from config (ADR-0031 §4): plugin defaults merged with the project's
+# .claude/claude-mini.json. The project is the git top level of the command's cwd.
+root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null) || root="${cwd:-.}"
+cfg="$_self_dir/../bin/config"
+types=$(python3 "$cfg" get commit.types --project "$root" 2>&1) \
+    || deny "claude-mini: project config is invalid — fix .claude/claude-mini.json: $types"
+scope=$(python3 "$cfg" get commit.scope_pattern --project "$root" 2>&1) \
+    || deny "claude-mini: project config is invalid: $scope"
+skips=$(python3 "$cfg" get commit.skip_prefixes --project "$root" 2>&1) \
+    || deny "claude-mini: project config is invalid: $skips"
+types_alt=$(printf '%s' "$types" | paste -sd'|' -)
+CC_REGEX="^(${types_alt})(\\((${scope})\\))?!?:[[:space:]]+[^[:space:]]"
 
 # One line per commit invocation; every commit in the command must pass.
 while IFS= read -r line; do
@@ -68,9 +79,13 @@ while IFS= read -r line; do
         NOMSG) deny "claude-mini: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\"" ;;
     esac
     subject=${line#SUBJECT$'\t'}
-    case "$subject" in fixup!*|squash!*|amend!*) continue ;; esac
+    skipped=0
+    while IFS= read -r prefix; do
+        [ -n "$prefix" ] && case "$subject" in "$prefix"*) skipped=1 ;; esac
+    done <<< "$skips"
+    [ "$skipped" -eq 1 ] && continue
     if ! printf '%s' "$subject" | grep -qE "$CC_REGEX"; then
-        deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|adr. Got: '$subject'"
+        deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types ${types_alt}. Got: '$subject'"
     fi
 done <<< "$result"
 exit 0

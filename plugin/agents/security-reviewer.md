@@ -2,7 +2,7 @@
 name: security-reviewer
 description: Read-only security review of PRs touching production code paths. Checks OWASP Top 10, secret leaks, auth/authz flaws, unsafe dependencies. Invoked before prod-bound merges. NEVER writes files.
 tools: Read, Glob, Grep, Bash(git diff:*), Bash(git show:*), Bash(npm audit:*), Bash(uv pip audit:*), Bash(cargo audit:*), Bash(govulncheck:*)
-model: opus
+model: inherit
 color: red
 ---
 
