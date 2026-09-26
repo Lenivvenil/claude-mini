@@ -15,21 +15,21 @@ mini-health
 В активных проектах:
 ```bash
 cd ~/projects/<project>
-claude --model sonnet
-# внутри Claude:
-/backlog-review
+claude
+# внутри Claude, в проекте с включённым плагином claude-mini:
+/claude-mini:backlog-review
 ```
 
-Агент `backlog-groomer` предложит triage (merge duplicates, reprioritise, close stale). Примени те предложения, с которыми согласен — агент сам не мутирует.
+Роль `backlog-groomer` предложит разбор: дубли, приоритеты, устаревшие задачи. Выполняются только те команды, которые ты одобрил.
 
 ### 3. Project health
 
 В каждом активном репо:
 ```
-/project-health
+/claude-mini:project-health
 ```
 
-Генерирует `docs/metrics/health-YYYY-WW.md`. Проверь пороги:
+Отчёт приходит в чат. Проверь пороги:
 - Review cycle time P90 < 48h
 - Open issues P90 age < 60 days
 - Open ADRs < 3

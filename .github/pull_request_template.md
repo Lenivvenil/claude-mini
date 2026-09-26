@@ -10,13 +10,13 @@ Closes #
 
 ## Definition of Done
 
-<!-- Source of truth: docs/runbooks/dod-checklist.md -->
+<!-- Source of truth: docs/history/docs/runbooks/dod-checklist.md -->
 
 - [ ] ADR открыт и смерджен, если изменение архитектурно-значимо
 - [ ] Domain-доки обновлены, если изменилась граница BC или термин
 - [ ] Unit-тесты написаны; integration-тесты для cross-BC путей; coverage ≥ project floor (дефолт 80%)
 - [ ] `/review` (Claude) одобрил
-- [ ] `adversarial-critic` запущен внутри `/review` (сканирует 8 классов LLM-ленивых паттернов, см. `docs/runbooks/feature-pipeline.md §6`); BLOCK-findings устранены ИЛИ задокументированы как осознанный компромисс в PR-треде
+- [ ] `adversarial-critic` запущен внутри `/review` (сканирует 8 классов LLM-ленивых паттернов, см. `docs/history/docs/runbooks/feature-pipeline.md §6`); BLOCK-findings устранены ИЛИ задокументированы как осознанный компромисс в PR-треде
 - [ ] `/codex-review` (Codex) одобрил ИЛИ создан `type:deferred-review` issue с обоснованием graceful degradation
 - [ ] Разногласия между Claude и Codex разрешены в PR-треде (консенсус или фиксация disagreement)
 - [ ] Human self-review выполнен

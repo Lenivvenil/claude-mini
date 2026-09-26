@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # mini-health — weekly health-check всего стека:
-# LaunchAgents, disk, Claude Code auth, MCP servers, governance hook.
+# LaunchAgents, disk, Claude Code auth, MCP servers, gh and codex auth.
 
 set -uo pipefail
 
@@ -68,55 +68,8 @@ else
     warn "No Claude Code settings file"
 fi
 
-# --- Governance hook smoke-test ---
-echo ""
-echo "Governance hook (все 6 паттернов из ADR-0004):"
-test_script="$HOME/.claude/scripts/test-governance-hook.sh"
-hook_path="$HOME/.claude/hooks/pre-commit-governance.sh"
-if [ ! -x "$hook_path" ]; then
-    warn "Governance hook не установлен: $hook_path"
-elif [ ! -x "$test_script" ]; then
-    warn "Hook test script не установлен: $test_script"
-else
-    if bash "$test_script" >/dev/null 2>&1; then
-        ok "Hook smoke-test: все 6 паттернов прошли"
-    else
-        fail "Hook smoke-test упал — запусти: bash $test_script"
-    fi
-fi
-
-# --- Commit-msg governance hook (ADR-0011, per-project) ---
-echo ""
-echo "Commit-msg governance hook:"
-staged_hook="$HOME/.claude/git-hooks/commit-msg"
-commit_msg_test="$HOME/.claude/scripts/test-commit-msg-governance.sh"
-if [ ! -x "$staged_hook" ]; then
-    warn "Staged hook not found: $staged_hook (run universal-setup.sh --install)"
-else
-    ok "Staged hook present: $staged_hook"
-    if git rev-parse --git-dir >/dev/null 2>&1; then
-        # Common dir: hooks live there even when run from a linked worktree (#303)
-        _git_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd)
-        repo_hook="$_git_dir/hooks/commit-msg"
-        if [ ! -f "$repo_hook" ]; then
-            warn "commit-msg hook not installed in this repo (run: ./bootstrap/universal-setup.sh --hook-this-repo)"
-        elif cmp -s "$staged_hook" "$repo_hook"; then
-            ok "Repo hook up-to-date: $repo_hook"
-            # Content matches — also verify behaviour (guards against silent logic regression)
-            if [ -x "$commit_msg_test" ]; then
-                if bash "$commit_msg_test" "$repo_hook" >/dev/null 2>&1; then
-                    ok "Commit-msg smoke-test passed"
-                else
-                    fail "Commit-msg smoke-test failed — run: bash \"$commit_msg_test\" \"$repo_hook\""
-                fi
-            else
-                warn "Commit-msg smoke-test script not found: $commit_msg_test (run universal-setup.sh --install)"
-            fi
-        else
-            warn "Repo hook differs from staged version (run: ./bootstrap/universal-setup.sh --hook-this-repo --force)"
-        fi
-    fi
-fi
+# The commit hook is part of the claude-mini plugin, enabled per project; `setup/harness verify`
+# checks it there, not here.
 
 # --- gh & codex auth ---
 echo ""

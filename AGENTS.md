@@ -1,155 +1,72 @@
 # AGENTS.md — claude-mini
 
-> Инструкции для любого агента: Claude Code (читает этот файл сам, CLAUDE.md не нужен), Codex CLI, Goose, opencode, Aider, Cursor.
+> Инструкции для любого агента. Claude Code читает этот файл сам, CLAUDE.md не нужен.
 
----
-
-## Где живёт знание (Source of truth)
+## Где живёт знание
 
 | Что | Где |
 |---|---|
-| Задачи, спринты | GitHub Issues + Projects v2 |
+| Задачи | GitHub Issues |
 | Архитектурные решения | `docs/decisions/` (MADR 4.0) |
-| Доменная модель | `docs/domain/` |
-| Системная архитектура | `docs/architecture/` |
 | Принципы | `docs/principles.md` |
-| Анти-паттерны (ловушки LLM) | `docs/anti-patterns.md` |
-| Процедуры | `docs/runbooks/` |
+| Ловушки LLM | `docs/anti-patterns.md` |
+| План переноса v1 → v2 и опись файлов | `docs/port/PLAN.md`, `tools/port-run/ledger.tsv` |
+| Как развернуть харнесс | `DEPLOY.md` |
+| Файлы v1, ушедшие из работы | `docs/history/` (копии, по описи) |
 
-Голова оператора, память LLM, история чата — **не** источники истины.
-Если знание не зафиксировано в репо — оно потеряется.
+Голова оператора, память LLM и история чата источниками истины не являются. Что не записано в репозитории, то потеряется.
 
----
-
-## Структура репо
+## Структура
 
 ```
-docs/
-├── architecture/     — как устроено целиком
-├── decisions/        — ADR: почему принято то или иное решение
-├── domain/           — термины и границы контекстов
-├── principles.md     — девять принципов (контракт)
-├── anti-patterns.md  — ловушки, в которые LLM падает регулярно
-├── runbooks/         — пошаговые сценарии
-└── metrics/          — health-отчёты
-
-bootstrap/
-├── agents/           — read-only AI-критики
-├── commands/         — slash-команды (Claude Code)
-├── hooks/            — commit-governance + форматирование
-├── scripts/          — утилиты
-├── templates/        — шаблоны для новых проектов
-└── universal-setup.sh — идемпотентный установщик
+plugin/                  — харнесс: плагин Claude Code
+├── agents/              — девять ролей по вызову
+├── skills/              — feature, plan, adr-author, codex-review, handoff,
+│                          domain-discovery, backlog-review, project-health
+├── hooks/hooks.json     — хук формата коммитов
+├── scripts/             — сам хук и его тесты
+├── bin/                 — config (валидатор и чтение конфига), jev-check
+└── config/              — schema.json и defaults.json
+.claude-plugin/marketplace.json — каталог для `claude plugin marketplace add`
+setup/harness            — assess / apply / verify / uninstall, два слоя
+tests/                   — config, setup, jev, приёмка голым Claude, границы плагина
+tools/port-run/          — опись переноса и её проверка
+bootstrap/hardware/, bootstrap/scripts/mini-*  — машина владельца, Mac mini
 ```
 
----
-
-## Как запустить / проверить
+## Проверки
 
 ```bash
-# Проверить что установлено (dry-run)
-./bootstrap/universal-setup.sh --check
-
-# Установить / обновить на этой машине
-./bootstrap/universal-setup.sh --install
-
-# Установить pipeline-команды в конкретный проект
-./bootstrap/universal-setup.sh --target /path/to/project
-
-# Проверить governance hook
-echo "test: something #123" | bash bootstrap/hooks/pre-commit-governance.sh
+claude plugin validate plugin --strict
+bash scripts/lint-prompts.sh plugin/agents/*.md plugin/skills/*/SKILL.md
+bash tools/port-run/ledger-check.sh
+bash tests/lint/no-hardcode.sh
+bash tests/config/run.sh
+bash tests/setup/run.sh
+bash tests/jev/run.sh
+bash plugin/scripts/test-commit-msg-check.sh
+bash tests/acceptance/deploy-bare.sh   # нужен ключ подписки, без него выходит 77
 ```
 
-Скрипт идемпотентен — повторный запуск ничего не сломает.
+## Как идёт задача
 
----
-
-## Как работает пайплайн (workflow)
-
-Каждая задача проходит шесть стадий. Каждая стадия производит конкретный артефакт.
-
-```mermaid
-flowchart LR
-    I["GitHub Issue\n#NNN"] --> P["Plan\nplan.md"]
-    P --> AD{"ADR\nнужен?"}
-    AD -- "да" --> ADR["docs/decisions/\nNNNN-*.md"]
-    ADR --> Im
-    AD -- "нет" --> Im["Implement\nизменения кода/docs"]
-    Im --> QA["QA\nqa-report.md"]
-    QA --> R["Review\n2 голоса"]
-    R --> C["Commit + PR\nCloses #NNN"]
-```
-
-### Что каждая стадия делает
-
-**Plan** — прочитать issue, написать `plan.md` с шестью разделами: формулировка задачи, затронутые файлы, рассмотренные подходы, выбранный подход, стратегия тестирования, риски.
-
-**ADR (если нужен)** — если решение архитектурно значимо (новая зависимость, граница BC, инфраструктура, необратимое ограничение), зафиксировать его в `docs/decisions/NNNN-*.md` по формату MADR 4.0 и смержить отдельным PR до старта реализации.
-
-**Implement** — реализовать план. По ходу: дважды запросить второй голос (независимый review) — перед началом и перед объявлением готовности.
-
-**QA** — прогнать тесты, проверить coverage, убедиться что docs обновлены. Зафиксировать в `qa-report.md`.
-
-**Review** — два независимых review: первый и второй голос. Разногласие между ними → ручное решение оператора. Оба должны одобрить или разногласие задокументировано.
-
-**Commit + PR** — коммит в Conventional Commits формате с issue-ref. PR с `Closes #NNN` и ссылкой на ADR если был.
-
----
+`/claude-mini:feature <N>` ведёт задачу от issue до PR. Ветка, `plan.md`, ADR при архитектурной значимости, реализация, проверки проекта, сверка с критериями приёмки, критики по тому, что затронуто, Codex, коммит и PR, передача работы. Вливает владелец.
 
 ## Жёсткие правила
 
-1. **ADR-PR обязателен** для архитектурно-значимых решений. «Договорились в чате» — не решение.
-2. **Issue-first**: задача длиннее одной сессии — сначала создать issue.
-3. **Cross-ref в PR**: `Closes #NNN` обязателен. `Implements docs/decisions/NNNN-*.md` — если был ADR.
-4. **Conventional Commits**: `type(scope): message`. Governance hook проверяет автоматически.
-5. **Definition of Done** — см. `docs/runbooks/dod-checklist.md`. Merge блокируется до выполнения.
-
-Что считается архитектурно значимым (триггер для ADR) — см. `docs/runbooks/adr-trigger.md`.
-
----
-
-## Governance hook (commit-msg)
-
-Скрипт `bootstrap/hooks/commit-msg-governance.sh` — это git commit-msg hook. Блокирует коммит если:
-- нет Conventional Commits префикса (`feat:`, `fix:`, `docs:`, `chore:` и т.д.)
-- нет ссылки на issue (`#NNN` или `Closes #NNN`) в сообщении или имени ветки
-- нет ссылки на ADR (`docs/decisions/NNNN-*.md`) для архитектурно значимых изменений
-
-Требует: `bash`, `git`, `jq`.
-
-**Как установить** (один раз на репо; запускать из корня claude-mini):
-
-```bash
-# Вариант A — через Claude Code installer (также прописывает хук в Claude Code settings.json):
-./bootstrap/universal-setup.sh --install
-
-# Вариант B — вручную, без Claude Code:
-cp bootstrap/hooks/commit-msg-governance.sh .git/hooks/commit-msg
-chmod +x .git/hooks/commit-msg
-
-# Проверить:
-echo "feat: add feature #127" > /tmp/msg && bash .git/hooks/commit-msg /tmp/msg
-echo "Exit: $?"  # 0 = OK, 1 = blocked
-```
-
----
+1. Архитектурно значимое решение оформляется ADR отдельным PR до реализации. Договорённость в чате решением не считается.
+2. PR ссылается на задачу: `Closes #NNN`. Проверка тела PR в CI это требует. Если был ADR, то ещё `Implements docs/decisions/NNNN-*.md`.
+3. Коммиты и заголовки PR в формате Conventional Commits: `type(scope): message`. Хук плагина проверяет тему коммита. Заголовок PR при squash становится темой коммита в main.
+4. ADR после принятия не правятся, кроме статуса.
+5. `plugin/` и `.claude-plugin/marketplace.json` не переносить: проекты включают плагин из этого дерева на уровне local.
+6. Правило, проверка или строка промпта попадают в харнесс, только если называют отказ, который предотвращают (`docs/port/PLAN.md` §2).
 
 ## MCP-серверы
 
-Репо использует три MCP-сервера. MCP (Model Context Protocol) — открытый стандарт, поддерживается Goose, opencode, Cursor и другими клиентами.
+`.mcp.json` в корне подключает три сервера. Транспортная политика описана в ADR-0028.
 
-| Сервер | Transport | Pinned version | Назначение | Когда использовать |
-|---|---|---|---|---|
-| **Serena** | stdio | `v1.2.0` | Семантическая навигация по коду: поиск символов, их references, структура файла | Вместо grep на больших файлах |
-| **GitHub** | HTTP (allowlisted) | — (stable API) | Чтение и запись issues, PR, projects, actions | Для работы с бэклогом и PR |
-| **Context7** | stdio | `2.2.4` | Актуальная документация библиотек (не из training data) | Перед любой гипотезой об API библиотеки |
-
-Конфигурация серверов — в `.mcp.json` (repo root, `--scope project`, committable). Транспортная политика: ADR-0028 (`docs/decisions/0028-mcp-transport-security.md`). CI lint: `bootstrap/scripts/check-mcp-config.sh`.
-
----
-
-## Что уникально в этом репо
-
-Проект документирует и устанавливает сам себя. Каждое изменение — новый агент, новая команда, новый runbook — проходит через собственный pipeline: issue → plan → (ADR?) → implement → review → commit → PR.
-
-Это не стайлинг. Это доказательство: если pipeline не может произвести новый артефакт — pipeline сломан.
+| Сервер | Транспорт | Версия | Зачем |
+|---|---|---|---|
+| Serena | stdio | `v1.2.0` | Навигация по символам кода |
+| Context7 | stdio | `2.2.4` | Актуальная документация библиотек |
+| GitHub | HTTP | — | Issues, PR, actions |

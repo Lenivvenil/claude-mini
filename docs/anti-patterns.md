@@ -3,9 +3,9 @@
 Накопленный реестр ленивых решений, которые LLM воспроизводит повторно.
 Источник записей — реактивные пинки оператора (Принцип 4).
 
-**Как добавить запись:** при каждом manual catch — добавить строку в Ranked summary и раздел ниже в том же коммите. `commit-msg-governance.sh` напоминает об этом если коммит содержит code-файлы, а файл не трогался на ветке. Формат: заполни все шесть полей (Pattern, Frequency, Severity, Detectability, Detector, Example, Fix); выставь Score по формуле; пересортируй Ranked summary по убыванию Score.
+**Как добавить запись:** при каждом manual catch — добавить строку в Ranked summary и раздел ниже в том же коммите. Формат: заполни все шесть полей (Pattern, Frequency, Severity, Detectability, Detector, Example, Fix); выставь Score по формуле; пересортируй Ranked summary по убыванию Score.
 
-*`adversarial-critic` (`bootstrap/agents/adversarial-critic.md`, issue #123) загружает этот файл в context автоматически при каждом `/review`.*
+*Роль `adversarial-critic` (`plugin/agents/adversarial-critic.md`, issue #123) читает этот файл при каждом вызове.*
 
 ---
 
