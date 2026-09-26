@@ -250,9 +250,6 @@ tests/lint/no-hardcode.allow	KEEP				p0
 tests/lint/no-hardcode.sh	KEEP				p0	
 tests/plugin-scope/no-plugin-no-writes.sh	KEEP				p0	
 tests/setup/run.sh	KEEP				p2	
-tools/port-run/driver.sh	KEEP				p0	
 tools/port-run/ledger-check.sh	KEEP				p0	
 tools/port-run/ledger.tsv	KEEP				p0	
 tools/port-run/lib/isolated-claude.sh	KEEP				p0	
-tools/port-run/phases.json	KEEP				p0	
-tools/port-run/prompts/common.md	KEEP				p0	
