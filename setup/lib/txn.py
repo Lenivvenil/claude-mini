@@ -69,7 +69,11 @@ class Txn:
     def __init__(self, project, run_dir):
         self.project = os.path.realpath(project)
         self.run_rel = os.path.normpath(run_dir)
+        if self.run_rel in (".", "") or self.run_rel.split(os.sep)[0] in (".git",):
+            raise TxnError(f"paths.run_dir {run_dir!r} must be a subdirectory of the project, not "
+                           "its root or .git")
         self.run_dir = self.contain(self.run_rel)
+        self.marker = os.path.join(self.run_dir, ".claude-mini-run")
         self.log = self.contain(os.path.join(self.run_rel, "intent.jsonl"))
 
     def contain(self, rel):
@@ -99,7 +103,7 @@ class Txn:
     def locked(self):
         """One apply or uninstall at a time per project (flock on <run_dir>/lock)."""
         import fcntl
-        os.makedirs(self.run_dir, exist_ok=True)
+        self.ensure_run_dir()
         fd = os.open(self.run_path("lock"), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o644)
         try:
             try:
@@ -111,8 +115,33 @@ class Txn:
             os.close(fd)
 
     # --- intent log -------------------------------------------------------------------------
-    def append(self, record):
+    def ensure_run_dir(self):
+        """Create the run directory; the marker says setup owns it (only then may it be removed).
+        An existing directory without the marker is refused rather than taken over."""
+        if os.path.isdir(self.run_dir) and not os.path.exists(self.marker) and os.listdir(self.run_dir):
+            # a directory from a setup version before the marker: adopt it if its log reads cleanly
+            if os.path.isfile(self.log) and not os.path.islink(self.log):
+                try:
+                    if self.records():
+                        open(self.marker, "w").close()
+                        return
+                except TxnError:
+                    pass
+            raise TxnError(f"{self.run_rel} exists and was not created by setup/harness; choose "
+                           "another paths.run_dir")
         os.makedirs(self.run_dir, exist_ok=True)
+        if not os.path.exists(self.marker):
+            open(self.marker, "w").close()
+
+    def remove_run_dir(self):
+        """Remove the run directory, only if setup's marker is in it."""
+        self.ensure_run_dir()  # adopts a pre-marker directory with a valid log, refuses others
+        if not os.path.exists(self.marker):
+            raise TxnError(f"{self.run_rel} has no setup marker; not removed")
+        shutil.rmtree(self.run_dir)
+
+    def append(self, record):
+        self.ensure_run_dir()
         self.log = self.contain(os.path.join(self.run_rel, "intent.jsonl"))
         record = dict(record, ts=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
         with open(self.log, "a", encoding="utf-8") as fh:
@@ -190,6 +219,50 @@ class Txn:
         self.append(dict(base, state="done", sha_after=candidate))
         fault("after-done")
         return True
+
+    def revert(self, item):
+        """Undo the last finished file change of `item`, only if the file still has the bytes setup
+        wrote. Returns (done, message)."""
+        # newest finished change, and the start record of the first finished change since the
+        # last undo: its backup is the file as it was before setup touched it
+        last = first = pending = None
+        chain_ok = True  # each change must start from the bytes the previous one left
+        for r in self.records():
+            if r.get("op") != "file" or r.get("item") != item:
+                continue
+            state = r.get("state")
+            if state == "reverted":
+                last = first = pending = None
+                chain_ok = True
+            elif state == "started":
+                pending = r
+            elif state == "done":
+                if last is not None and pending.get("sha_before") != last.get("sha_after"):
+                    chain_ok = False  # someone edited the file between two applies
+                last = r
+                if first is None:
+                    first = pending
+        if last is None:
+            return True, f"{item}: nothing to undo"
+        path = self.contain(last["path"])
+        started = first  # its backup is the file as it was before setup touched it
+        if sha_of(path) != last["sha_after"]:
+            return False, f"{item}: {last['path']} was edited after setup; left as is"
+        if not chain_ok:
+            return False, f"{item}: {last['path']} was edited between two setup runs; left as is"
+        if started.get("backup"):
+            backup = self.contain(started["backup"])
+            if sha_of(backup) != started["sha_before"]:
+                return False, f"{item}: backup of {last['path']} is missing or altered; left as is"
+            fd, restore = tempfile.mkstemp(dir=os.path.dirname(path),
+                                           prefix=f".{os.path.basename(path)}.claude-mini-restore-")
+            os.close(fd)
+            shutil.copy2(backup, restore)
+            os.replace(restore, path)
+        else:
+            os.unlink(path)
+        self.append({"op": "file", "item": item, "path": last["path"], "state": "reverted"})
+        return True, f"{item}: {last['path']} restored to its state before setup"
 
     # --- recovery ---------------------------------------------------------------------------
     def recover(self):

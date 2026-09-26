@@ -33,7 +33,9 @@
       {"layer": "machine", "id": "gh-auth", "handler": "auth-status", "tool": "gh", "purpose": "Issues and pull requests."},
       {"layer": "machine", "id": "codex", "handler": "binary-version", "binary": "codex", "applies_if": "codex.enabled", "optional": true, "manual": "Install Codex CLI: https://github.com/openai/codex", "purpose": "/codex-review second opinion."},
       {"layer": "machine", "id": "codex-auth", "handler": "auth-status", "tool": "codex", "applies_if": "codex.enabled", "optional": true, "purpose": "/codex-review second opinion."},
-      {"layer": "machine", "id": "node", "handler": "binary-version", "binary": "node", "min_version": "22.13", "applies_if": "codeburn.enabled", "optional": true, "manual": "Install Node.js 22.13 or newer (nodejs.org or a version manager).", "purpose": "CodeBurn cost reports."}
+      {"layer": "machine", "id": "node", "handler": "binary-version", "binary": "node", "min_version": "22.13", "applies_if": "codeburn.enabled", "optional": true, "manual": "Install Node.js 22.13 or newer (nodejs.org or a version manager).", "purpose": "CodeBurn cost reports."},
+      {"id": "git-exclude", "layer": "project", "handler": "git-exclude", "patterns": [".claude/settings.local.json", ".claude/claude-mini/"], "purpose": "Local settings (they hold this machine's harness path) and setup's own state stay out of commits."},
+      {"id": "plugin", "layer": "project", "handler": "plugin-local", "purpose": "The harness itself: hooks, skills and agents, enabled for this project only."}
     ]
   },
   "paths": {

@@ -10,15 +10,17 @@
 
 Ядро харнесса ставится штатным плагином, без `universal-setup.sh` и без флага платформы.
 
-**Развёртывание в проект — [DEPLOY.md](DEPLOY.md)** (пишется в фазах P2–P3, решение — [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md), план — [docs/port/PLAN.md](docs/port/PLAN.md)).
+**Развёртывание в проект — [DEPLOY.md](DEPLOY.md)**, решение — [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md). Или попроси Claude в проекте: «deploy my harness for this project», указав путь к клону.
 
 ```bash
+git clone https://github.com/Lenivvenil/claude-mini.git ~/claude-mini   # один раз
 cd <твой-проект>
-claude plugin marketplace add --scope local Lenivvenil/claude-mini  # или путь к локальному клону
-claude plugin install claude-mini@claude-mini --scope local # только этот проект, только ты
+~/claude-mini/setup/harness assess --project .   # что есть, чего нет; ничего не пишет
+~/claude-mini/setup/harness apply --project .    # только недостающее; плагин включается только здесь
+~/claude-mini/setup/harness uninstall --project . # вернуть как было
 ```
 
-**Только `--scope local` или `--scope project`.** По умолчанию `install` ставит в user scope — плагин и его хук заработают во всех проектах машины (это ровно дефект #303).
+Плагин включается только в `--scope local` этого проекта: в других проектах и сессиях его нет.
 
 Что внутри:
 

@@ -150,6 +150,14 @@ def reconcile(t):
     manager what actually happened. Returns (recovered, broken) human lines."""
     recovered, broken = [], []
     for r in t.open_records():
+        if r.get("op") == "plugin":
+            status, _ = check_plugin_local({}, {"project": t.project})
+            ok = status == "ready"
+            t.append({"op": "plugin", "item": r["item"], "path": r["path"],
+                      "state": "done" if ok else "failed", "reconciled": True})
+            recovered.append(f"{r['item']}: interrupted plugin setup closed as "
+                             f"{'done' if ok else 'not done'} (check says {status})")
+            continue
         if r.get("op") not in ("install", "uninstall"):
             continue
         present = pkg_installed(r["manager"], r["package"])
@@ -186,7 +194,7 @@ def run_probe(argv):
     return r, (r.stdout + r.stderr).strip()
 
 
-def check_binary(item):
+def check_binary(item, ctx=None):
     b = item["binary"]
     path = shutil.which(b)
     if not path:
@@ -207,7 +215,7 @@ def check_binary(item):
     return "ready", f"{path} ({first})"
 
 
-def check_auth(item):
+def check_auth(item, ctx=None):
     argv = AUTH[item["tool"]][0]
     if not shutil.which(argv[0]):
         return "missing", f"{argv[0]} not found on PATH"
@@ -219,25 +227,109 @@ def check_auth(item):
     return "needs-manual", f"`{' '.join(argv)}` exit {r.returncode}: not logged in"
 
 
-HANDLERS = {"binary-version": check_binary, "auth-status": check_auth}
-REQUIRED_FIELDS = {"binary-version": ("binary",), "auth-status": ("tool",)}
+# --- project layer ---------------------------------------------------------------------------
+HARNESS_ROOT = os.path.realpath(os.path.join(HERE, ".."))
+SETTINGS_LOCAL = os.path.join(".claude", "settings.local.json")  # Claude Code's own file name
+
+
+def plugin_ids():
+    """(marketplace name, plugin id) from this harness's marketplace manifest."""
+    try:
+        with open(os.path.join(HARNESS_ROOT, ".claude-plugin", "marketplace.json"), encoding="utf-8") as fh:
+            m = json.load(fh)
+        return m["name"], f"{m['plugins'][0]['name']}@{m['name']}"
+    except (OSError, ValueError, KeyError, IndexError) as e:
+        raise Invalid(f"cannot read the harness marketplace manifest: {e}") from None
+
+
+def read_settings_local(project):
+    """Parsed <project>/.claude/settings.local.json ({} when absent), or None when unreadable."""
+    path = os.path.join(project, SETTINGS_LOCAL)
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def check_plugin_local(item, ctx):
+    mkt, pid = plugin_ids()
+    if not shutil.which("claude"):
+        return "missing", "claude not found on PATH; install it first"
+    data = read_settings_local(ctx["project"])
+    if data is None:
+        return "needs-manual", f"{SETTINGS_LOCAL} is not valid JSON; fix it by hand"
+    src = (data.get("extraKnownMarketplaces") or {}).get(mkt, {}).get("source")
+    want = {"source": "directory", "path": HARNESS_ROOT}
+    if src is not None and not (src.get("source") == "directory"
+                                and os.path.realpath(src.get("path", "")) == HARNESS_ROOT):
+        return "needs-manual", f"marketplace {mkt} is declared from {src}; setup does not replace it"
+    if src is not None and (data.get("enabledPlugins") or {}).get(pid) is True:
+        return "ready", f"{pid} enabled for this project only ({SETTINGS_LOCAL})"
+    return "missing", f"{pid} not enabled in this project"
+
+
+def exclude_path(project):
+    """Project-relative path of the git exclude file, or None (not a repo, or outside the project)."""
+    try:
+        out = subprocess.run(["git", "-C", project, "rev-parse", "--git-path", "info/exclude"],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    path = os.path.realpath(os.path.join(project, out))
+    if not path.startswith(project + os.sep):
+        return None
+    return os.path.relpath(path, project)
+
+
+def check_git_exclude(item, ctx):
+    rel = exclude_path(ctx["project"])
+    if rel is None:
+        return "needs-manual", ("not a git repository, or its exclude file lies outside the project "
+                                f"(linked worktree); add by hand: {', '.join(item['patterns'])}")
+    try:
+        with open(os.path.join(ctx["project"], rel), encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    except FileNotFoundError:
+        lines = []
+    missing = [p for p in item["patterns"] if p not in lines]
+    if missing:
+        return "missing", f"{rel} lacks: {', '.join(missing)}"
+    return "ready", f"{rel} ignores {', '.join(item['patterns'])}"
+
+
+HANDLERS = {"binary-version": check_binary, "auth-status": check_auth,
+            "plugin-local": check_plugin_local, "git-exclude": check_git_exclude}
+REQUIRED_FIELDS = {"binary-version": ("binary",), "auth-status": ("tool",), "plugin-local": (),
+                   "git-exclude": ("patterns",)}
+PROJECT_HANDLERS = ("plugin-local", "git-exclude")
 
 
 # --- assessment --------------------------------------------------------------------------------
-def assess_item(item, cfg, manager):
+def assess_item(item, cfg, manager, project):
     """One row: id, layer, status, detail, optional, fix, rollback, check, installable."""
     row = {"id": item["id"], "layer": item["layer"], "handler": item["handler"],
            "optional": bool(item.get("optional")), "purpose": item.get("purpose", ""),
-           "fix": None, "rollback": None, "check": None, "installable": False}
+           "fix": None, "rollback": None, "check": None, "installable": False, "auto": False}
     for f in REQUIRED_FIELDS[item["handler"]]:
         if f not in item:
             raise Invalid(f"checklist item {item['id']}: handler {item['handler']} needs '{f}'")
     if "applies_if" in item and not cfg_get(cfg, item["applies_if"]):
         row.update(status="not-applicable", detail=f"{item['applies_if']} is off")
         return row
-    status, detail = HANDLERS[item["handler"]](item)
+    status, detail = HANDLERS[item["handler"]](item, {"project": project, "cfg": cfg})
     row.update(status=status, detail=detail)
-    if item["handler"] == "binary-version":
+    if item["handler"] in PROJECT_HANDLERS:
+        row["check"] = "setup/harness verify"
+        if status == "missing" and "claude not found" not in detail:
+            row["auto"] = True  # writes only inside the project: no consent flag needed
+            row["fix"], row["rollback"] = "setup/harness apply", "setup/harness uninstall"
+        elif status != "ready":
+            row["fix"], row["rollback"] = detail, "none"
+    elif item["handler"] == "binary-version":
         row["check"] = f"{item['binary']} --version"
         pkg = (item.get("packages") or {}).get(manager) if manager else None
         if status == "missing" and pkg:
@@ -267,7 +359,7 @@ def assess(project, layer):
     dup = sorted({i for i in ids if ids.count(i) > 1})
     if dup:
         raise Invalid(f"checklist has duplicate ids: {', '.join(dup)}")
-    rows = [assess_item(i, cfg, manager) for i in items if layer in ("all", i["layer"])]
+    rows = [assess_item(i, cfg, manager, project) for i in items if layer in ("all", i["layer"])]
     return cfg, manager, rows
 
 
@@ -357,7 +449,7 @@ def cmd_apply(a):
         raise Usage("--allow-system names items that setup cannot install on this OS: "
                     f"{', '.join(sorted(no_package))}")
     t = txn_for(project, cfg)
-    work = any(r["installable"] and r["id"] in allow for r in rows) or t.open_records()
+    work = any((r["installable"] and r["id"] in allow) or r["auto"] for r in rows) or t.open_records()
     if a.dry_run or not work:  # read-only path: no recovery, no lock file (no-op rule)
         return apply_rows(a, t, cfg, manager, rows, items, allow, locked=False)
     with t.locked():
@@ -371,8 +463,17 @@ def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
         recovered, broken = t.recover()
         rec2, br2 = reconcile(t)
         recovered, broken = recovered + rec2, broken + br2
+        if recovered:  # recovery may have put a file back: decide the delta on the state now
+            _, _, rows = assess(project, a.layer)
     refused, failed, installed = [], [], []
     for r in rows:
+        if r["auto"]:
+            if a.dry_run:
+                print(f"would set up: {r['id']} ({r['detail']})")
+            elif locked:
+                problem = apply_project_item(t, items[r["id"]])
+                (failed if problem else installed).append(problem or r["id"])
+            continue
         if not r["installable"]:
             continue
         if r["id"] not in allow:
@@ -433,19 +534,137 @@ def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
     return 3 if refused else 0
 
 
+def apply_project_item(t, item):
+    """Set up one project item. Returns None on success, else a Broken line."""
+    project = t.project
+    if item["handler"] == "git-exclude":
+        rel = exclude_path(project)
+        path = os.path.join(project, rel)
+        old = open(path, "rb").read() if os.path.exists(path) else b""
+        lines = old.decode("utf-8").splitlines()
+        add = [p for p in item["patterns"] if p not in lines]
+        sep = b"" if not old or old.endswith(b"\n") else b"\n"
+        new = old + sep + ("# claude-mini (setup/harness)\n" + "\n".join(add) + "\n").encode()
+
+        def valid(candidate):
+            with open(candidate, "rb") as fh:
+                data = fh.read()
+            got = data.decode("utf-8").splitlines()
+            if not data.startswith(old) or any(p not in got for p in item["patterns"]):
+                return "candidate does not keep the old lines and add every pattern"
+            return None
+        try:
+            t.write_file(item["id"], rel, new, validate=valid)
+        except txn.TxnError as e:
+            return f"{item['id']}: {e}"
+        return None
+    # plugin-local: Claude Code's own commands, run in the project; the settings file is kept
+    # in the log so uninstall can return it byte for byte
+    mkt, pid = plugin_ids()
+    settings = t.contain(SETTINGS_LOCAL)
+    before = txn.sha_of(settings)
+    backup = None
+    if before is not None:
+        backup = t.run_path("backups", "plugin-local", "settings.local.json")
+        os.makedirs(os.path.dirname(backup), exist_ok=True)
+        shutil.copy2(settings, backup)
+    data = read_settings_local(project) or {}
+    declared = mkt in (data.get("extraKnownMarketplaces") or {})
+    base = {"op": "plugin", "item": item["id"], "path": SETTINGS_LOCAL}
+    t.append(dict(base, state="started", sha_before=before, declared_before=declared,
+                  backup=os.path.relpath(backup, project) if backup else None))
+    steps = [] if declared else [["claude", "plugin", "marketplace", "add", "--scope", "local", HARNESS_ROOT]]
+    steps.append(["claude", "plugin", "install", pid, "--scope", "local"])
+    for argv in steps:
+        code, tail = run_claude(argv, project)
+        if code != 0:
+            # undo what already succeeded, so a failed setup leaves nothing half-done
+            if not declared and argv[2] == "install":
+                run_claude(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"], project)
+            restore_settings(t, dict(base, sha_before=before,
+                                     backup=os.path.relpath(backup, project) if backup else None))
+            t.append(dict(base, state="failed", exit=code))
+            return f"{item['id']}: `{' '.join(argv)}` exit {code}: {tail}"
+    status, detail = check_plugin_local(item, {"project": project})
+    if status != "ready":
+        t.append(dict(base, state="failed"))
+        return f"{item['id']}: commands succeeded but the check says {status}: {detail}"
+    t.append(dict(base, state="done"))
+    return None
+
+
+def run_claude(argv, project):
+    try:
+        res = subprocess.run(argv, cwd=project, capture_output=True, text=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 127, str(e)
+    return res.returncode, " | ".join((res.stdout + res.stderr).strip().splitlines()[-2:])
+
+
+def restore_settings(t, started):
+    """Claude Code leaves empty objects behind; if nothing else in the local settings changed since
+    setup, put the original bytes back (or remove a file setup's commands created)."""
+    settings = t.contain(SETTINGS_LOCAL)
+    now = read_settings_local(t.project)
+    if now is None:
+        return
+    trimmed = {k: v for k, v in now.items()
+               if not (k in ("extraKnownMarketplaces", "enabledPlugins") and v == {})}
+    orig = {}
+    if started.get("backup"):
+        with open(t.contain(started["backup"]), encoding="utf-8") as fh:
+            orig = json.load(fh)
+    if trimmed == orig:
+        if started.get("backup"):
+            shutil.copy2(t.contain(started["backup"]), settings)
+        elif os.path.exists(settings):
+            os.unlink(settings)
+
+
+def undo_plugin(t, item_id):
+    """Disable the plugin for this project if setup enabled it. Returns (ok, message)."""
+    started = done = None
+    for r in t.records():
+        if r.get("op") != "plugin" or r.get("item") != item_id:
+            continue
+        if r.get("state") == "started":
+            started, done = r, None
+        elif r.get("state") == "done":
+            done = r
+        elif r.get("state") == "removed":
+            done = None
+    if done is None:
+        return True, f"{item_id}: not enabled by setup"
+    mkt, pid = plugin_ids()
+    project = t.project
+    steps = [["claude", "plugin", "uninstall", pid, "--scope", "local"]]
+    if not started.get("declared_before"):
+        steps.append(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"])
+    for argv in steps:
+        code, tail = run_claude(argv, project)
+        if code != 0:
+            return None, f"{item_id}: `{' '.join(argv)}` exit {code}: {tail}; plugin may still be enabled"
+    restore_settings(t, started)
+    t.append({"op": "plugin", "item": item_id, "path": SETTINGS_LOCAL, "state": "removed"})
+    return True, f"{item_id}: disabled for this project"
+
+
 def cmd_uninstall(a):
     project = project_dir(a.project)
     cfg, manager, _ = assess(project, "all")
     t = txn_for(project, cfg)
-    if not a.item and not t.open_records():  # a listing writes nothing
-        return uninstall_locked(a, t, cfg, project)
+    if not os.path.isdir(t.run_dir):
+        print("nothing set up by setup/harness in this project")
+        return 0
     with t.locked():
         return uninstall_locked(a, t, cfg, project)
 
 
 def uninstall_locked(a, t, cfg, project):
-    recovered, broken = reconcile(t)
-    for line in recovered + broken:
+    recovered, broken = t.recover()
+    rec2, br2 = reconcile(t)
+    recovered, broken = recovered + rec2, broken + br2
+    for line in recovered:
         print(line)
     installs = {}
     for r in t.records():
@@ -455,14 +674,31 @@ def uninstall_locked(a, t, cfg, project):
             else:
                 installs.pop(r["item"], None)
     if not a.item:
-        if installs:
-            for item, r in installs.items():
-                _, _, _, rem = pkg_commands(r["manager"], r["package"])
-                print(f"installed by setup: {item} ({r['package']}) — remove with: "
-                      f"harness uninstall --item {item}  (runs `{rem}`)")
-        else:
-            print("nothing installed by setup on this machine for this project")
+        works, notdone, failed = [], [], list(broken)
+        # what setup did comes from the log, not from today's checklist
+        owned = {}
+        for r in t.records():
+            if r.get("op") in ("file", "plugin") and r.get("state") == "done":
+                owned[r["item"]] = r["op"]
+        for item_id, op in owned.items():
+            ok, msg = undo_plugin(t, item_id) if op == "plugin" else t.revert(item_id)
+            (works if ok else failed if ok is None else notdone).append(msg)
+        for item, r in installs.items():
+            _, _, _, rem = pkg_commands(r["manager"], r["package"])
+            notdone.append(f"{item}: package {r['package']} installed by setup stays — remove with: "
+                           f"harness uninstall --item {item} (runs `{rem}`)")
+        _, _, rows = assess(project, "project")
+        text = report(rows, cfg, broken=failed, extra_works=works, extra_notdone=notdone)
+        print(text, end="")
+        if notdone or failed:
+            print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
+            return 4 if failed else 0
+        # everything undone: the run directory (log, backups, reports) goes last
+        t.remove_run_dir()
+        print(f"removed {os.path.relpath(t.run_dir, project)}")
         return 0
+    for line in broken:
+        print(f"Broken: {line}")
     r = installs.get(a.item)
     if not r:
         raise Usage(f"{a.item}: setup did not install it for this project; not touched")
@@ -477,10 +713,10 @@ def uninstall_locked(a, t, cfg, project):
         return 4
     t.append(dict(base, state="done"))
     _, _, rows = assess(project, "all")
-    text = report(rows, cfg, extra_works=[f"{a.item}: removed with `{rem}`"])
+    text = report(rows, cfg, broken=broken, extra_works=[f"{a.item}: removed with `{rem}`"])
     print(text, end="")
     print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
-    return 0
+    return 4 if broken else 0
 
 
 # --- arguments ---------------------------------------------------------------------------------

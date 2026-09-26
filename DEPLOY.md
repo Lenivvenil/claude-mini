@@ -1,30 +1,25 @@
 # Deploy claude-mini into a project
 
-**Status: skeleton.** The commands below arrive in phases P2 (#313) and P3 (#314). Until then this
-file only fixes the contract. Decision: [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md).
+For an agent asked "deploy my harness for this project". Decision: [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md).
 
-This file is written for an agent. A person or a Claude session with no prior context should be able
-to follow it from top to bottom when asked "deploy my harness for this project".
+`<harness>` is the path of this repository. The project is the directory the request came from.
 
-## Rules
+1. `<harness>/setup/harness assess --project .` — read-only. Prints Broken / Not done / Works for the
+   machine and the project.
+2. If a program is missing and the report offers `--allow-system <id>`, ask the owner. Install only
+   the items the owner names. Logins and other `needs-manual` items are the owner's to do.
+3. `<harness>/setup/harness apply --project . [--allow-system <id,...>]` — does only what is missing.
+   The project layer (git exclude lines, the plugin enabled for this project only) needs no consent:
+   it writes inside the project, plus Claude Code's own plugin registry entry for this project.
+4. `<harness>/setup/harness verify --project .` — exit 0 means ready.
+5. Show the owner the report from step 3 as is. Start a new Claude session in the project to load
+   the plugin.
 
-- The target is the project the request came from (the current working directory), and nothing else.
-- Every write goes inside that project. The only writes outside it are the closed list of ADR-0031 §3:
-  Claude Code's own plugin registry and cache entries, CodeBurn's own cache directories if enabled,
-  and system programs the owner names explicitly.
-- Never install a system program without the owner's explicit consent for that exact item.
-- Never edit shell profiles, `~/.claude/settings.json`, other projects, or global git config.
-- Uncertain? Stop and report. Do not guess.
+Undo: `<harness>/setup/harness uninstall --project .` returns the project files to their bytes before
+setup, unless someone edited them since (then they are left and listed).
 
-## Steps
+Never: edit `~/.claude/settings.json`, shell profiles, global git config or other projects; enable
+the plugin at user scope; install a system program without the owner naming it; push.
 
-1. **Assess** (read-only): `setup/harness assess --project <dir>` prints the checklist for both layers
-   (machine, project) and the minimal delta.
-2. **Show the delta** to the owner. Items marked `needs-manual` (logins, GUI steps) are the owner's.
-   Items of kind `system-binary` need explicit consent: `--allow-system <id,...>`.
-3. **Apply**: `setup/harness apply --project <dir> [--allow-system ...]` applies only the delta, one
-   atomic item at a time, and records every change in `<dir>/.claude/claude-mini/manifest.jsonl`.
-4. **Verify**: `setup/harness verify --project <dir>`.
-5. **Report** the consequences in three sections: Broken / Not done / Works, each item re-checked.
-6. **Roll back** if anything is wrong: `setup/harness uninstall --project <dir>` returns the project
-   and the allowed outside entries to their prior state.
+Exit codes: 0 ok · 1 invalid config or state · 2 usage · 3 a program needs consent · 4 a step failed
+· 5 verify: not ready.
