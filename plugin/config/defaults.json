@@ -39,6 +39,8 @@
     ]
   },
   "paths": {
-    "run_dir": ".claude/claude-mini"
+    "run_dir": ".claude/claude-mini",
+    "state": "STATE.md",
+    "handoff": "session-log"
   }
 }

@@ -87,3 +87,9 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: `plugin/skills/adr-author/SKILL.md` still refuses to proceed with fewer than three drivers or options, or fewer bad than good consequences. P4 removed the same quotas from `solutions-architect` and `adr-reviewer` asks for real options, not a count.
 - Proposed fix: in P6 or a separate PR, replace the quotas with the reviewer's rule: real options and real costs.
+
+## v1 `--target` no longer installs `/feature`
+- Source: P6, PR for #317
+- Severity: P2
+- What: `bootstrap/commands/feature.md` became the plugin skill `feature`, so `universal-setup.sh --target` stops copying a `/feature` command into projects. The plugin skill replaces it where the plugin is enabled. Board status transitions with fixed project IDs were dropped with it; `tracker.*` config is not built.
+- Proposed fix: none while the plugin is the delivery path; P9 removes the v1 installer.
