@@ -13,7 +13,9 @@ iso_require_token
 
 # Temp projects live outside the repository, so no CLAUDE.md or AGENTS.md above them is loaded.
 # Physical path: Claude Code records the project by it (/private/var on macOS), and the checks compare.
-T=$(cd "$(mktemp -d "${TMPDIR:-/tmp}/claude-mini-accept.XXXXXX")" && pwd -P)
+# Checked before the cleanup trap: an empty T would make the trap remove the current directory.
+T=$(mktemp -d "${TMPDIR:-/tmp}/claude-mini-accept.XXXXXX") && [ -d "$T" ] && T=$(cd "$T" && pwd -P) && [ -n "$T" ] \
+    || { echo "  FAIL cannot create a temp dir under ${TMPDIR:-/tmp}"; exit 1; }
 trap '[ -n "${KEEP:-}" ] || rm -rf "$T"' EXIT
 d="$T"; while [ "$d" != / ]; do
     d=$(dirname "$d")
