@@ -46,6 +46,9 @@ AUTH = {  # fixed commands: status (exit 0 = logged in; checked on gh 2.101, cla
     "codex": (["codex", "login", "status"], "codex login", "codex logout"),
 }
 PROBE_TIMEOUT = 15  # seconds for --version and login-status probes
+# gh writes ~/.local/state/gh/device-id on any run unless telemetry is off; that file is outside the
+# closed list of ADR-0031 p. 3, so probes run with telemetry off.
+PROBE_ENV = {"GH_TELEMETRY": "0"}
 LABELS = {
     "en": {"broken": "Broken", "notdone": "Not done", "works": "Works", "na": "Not applicable",
            "fix": "fix", "rollback": "rollback", "check": "check", "reduced": "reduced mode",
@@ -186,7 +189,8 @@ def version_tuple(text):
 
 def run_probe(argv):
     try:
-        r = subprocess.run(argv, capture_output=True, text=True, timeout=PROBE_TIMEOUT)
+        r = subprocess.run(argv, capture_output=True, text=True, timeout=PROBE_TIMEOUT,
+                           env={**os.environ, **PROBE_ENV})
     except subprocess.TimeoutExpired:
         return None, f"`{' '.join(argv)}` timed out after {PROBE_TIMEOUT}s"
     except OSError as e:

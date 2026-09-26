@@ -34,6 +34,7 @@ cat > "$T/proto" <<EOF
 n=\${0##*/}; v=1.0.0; a=0
 [ -f "$STATE/\$n.ver" ] && read -r v < "$STATE/\$n.ver"
 [ -f "$STATE/\$n.auth" ] && read -r a < "$STATE/\$n.auth"
+echo "\$n \$1 \${GH_TELEMETRY-unset}" >> "$T/probe.log"
 case "\$1" in --version) echo "\$n \$v" ;; auth|login) exit "\$a" ;; esac
 exit 0
 EOF
@@ -238,6 +239,10 @@ run assess --project "$p" --json
 is "$(printf '%s' "$OUT" | "$PY" -c 'import json,sys; print([r["status"] for r in json.load(sys.stdin)["items"] if r["id"]=="codex"][0])')" \
    not-applicable "a disabled capability is not-applicable, not missing"
 fake codex; echo 22.14.0 > "$STATE/node.ver"
+
+echo "probes leave no gh state outside the project"
+gh_probes=$(grep '^gh ' "$T/probe.log")
+is "$(printf '%s\n' "$gh_probes" | grep -cv ' 0$')" 0 "every gh probe runs with GH_TELEMETRY=0 ($(printf '%s\n' "$gh_probes" | grep -c .) probes)"
 
 echo "probe failures and ownership"
 printf '#!/bin/sh\nexit 1\n' > "$SHIM/jq"; chmod +x "$SHIM/jq"
