@@ -1,13 +1,6 @@
 # Hardware runbook — Mac mini 2018 (Intel, macOS Sequoia)
 
-> Эту инструкцию нужно пройти **вручную** один раз при настройке новой машины. После прохождения создай flag:
->
-> ```bash
-> mkdir -p ~/.config/claude-mini
-> echo "mac-mini-2018-sequoia-$(date +%Y-%m-%d)" > ~/.config/claude-mini/platform.done
-> ```
->
-> Только после этого `./bootstrap/universal-setup.sh --install` согласится работать.
+> Эту инструкцию нужно пройти **вручную** один раз при настройке новой машины. Харнесс разворачивается после неё, по [DEPLOY.md](../../DEPLOY.md).
 
 ## Профиль железа
 
@@ -319,25 +312,13 @@ Host mini
 
 **Проверка через preflight:** `mini-preflight.sh` проверяет наличие `ClientAliveInterval` в sshd config и покажет `✓` если всё верно.
 
-### 20. Создать platform.done flag
+### 20. Развернуть харнесс
 
-После успешного прохождения всех предыдущих шагов:
-
-```bash
-mkdir -p ~/.config/claude-mini
-cat > ~/.config/claude-mini/platform.done <<EOF
-platform: mac-mini-2018
-os: macOS Sequoia 15.7.5
-setup_date: $(date +%Y-%m-%d)
-hostname: $(hostname)
-EOF
-```
-
-**Теперь** можно запускать:
+После успешного прохождения всех предыдущих шагов разверни харнесс в нужном проекте по [DEPLOY.md](../../DEPLOY.md):
 ```bash
 cd ~/projects/claude-mini
-./bootstrap/universal-setup.sh --check
-./bootstrap/universal-setup.sh --install
+setup/harness assess --project ~/projects/<project>
+setup/harness apply --project ~/projects/<project>
 ```
 
 ## Известные острые углы
@@ -367,4 +348,4 @@ security unlock-keychain ~/Library/Keychains/login.keychain-db
 | Tailscale daemon | systemd service |
 | `security` CLI | `secret-tool` |
 
-Universal layer (`~/.claude/`, ADR-schema, commands) остаётся без изменений.
+Харнесс (плагин и `setup/harness`) остаётся без изменений: слой машины проверяет свои пункты сам, для apt и brew.

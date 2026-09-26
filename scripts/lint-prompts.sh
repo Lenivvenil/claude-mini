@@ -19,7 +19,7 @@ set -uo pipefail
 
 ERRORS=0
 
-# Banned term patterns (keep in sync with docs/runbooks/banned-terms.md)
+# Banned term patterns (keep in sync with docs/history/docs/runbooks/banned-terms.md)
 BANNED_TERMS=("employer-owned repositories")
 
 check_banned() {

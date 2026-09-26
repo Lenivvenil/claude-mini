@@ -105,3 +105,9 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P3
 - What: PLAN §7 planned per-PR cost from `codeburn --by-pr`. CodeBurn 0.9.25 `report` has no such flag, and the run driver was removed on 2026-09-26.
 - Proposed fix: none needed now. If per-PR cost is wanted, filter `report --format json` by date range of the PR.
+
+## DoD in principles.md and the PR template still describe v1
+- Source: P9b, PR for #320
+- Severity: P2
+- What: the Definition of Done, the ADR trigger and the advisor policy sections of `docs/principles.md`, and `.github/pull_request_template.md`, list v1 rituals: `/review`, two mandatory advisor calls, deferred-review issues, coverage floor. ADR-0031 allows text edits to principles §5–7 only, so P9 changed their paths to `docs/history/`, not their content.
+- Proposed fix: the owner decides whether a new ADR replaces these sections with the feature skill's checks, or they stay as history.

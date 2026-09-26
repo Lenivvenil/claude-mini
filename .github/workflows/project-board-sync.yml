@@ -27,7 +27,7 @@ jobs:
       - name: Check token
         if: env.GH_TOKEN == ''
         run: |
-          echo "::warning::ADD_TO_PROJECT_TOKEN not set — skipping board add. See docs/runbooks/incident-recovery.md"
+          echo "::warning::ADD_TO_PROJECT_TOKEN not set — skipping board add. See docs/history/docs/runbooks/incident-recovery.md"
           exit 0
 
       - name: Add issue to project board
