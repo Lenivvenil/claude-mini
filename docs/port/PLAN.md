@@ -22,7 +22,7 @@
   - the `setup/harness` CLI.
 
   principles.md:55 §5 also requires "пересмотр принципа отдельным ADR". Proposal: one ADR, merged separately before P0. It supersedes ADR-0018 (per-project command copying) and revises §5's wording. Existing ADR files stay byte-identical.
-- **S2. Phase issues.** CI rejects any PR without `Closes #N` (ci.yml:171–175). The owner creates issues P0–P9 up front, and `phases.json` records their numbers. The driver refuses to open a PR without an issue number and never creates issues.
+- **S2. Phase issues.** CI rejects any PR without `Closes #N` (ci.yml:171–175). The owner creates issues P0–P9 up front.
 - **S3. Native-state footprint (was D1).** Local-scope install writes more than the project **[verified 2026-09-26]**:
   - an entry with `projectPath` in `~/.claude/plugins/installed_plugins.json`,
   - a marketplace entry,
@@ -52,6 +52,7 @@
 - **Phase order.** Config, the safety net and deployment come before porting. CI is edited in the same PR as every move. Removal is gated by capability, not by filename (A#10).
 
 ## 2. Design principles (binding, proportional)
+- **Selection rule (owner, 2026-09-26): reliable, antifragile, compact, universal, configurable, current; no long tight muzzles on modern models without a very strong reason.** A rule, check, pipeline step or prompt instruction moves into the plugin only when it names the failure it prevents: a case seen in use, an eval, or a review finding. Without that it stays in git history, ledger verdict `KEEP-HISTORY`. Deterministic checks at a boundary (the commit hook, setup's write boundary) meet the bar. Instructions on how an agent should think do not by default.
 - **Scope is the install boundary.** Source: principles.md:51–55 §5. Enforced by the execution boundary (§8) and the hash tests, not by prose.
 - **§8, 2–3× margin, not 1000×** (principles.md:79–87).
   - Full depth goes to the commit hook, setup/apply/uninstall and the acceptance test.
@@ -72,11 +73,13 @@
   - degrade gracefully without Codex, Jev, CodeBurn or network.
 - **Every failure found in use becomes a test or eval case,** in the PR that fixes it.
 
+- **No CLAUDE.md.** Claude Code 2.1.283 loads AGENTS.md by itself (probe 2026-09-26: AGENTS.md-only project, file tools disallowed, zero tool calls, the file's codeword returned). The repository has no CLAUDE.md, and the project layer never creates one.
+
 ## 3. Phases (one branch `port/p<N>-<slug>`, one PR, one issue each)
-Every PR runs `claude plugin validate plugin --strict`, and passes today. From P2 on, it also runs `tests/setup/t9-rollback.sh`. From P3 on, it also runs `tests/acceptance/deploy-bare.sh` (mode A).
+Every PR runs `claude plugin validate plugin --strict`, and passes today. From P2 on, it also runs `tests/setup/run.sh`. From P3 on, it also runs `tests/acceptance/deploy-bare.sh` (mode A).
 
 **P0 — Safety net + run infrastructure** (no behaviour change)
-- `tools/port-run/driver.sh` and `phases.json` (§10). Add `.port-run/` to .gitignore.
+- A phase driver (§10) was built here and removed on 2026-09-26 unused. `.port-run/` stays in .gitignore for test temp dirs.
 - `tools/port-run/ledger.tsv` has these columns: `path`, `verdict`, `capability` (the behaviour preserved), `entry_point` (packaged skill/agent/script), `evidence` (the test or command that proves it), `phase`, `archive_dest`. `KEEP-HISTORY` needs `archive_dest` and cannot stand in for a capability marked required (A#10).
 - `tests/plugin-scope/no-plugin-no-writes.sh` runs with `HOME=$T/home CLAUDE_CONFIG_DIR=$T/home/.claude` and hashes only `$T` (F#9).
 - `tests/lint/no-hardcode.sh` covers a narrow set: model names in frontmatter or scripts, `Lenivvenil`, `PVT_`, `/Users/`, and literal `main` used as a default in scripts. Prose is not scanned, and exceptions are listed with a reason (F#13, A#12).
@@ -301,41 +304,11 @@ DoD for P5–P7:
 - **Run driver.** Uses `codeburn --by-pr --format json` for per-phase and per-PR cost, instead of summing `total_cost_usd`. This fixes the double counting of cumulative resume totals (A budget, F#4). Fallback when CodeBurn is absent: keep the latest `total_cost_usd` per distinct session_id and sum across sessions.
 - **Global dirs.** `~/.cache/codeburn` and `~/.config/codeburn` are part of decision S3.
 
-## 8. Guardrails and the execution boundary (A#2, F#1)
-- **Isolated run config.** Every run session uses `CLAUDE_CONFIG_DIR=<repo>/.port-run/claude-config` (persistent across phases, gitignored), plus:
-  - `--setting-sources project,local` (user settings and hooks are not loaded);
-  - `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`;
-  - `HOME` pointed at `.port-run/agent-home`, and `GIT_CONFIG_NOSYSTEM=1`, so the agent sees no shell profile, git or gh credentials of the owner (the macOS system gitconfig sets the keychain credential helper); git identity is copied into a sandbox `GIT_CONFIG_GLOBAL`. After the session, any branch or tag on origin that is new or moved, `main` excepted, blocks publication.
-
-  Transcripts, local permissions and the user's own hooks stay out of `~/.claude`. Git writes that go into the shared `.git` of the main checkout (worktree metadata, refs) are documented and permitted.
-- **Allowed writes:**
-  - the phase worktree `.port-run/wt/pN/`;
-  - `.port-run/`;
-  - test temp dirs under `.port-run/tmp/`.
-
-  The boundary check after each session is `git -C <main> status --porcelain` empty plus the T4 watch list unchanged. Any drift sets `blocked`.
-- **Per-phase allowlist** in `phases.json`, written before P0 (F#1):
-  - `--allowedTools`: Read, Edit, Write, `Bash(git add *|commit *|mv *|rm *|diff *|status *|log *)`, `Bash(bash tests/*)`, `Bash(bash scripts/*)`, `Bash(python3 *)`, `Bash(jq *)`, `Bash(claude plugin validate *)`, `Agent`;
-  - `--disallowedTools`: `Bash(git push *)`, `Bash(gh *)`, `Bash(rm -rf *)`, `Bash(brew *)`, `Bash(claude plugin install *)`.
-
-  The driver, not the agent, does push and `gh pr create`.
-- **Forbidden:**
-  - global config, and pushes to or merges into main;
-  - closing, editing or commenting on issues or PRs, including #250–#301 and #270–#302;
-  - changes to `docs/decisions/*`;
-  - `git rm` outside the ledger;
-  - auto-created issues;
-  - editing tests to make them pass;
-  - moving `plugin/` or `marketplace.json` (likec4).
-- **Commits.** Conventional Commits `type(scope): subject #N` (AGENTS.md:124, :134–135). A pure `git mv` commit comes first. The attribution lines follow current practice: the last 5 commits carry them (5 matching lines, `git log -5`), so the default is yes (D-6).
-- **Blocked channel (F#3).** The agent cannot set the exit code. It writes `{"status":"done"}` or `{"status":"blocked","question":…}` into `.port-run/pN.signal.json` inside its worktree, and the driver publishes nothing without a `done` signal. The run blocks on any of:
-  - a system-binary need;
-  - a new ADR trigger beyond S1;
-  - an unresolved P0/P1 after 2 rounds;
-  - acceptance red outside the phase;
-  - a path leaving the tree without a capability, entry point and evidence in its ledger row;
-  - out-of-list files;
-  - the same failure 3 times.
+## 8. Guardrails
+Phases run by hand in a session; every PR is merged by the owner.
+- **Forbidden:** global config and shell profiles; pushes to or merges into main; closing or editing issues and PRs; changes to `docs/decisions/*` other than status; `git rm` outside the ledger; editing tests to make them pass; moving `plugin/` or `marketplace.json` (likec4 uses them).
+- **Commits.** Conventional Commits `type(scope): subject #N`. A pure `git mv` commit comes before any edit of the moved files.
+- **Stop and ask the owner** on: a system program to install, a new ADR trigger beyond S1, a P0/P1 finding still open after 2 rounds.
 
 ## 9. Review policy (reconciled with docs/runbooks/dod-checklist.md, A#9)
 - **Pure-move PR commits.** Checks: `git diff -M --stat` shows only renames, plus CI green. No critics and no §8 table.
@@ -351,16 +324,8 @@ DoD for P5–P7:
 - **Rounds.** At most 2 fix rounds, each recording the reviewed SHA. Every semantic fix of a P0/P1 is re-checked by the critic that raised it, and Codex runs once more if any P0/P1 fix changed non-test code. The 50-line rule is dropped. After 2 rounds the state is `blocked` with the unresolved finding, and approval is not implied.
 - **Parser edge cases** are P2 unless a bad message passes or a good one is blocked.
 
-## 10. Driver (simplified per §8 proportionality; A#3)
-- **Commands.** `driver.sh start pN | resume | status`. There is no multi-state machine. State is one JSON file per phase, `.port-run/pN.json`: `{issue, branch, base_ref, base_sha, worktree, session_id, last_exit, pr, pushed_sha, status: starting|running|interrupted|blocked|dod-failed|awaiting-merge, question}`. It is written with tmp+`mv`. A single lock `.port-run/lock` holds the PID and is checked for liveness.
-- **Start:**
-  1. `git fetch`. Find the previous phase's PR by its branch name `port/<prev>-<slug>` (so phases done by hand count) and require it merged; record `origin/main` as `base_sha`. `PORT_STACK=1` stacks on the unmerged predecessor branch instead. Never branch from a stale `origin/main`.
-  2. `git worktree add .port-run/wt/pN -b port/pN-slug <base_sha>`.
-  3. Compose the prompt from `prompts/common.md`, the phase issue text and an optional `prompts/pN.md`, check the token and snapshot the §8 watch list, all before the worktree exists. Generate a UUID and **persist it before launch**. Run `claude -p <prompt> --session-id <uuid> --output-format json --permission-mode acceptEdits --permission-prompts none <allow/deny lists>` with the §8 env under `timeout`.
-  4. Critics run inside the phase session (prompts/common.md); PR-level review follows §9 on the draft PR.
-  5. With a `done` signal, an unchanged watch list, clean trees, a green DoD and written PR files, the driver pushes and opens a **draft** PR only if `gh pr list --head <branch>` finds nothing (A#3).
-- **Resume.** Replays the **full** launch command and env with `--resume <uuid>`, because the permission mode is not restored (A#3). The driver never deletes a worktree; uncommitted work blocks publication.
-- **Stacking.** The owner merge gate stays; stacking is off (D-2).
+## 10. Driver
+Removed on 2026-09-26 without a single run: it needs the subscription token for isolated sessions, and every phase so far was run by hand. It stays in git history (P0, #322).
 
 ## 11. Budget (uncalibrated; P0 is the calibration run)
 - **Per phase:** 3 sessions (implementation, review with subagents inside, fix if needed), plus 1 architect call and 1 Codex call. P3 adds 3–5 acceptance runs.
@@ -370,7 +335,7 @@ DoD for P5–P7:
   - trivial `-p` call: $0.005;
   - Jev lint: ≈ $0.0003 per call ([JEV-DESIGN.md](JEV-DESIGN.md#L50)).
 - **Wall time:** ≈18–28 h of agent time, plus rework and merge latency. Re-estimate after P0 and P1 from CodeBurn per-PR data.
-- **Hard stop:** the wall-clock `timeout` wrapper in the driver (`timeout_s` in phases.json); `--max-turns` is not in `--help` on 2.1.283 and `--max-budget-usd` is out per S4.
+- **Hard stop:** none by flag: `--max-turns` is not in `--help` on 2.1.283 and `--max-budget-usd` is out per S4. The limit is subscription quota.
 
 ## 12. Remaining owner decisions (not blocking P0)
 - D-2. Stacked branches instead of a merge after every PR. Default: off.
