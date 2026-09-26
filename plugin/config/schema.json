@@ -46,6 +46,39 @@
           "language": {"type": "string", "doc": "Language for reports shown to the user, e.g. en, ru."}
         }
       },
+      "checklist": {
+        "type": "object",
+        "doc": "Deployment checklist read by setup/harness (ADR-0031 §2). An override replaces the whole items list.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "layer", "handler"],
+              "properties": {
+                "id": {"type": "string", "pattern": "[a-z][a-z0-9-]*"},
+                "layer": {"type": "enum", "values": ["machine", "project"]},
+                "handler": {"type": "enum", "values": ["binary-version", "auth-status"], "doc": "Typed handler implemented in setup/harness; no shell strings."},
+                "binary": {"type": "string", "pattern": "[A-Za-z0-9._+-]+", "doc": "binary-version: program looked up on PATH, asked for --version."},
+                "min_version": {"type": "string", "pattern": "[0-9]+(\\.[0-9]+)*", "doc": "binary-version: lowest accepted version."},
+                "tool": {"type": "enum", "values": ["gh", "claude", "codex"], "doc": "auth-status: whose login status is checked."},
+                "packages": {
+                  "type": "object",
+                  "doc": "System package per manager. Installed only when the item id is named in --allow-system.",
+                  "properties": {
+                    "brew": {"type": "string", "pattern": "[A-Za-z0-9@._+/-]+"},
+                    "apt": {"type": "string", "pattern": "[a-z0-9][a-z0-9.+-]*"}
+                  }
+                },
+                "applies_if": {"type": "string", "pattern": "[a-z_]+(\\.[a-z_]+)*", "doc": "Config key that must be true for the item to apply."},
+                "optional": {"type": "bool", "doc": "When not ready, the harness runs in reduced mode instead of failing."},
+                "manual": {"type": "string", "doc": "What a person does when there is no package for this OS. Shown, never executed."},
+                "purpose": {"type": "string", "doc": "What the harness loses without this item."}
+              }
+            }
+          }
+        }
+      },
       "paths": {
         "type": "object",
         "properties": {

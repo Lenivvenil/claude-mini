@@ -242,11 +242,14 @@ plugin/skills/plan/SKILL.md	KEEP				-
 scripts/lint-prompts.sh	MODERNISE				p9	
 scripts/sweep-worktree.sh	MODERNISE				p9	
 session-log/2026/05/2026-05-03.md	KEEP-HISTORY				p9	docs/history/session-log/2026/05/2026-05-03.md
+setup/harness	KEEP				p2	
+setup/lib/txn.py	KEEP				p2	
 tests/acceptance/deploy-bare.sh	KEEP				p0	
 tests/config/run.sh	KEEP				p1	
 tests/lint/no-hardcode.allow	KEEP				p0	
 tests/lint/no-hardcode.sh	KEEP				p0	
 tests/plugin-scope/no-plugin-no-writes.sh	KEEP				p0	
+tests/setup/run.sh	KEEP				p2	
 tools/port-run/driver.sh	KEEP				p0	
 tools/port-run/ledger-check.sh	KEEP				p0	
 tools/port-run/ledger.tsv	KEEP				p0	

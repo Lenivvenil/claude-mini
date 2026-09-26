@@ -69,3 +69,21 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: the watch-list snapshot is taken at `start` only. An owner edit to a watched file (for example `~/.zshrc`) between `start` and `resume` blocks publication, although no agent made it.
 - Proposed fix: on `resume`, show the difference and ask the owner to confirm a new snapshot; never refresh it silently, because a crashed first session may have made the change.
+
+## setup/harness: apt as root is not tested
+- Source: P2, Codex review
+- Severity: P2
+- What: on Linux as root, apt runs without sudo; as another user, apt is offered only when sudo exists. Tests run as a normal user on macOS and ubuntu, so the root path is covered by reading only.
+- Proposed fix: a container job running `tests/setup/run.sh` as root, if the port gets a Linux container stage.
+
+## setup/harness: probe timeout is a guess
+- Source: P2, reliability review
+- Severity: P2
+- What: `--version` and login-status probes share a 15-second timeout, not calibrated on slow networks or cold starts.
+- Proposed fix: record probe durations in the P3 acceptance runs and set the value from them; move it to config if it needs to differ per host.
+
+## setup/harness: --project inside another repository
+- Source: P2, adversarial review
+- Severity: P2
+- What: `--project` is resolved to the git top level, so pointing it at a subdirectory targets the whole enclosing repository.
+- Proposed fix: say so in DEPLOY.md (P3) and print the resolved project in every report header.

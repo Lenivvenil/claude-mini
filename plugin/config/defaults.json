@@ -22,6 +22,20 @@
   "output": {
     "language": "en"
   },
+  "checklist": {
+    "items": [
+      {"layer": "machine", "id": "git", "handler": "binary-version", "binary": "git", "packages": {"apt": "git"}, "manual": "Install git (on macOS: xcode-select --install).", "purpose": "Everything: commits, branches, reviews."},
+      {"layer": "machine", "id": "python3", "handler": "binary-version", "binary": "python3", "packages": {"apt": "python3"}, "manual": "Install Python 3.", "purpose": "The commit hook, the config tool and setup/harness."},
+      {"layer": "machine", "id": "jq", "handler": "binary-version", "binary": "jq", "packages": {"brew": "jq", "apt": "jq"}, "purpose": "The commit hook reads its input with jq."},
+      {"layer": "machine", "id": "claude", "handler": "binary-version", "binary": "claude", "manual": "Install Claude Code: https://code.claude.com/docs/en/setup", "purpose": "The harness runs inside Claude Code."},
+      {"layer": "machine", "id": "claude-auth", "handler": "auth-status", "tool": "claude", "purpose": "Claude Code sessions."},
+      {"layer": "machine", "id": "gh", "handler": "binary-version", "binary": "gh", "packages": {"brew": "gh"}, "manual": "Install GitHub CLI: https://cli.github.com", "purpose": "Issues and pull requests."},
+      {"layer": "machine", "id": "gh-auth", "handler": "auth-status", "tool": "gh", "purpose": "Issues and pull requests."},
+      {"layer": "machine", "id": "codex", "handler": "binary-version", "binary": "codex", "applies_if": "codex.enabled", "optional": true, "manual": "Install Codex CLI: https://github.com/openai/codex", "purpose": "/codex-review second opinion."},
+      {"layer": "machine", "id": "codex-auth", "handler": "auth-status", "tool": "codex", "applies_if": "codex.enabled", "optional": true, "purpose": "/codex-review second opinion."},
+      {"layer": "machine", "id": "node", "handler": "binary-version", "binary": "node", "min_version": "22.13", "applies_if": "codeburn.enabled", "optional": true, "manual": "Install Node.js 22.13 or newer (nodejs.org or a version manager).", "purpose": "CodeBurn cost reports."}
+    ]
+  },
   "paths": {
     "run_dir": ".claude/claude-mini"
   }

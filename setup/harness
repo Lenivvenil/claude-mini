@@ -1,0 +1,542 @@
+#!/usr/bin/env python3
+"""setup/harness — deploy claude-mini into one project, in two layers (ADR-0031 §2; #313, #314).
+
+Usage:
+  harness assess    [--project DIR] [--layer machine|project|all] [--json]
+  harness apply     [--project DIR] [--layer ...] [--allow-system ID[,ID...]] [--dry-run]
+  harness verify    [--project DIR] [--layer ...]
+  harness uninstall [--project DIR] [--item ID]
+
+assess     reads only: every checklist item with its status and the minimal delta. Output only.
+apply      does only the delta. A missing program is installed only when its item id is named in
+           --allow-system; otherwise it is reported with the command to run. --dry-run prints
+           what apply would do and changes nothing.
+verify     assess, with a failing exit when a required item is not ready.
+uninstall  --item ID removes a package that apply installed itself (never one that was already
+           there). Without --item it changes nothing and lists what apply installed.
+
+The checklist and every value come from config (plugin/config/defaults.json merged with
+<project>/.claude/claude-mini.json). Statuses: ready, missing, wrong-version, not-applicable,
+needs-manual. Writes happen only under <project>/<paths.run_dir> (intent log, reports) and, with
+consent, through the system package manager.
+
+Exit: 0 ok (reduced mode included) · 1 invalid config or state · 2 usage · 3 apply: a program is
+missing and its id was not in --allow-system (nothing installed for it) · 4 apply/uninstall: a fix
+failed · 5 verify: a required item is not ready.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+sys.dont_write_bytecode = True  # no __pycache__ next to the harness
+HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, os.path.join(HERE, "lib"))
+import txn  # noqa: E402
+
+CONFIG_TOOL = os.path.join(HERE, "..", "plugin", "bin", "config")
+STATUSES = ("ready", "missing", "wrong-version", "not-applicable", "needs-manual")
+AUTH = {  # fixed commands: status (exit 0 = logged in; checked on gh 2.101, claude 2.1.283,
+    # codex 0.157), login, logout
+    "gh": (["gh", "auth", "status"], "gh auth login", "gh auth logout"),
+    "claude": (["claude", "auth", "status"], "claude auth login", "claude auth logout"),
+    "codex": (["codex", "login", "status"], "codex login", "codex logout"),
+}
+PROBE_TIMEOUT = 15  # seconds for --version and login-status probes
+LABELS = {
+    "en": {"broken": "Broken", "notdone": "Not done", "works": "Works", "na": "Not applicable",
+           "fix": "fix", "rollback": "rollback", "check": "check", "reduced": "reduced mode",
+           "none": "nothing"},
+    "ru": {"broken": "Сломано", "notdone": "Не сделано", "works": "Работает", "na": "Не относится",
+           "fix": "исправить", "rollback": "откатить", "check": "проверка",
+           "reduced": "урезанный режим", "none": "ничего"},
+}
+
+
+class Usage(Exception):
+    pass
+
+
+class Invalid(Exception):
+    pass
+
+
+# --- config and project ------------------------------------------------------------------------
+def project_dir(explicit):
+    base = explicit or os.getcwd()
+    if not os.path.isdir(base):
+        raise Usage(f"--project {base}: not a directory")
+    try:
+        top = subprocess.run(["git", "-C", base, "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        top = ""
+    return os.path.realpath(top or base)
+
+
+def load_config(project):
+    r = subprocess.run([sys.executable, CONFIG_TOOL, "effective", "--project", project],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        raise Invalid(r.stderr.strip() or "config tool failed")
+    return json.loads(r.stdout)
+
+
+def cfg_get(cfg, dotted):
+    cur = cfg
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            raise Invalid(f"applies_if names unknown config key {dotted!r}")
+        cur = cur[part]
+    return cur
+
+
+def package_manager():
+    """The system package manager setup may use on this OS, or None."""
+    if sys.platform == "darwin" and shutil.which("brew"):
+        return "brew"
+    if sys.platform.startswith("linux") and shutil.which("apt-get") \
+            and (os.geteuid() == 0 or shutil.which("sudo")):
+        return "apt"
+    return None
+
+
+def pkg_commands(manager, pkg):
+    """(install argv, uninstall argv, printable install, printable uninstall)."""
+    if manager == "brew":
+        inst, rem = ["brew", "install", pkg], ["brew", "uninstall", pkg]
+    else:
+        sudo = [] if os.geteuid() == 0 else ["sudo"]
+        inst = sudo + ["apt-get", "install", "-y", pkg]
+        rem = sudo + ["apt-get", "remove", "-y", pkg]
+    return inst, rem, " ".join(inst), " ".join(rem)
+
+
+def pkg_installed(manager, pkg):
+    """True / False as confirmed by the package manager; None when the query itself failed."""
+    if manager == "brew":
+        answers = []
+        for kind in ([], ["--cask"]):  # a package may be a formula or a cask
+            r, out = run_probe(["brew", "list"] + kind + ["--versions", pkg])
+            if r is None:
+                return None
+            if r.returncode == 0 and out:
+                return True
+            answers.append(r.returncode == 1 and not out)
+        return False if all(answers) else None
+    # db:Status-Status is the install state alone (a held package is still "installed")
+    r, out = run_probe(["dpkg-query", "-W", "-f=${db:Status-Status}", pkg])
+    if r is None:
+        return None
+    if r.returncode == 0:
+        return out.strip() == "installed"
+    return False if r.returncode == 1 else None  # 1: no such package; anything else: error
+
+
+def run_pkg(argv):
+    """(exit code, last lines of output); a program that cannot start is exit 127."""
+    try:
+        res = subprocess.run(argv, capture_output=True, text=True)
+    except OSError as e:
+        return 127, f"{argv[0]}: {e.strerror}"
+    return res.returncode, " | ".join((res.stdout + res.stderr).strip().splitlines()[-3:])
+
+
+def reconcile(t):
+    """Close package operations interrupted before their end record, by asking the package
+    manager what actually happened. Returns (recovered, broken) human lines."""
+    recovered, broken = [], []
+    for r in t.open_records():
+        if r.get("op") not in ("install", "uninstall"):
+            continue
+        present = pkg_installed(r["manager"], r["package"])
+        base = {k: r[k] for k in ("op", "item", "path", "manager", "package")}
+        if present is None:
+            broken.append(f"{r['item']}: interrupted {r['op']} of {r['package']}; the package "
+                          f"manager cannot tell its state — check `{r['package']}` by hand")
+            continue
+        if r["op"] == "install":
+            # ours only if the package was confirmed absent before the install started
+            done = present and r.get("present_before") is False
+        else:
+            done = not present
+        t.append(dict(base, state="done" if done else "failed", reconciled=True))
+        recovered.append(f"{r['item']}: interrupted {r['op']} of {r['package']} closed as "
+                         f"{'done' if done else 'not done'} (package manager says "
+                         f"{'installed' if present else 'not installed'})")
+    return recovered, broken
+
+
+# --- handlers ----------------------------------------------------------------------------------
+def version_tuple(text):
+    m = re.search(r"(\d+(?:\.\d+)+)", text)
+    return tuple(int(x) for x in m.group(1).split(".")) if m else None
+
+
+def run_probe(argv):
+    try:
+        r = subprocess.run(argv, capture_output=True, text=True, timeout=PROBE_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return None, f"`{' '.join(argv)}` timed out after {PROBE_TIMEOUT}s"
+    except OSError as e:
+        return None, f"`{' '.join(argv)}` could not run: {e.strerror}"
+    return r, (r.stdout + r.stderr).strip()
+
+
+def check_binary(item):
+    b = item["binary"]
+    path = shutil.which(b)
+    if not path:
+        return "missing", f"{b} not found on PATH"
+    r, out = run_probe([b, "--version"])
+    if r is None or r.returncode != 0:
+        code = "no exit" if r is None else f"exit {r.returncode}"
+        return "needs-manual", f"{path} is present but `{b} --version` failed ({code}): {out[:200]}"
+    first = out.splitlines()[0] if out else ""
+    if "min_version" not in item:
+        return "ready", f"{path} ({first})" if first else path
+    have = version_tuple(out) if r is not None else None
+    want = tuple(int(x) for x in item["min_version"].split("."))
+    if have is None:
+        return "wrong-version", f"{b} --version gave no version; need >= {item['min_version']}"
+    if have < want:
+        return "wrong-version", f"{b} {'.'.join(map(str, have))} < {item['min_version']}"
+    return "ready", f"{path} ({first})"
+
+
+def check_auth(item):
+    argv = AUTH[item["tool"]][0]
+    if not shutil.which(argv[0]):
+        return "missing", f"{argv[0]} not found on PATH"
+    r, out = run_probe(argv)
+    if r is None:
+        return "needs-manual", out
+    if r.returncode == 0:
+        return "ready", f"`{' '.join(argv)}` exit 0"
+    return "needs-manual", f"`{' '.join(argv)}` exit {r.returncode}: not logged in"
+
+
+HANDLERS = {"binary-version": check_binary, "auth-status": check_auth}
+REQUIRED_FIELDS = {"binary-version": ("binary",), "auth-status": ("tool",)}
+
+
+# --- assessment --------------------------------------------------------------------------------
+def assess_item(item, cfg, manager):
+    """One row: id, layer, status, detail, optional, fix, rollback, check, installable."""
+    row = {"id": item["id"], "layer": item["layer"], "handler": item["handler"],
+           "optional": bool(item.get("optional")), "purpose": item.get("purpose", ""),
+           "fix": None, "rollback": None, "check": None, "installable": False}
+    for f in REQUIRED_FIELDS[item["handler"]]:
+        if f not in item:
+            raise Invalid(f"checklist item {item['id']}: handler {item['handler']} needs '{f}'")
+    if "applies_if" in item and not cfg_get(cfg, item["applies_if"]):
+        row.update(status="not-applicable", detail=f"{item['applies_if']} is off")
+        return row
+    status, detail = HANDLERS[item["handler"]](item)
+    row.update(status=status, detail=detail)
+    if item["handler"] == "binary-version":
+        row["check"] = f"{item['binary']} --version"
+        pkg = (item.get("packages") or {}).get(manager) if manager else None
+        if status == "missing" and pkg:
+            row["installable"] = True
+            _, _, row["fix"], row["rollback"] = pkg_commands(manager, pkg)
+        elif status == "wrong-version" and pkg:
+            row["fix"] = f"brew upgrade {pkg}" if manager == "brew" else \
+                f"sudo apt-get install --only-upgrade -y {pkg}"
+            row["rollback"] = "none: an upgrade is not undone by setup"
+        elif status != "ready":
+            row["fix"] = item.get("manual") or f"install {item['binary']} by hand"
+            row["rollback"] = "none: installed by hand"
+    else:
+        argv, login, logout = AUTH[item["tool"]]
+        row["check"] = " ".join(argv)
+        if status != "ready":
+            row["fix"] = login if status == "needs-manual" else f"install {argv[0]} first"
+            row["rollback"] = logout if status == "needs-manual" else "none"
+    return row
+
+
+def assess(project, layer):
+    cfg = load_config(project)
+    manager = package_manager()
+    items = cfg.get("checklist", {}).get("items", [])
+    ids = [i["id"] for i in items]
+    dup = sorted({i for i in ids if ids.count(i) > 1})
+    if dup:
+        raise Invalid(f"checklist has duplicate ids: {', '.join(dup)}")
+    rows = [assess_item(i, cfg, manager) for i in items if layer in ("all", i["layer"])]
+    return cfg, manager, rows
+
+
+def delta(rows):
+    return [r["id"] for r in rows if r["status"] not in ("ready", "not-applicable")]
+
+
+# --- report ------------------------------------------------------------------------------------
+def report(rows, cfg, broken=(), extra_works=(), extra_notdone=()):
+    lang = cfg.get("output", {}).get("language", "en")
+    L = LABELS.get(lang, LABELS["en"])
+    out = [f"## {L['broken']}"]
+    lines = list(broken)
+    out += [f"- {b}" for b in lines] or [f"- {L['none']}"]
+    out.append(f"\n## {L['notdone']}")
+    nd = []
+    for r in rows:
+        if r["status"] in ("ready", "not-applicable"):
+            continue
+        mode = f" ({L['reduced']}: {r['purpose']})" if r["optional"] else ""
+        nd.append(f"- {r['id']}: {r['status']} — {r['detail']}{mode}\n"
+                  f"  {L['fix']}: `{r['fix']}` · {L['rollback']}: `{r['rollback']}`")
+    nd += [f"- {x}" for x in extra_notdone]
+    out += nd or [f"- {L['none']}"]
+    out.append(f"\n## {L['works']}")
+    wk = [f"- {r['id']}: {r['detail']} · {L['check']}: `{r['check']}`"
+          for r in rows if r["status"] == "ready"]
+    wk += [f"- {x}" for x in extra_works]
+    out += wk or [f"- {L['none']}"]
+    na = [r["id"] for r in rows if r["status"] == "not-applicable"]
+    if na:
+        out.append(f"\n{L['na']}: {', '.join(na)}")
+    return "\n".join(out) + "\n"
+
+
+def save_report(t, text):
+    stamp = time.strftime("%Y%m%dT%H%M%S")
+    for n in range(1000):  # two reports in one second get -1, -2, ...
+        path = t.run_path("reports", f"{stamp}{'-' + str(n) if n else ''}.md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            with open(path, "x", encoding="utf-8") as fh:
+                fh.write(text)
+            return path
+        except FileExistsError:
+            continue
+    raise txn.TxnError("could not allocate a report file name")
+
+
+def txn_for(project, cfg):
+    return txn.Txn(project, cfg["paths"]["run_dir"])
+
+
+# --- commands ----------------------------------------------------------------------------------
+def cmd_assess(a):
+    project = project_dir(a.project)
+    cfg, manager, rows = assess(project, a.layer)
+    if a.json:
+        print(json.dumps({"schema": 1, "project": project, "layer": a.layer,
+                          "package_manager": manager, "items": rows, "delta": delta(rows)},
+                         indent=2, ensure_ascii=False))
+    else:
+        print(report(rows, cfg), end="")
+    return 0
+
+
+def cmd_verify(a):
+    project = project_dir(a.project)
+    cfg, _, rows = assess(project, a.layer)
+    print(report(rows, cfg), end="")
+    bad = [r["id"] for r in rows if not r["optional"] and r["status"] not in ("ready", "not-applicable")]
+    return 5 if bad else 0
+
+
+def cmd_apply(a):
+    project = project_dir(a.project)
+    cfg, manager, rows = assess(project, a.layer)
+    allow = set(a.allow_system)
+    known = {r["id"] for r in rows}
+    unknown = allow - known
+    if unknown:
+        raise Usage(f"--allow-system names unknown or out-of-layer items: {', '.join(sorted(unknown))}")
+    items = {i["id"]: i for i in cfg["checklist"]["items"]}
+    no_package = {i for i in allow if items[i]["handler"] != "binary-version"
+                  or not (items[i].get("packages") or {}).get(manager)}
+    if no_package:
+        raise Usage("--allow-system names items that setup cannot install on this OS: "
+                    f"{', '.join(sorted(no_package))}")
+    t = txn_for(project, cfg)
+    work = any(r["installable"] and r["id"] in allow for r in rows) or t.open_records()
+    if a.dry_run or not work:  # read-only path: no recovery, no lock file (no-op rule)
+        return apply_rows(a, t, cfg, manager, rows, items, allow, locked=False)
+    with t.locked():
+        return apply_rows(a, t, cfg, manager, rows, items, allow, locked=True)
+
+
+def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
+    project = t.project
+    recovered, broken = [], []
+    if locked:
+        recovered, broken = t.recover()
+        rec2, br2 = reconcile(t)
+        recovered, broken = recovered + rec2, broken + br2
+    refused, failed, installed = [], [], []
+    for r in rows:
+        if not r["installable"]:
+            continue
+        if r["id"] not in allow:
+            refused.append(r["id"])
+            continue
+        if a.dry_run:
+            print(f"would run: {r['fix']}")
+            continue
+        if not locked:
+            continue  # unreachable by construction: work implies the lock
+        item = items[r["id"]]
+        inst, _, shown, _ = pkg_commands(manager, item["packages"][manager])
+        base = {"op": "install", "item": r["id"], "path": None, "manager": manager,
+                "package": item["packages"][manager]}
+        before = pkg_installed(manager, base["package"])
+        if before is not False:
+            # present but not on PATH (e.g. an unlinked formula), or state unknown: not ours
+            why = "is installed but its program is not on PATH" if before else \
+                "state could not be read from the package manager"
+            failed.append(f"{r['id']}: package {base['package']} {why}; setup does not install "
+                          "over it — fix by hand")
+            continue
+        t.append(dict(base, state="started", present_before=False))
+        code, tail = run_pkg(inst)
+        after = pkg_installed(manager, base["package"])
+        # Ours = confirmed absent before and present now; readiness is a separate check, so a
+        # package that installed but fails it can still be removed by setup.
+        owned = code == 0 and after is True
+        if code == 0 and after is None:
+            # installed, but the package manager could not confirm it: keep the intent open so
+            # the next run reconciles ownership instead of losing it
+            failed.append(f"{r['id']}: `{shown}` exit 0 but the package state could not be read; "
+                          "rerun apply to reconcile")
+            continue
+        t.append(dict(base, state="done" if owned else "failed", exit=code))
+        status, detail = check_binary(item)
+        if owned and status == "ready":
+            installed.append(r["id"])
+        else:
+            failed.append(f"{r['id']}: `{shown}` exit {code}, now {status}: {tail or detail}"
+                          + (f" — installed by setup; remove with: harness uninstall --item {r['id']}"
+                             if owned else ""))
+    if a.dry_run:
+        for i in refused:
+            print(f"needs consent: --allow-system {i}")
+        print(report(rows, cfg), end="")
+        return 0
+    changed = bool(installed or failed or recovered)
+    _, _, rows = assess(project, a.layer)  # every item re-checked at report time
+    text = report(rows, cfg, broken=failed + broken, extra_works=recovered,
+                  extra_notdone=[f"{i}: install needs consent — rerun with --allow-system {i}"
+                                 for i in refused])
+    print(text, end="")
+    if changed:
+        print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
+    if failed or broken:
+        return 4
+    return 3 if refused else 0
+
+
+def cmd_uninstall(a):
+    project = project_dir(a.project)
+    cfg, manager, _ = assess(project, "all")
+    t = txn_for(project, cfg)
+    if not a.item and not t.open_records():  # a listing writes nothing
+        return uninstall_locked(a, t, cfg, project)
+    with t.locked():
+        return uninstall_locked(a, t, cfg, project)
+
+
+def uninstall_locked(a, t, cfg, project):
+    recovered, broken = reconcile(t)
+    for line in recovered + broken:
+        print(line)
+    installs = {}
+    for r in t.records():
+        if r.get("op") in ("install", "uninstall") and r.get("state") == "done":
+            if r["op"] == "install":
+                installs[r["item"]] = r
+            else:
+                installs.pop(r["item"], None)
+    if not a.item:
+        if installs:
+            for item, r in installs.items():
+                _, _, _, rem = pkg_commands(r["manager"], r["package"])
+                print(f"installed by setup: {item} ({r['package']}) — remove with: "
+                      f"harness uninstall --item {item}  (runs `{rem}`)")
+        else:
+            print("nothing installed by setup on this machine for this project")
+        return 0
+    r = installs.get(a.item)
+    if not r:
+        raise Usage(f"{a.item}: setup did not install it for this project; not touched")
+    _, rem_argv, _, rem = pkg_commands(r["manager"], r["package"])
+    base = {"op": "uninstall", "item": a.item, "path": None, "manager": r["manager"],
+            "package": r["package"]}
+    t.append(dict(base, state="started"))
+    code, tail = run_pkg(rem_argv)
+    if code != 0:
+        t.append(dict(base, state="failed", exit=code))
+        print(f"`{rem}` exit {code}: {tail}")
+        return 4
+    t.append(dict(base, state="done"))
+    _, _, rows = assess(project, "all")
+    text = report(rows, cfg, extra_works=[f"{a.item}: removed with `{rem}`"])
+    print(text, end="")
+    print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
+    return 0
+
+
+# --- arguments ---------------------------------------------------------------------------------
+class Args:
+    pass
+
+
+def parse(argv):
+    if not argv or argv[0] not in ("assess", "apply", "verify", "uninstall"):
+        raise Usage("expected a command: assess | apply | verify | uninstall")
+    a = Args()
+    a.cmd, a.project, a.layer, a.json, a.dry_run, a.allow_system, a.item = \
+        argv[0], None, "all", False, False, [], None
+    allowed = {"assess": {"--project", "--layer", "--json"},
+               "apply": {"--project", "--layer", "--allow-system", "--dry-run"},
+               "verify": {"--project", "--layer"},
+               "uninstall": {"--project", "--item"}}[a.cmd]
+    rest = argv[1:]
+    while rest:
+        opt = rest.pop(0)
+        if opt not in allowed:
+            raise Usage(f"{a.cmd}: unknown option {opt}")
+        if opt in ("--json", "--dry-run"):
+            setattr(a, opt[2:].replace("-", "_"), True)
+            continue
+        if not rest:
+            raise Usage(f"{opt} needs a value")
+        val = rest.pop(0)
+        if opt == "--project":
+            a.project = val
+        elif opt == "--layer":
+            if val not in ("machine", "project", "all"):
+                raise Usage("--layer is machine, project or all")
+            a.layer = val
+        elif opt == "--allow-system":
+            a.allow_system += [v for v in val.split(",") if v]
+        elif opt == "--item":
+            a.item = val
+    return a
+
+
+def main(argv):
+    try:
+        a = parse(argv)
+        return {"assess": cmd_assess, "apply": cmd_apply, "verify": cmd_verify,
+                "uninstall": cmd_uninstall}[a.cmd](a)
+    except Usage as e:
+        print(f"harness: {e}\n\n{__doc__.split(chr(10) + chr(10))[1]}", file=sys.stderr)
+        return 2
+    except (Invalid, txn.TxnError) as e:
+        print(f"harness: {e}", file=sys.stderr)
+        return 1
+    except OSError as e:
+        print(f"harness: {e.filename or ''}: {e.strerror}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
