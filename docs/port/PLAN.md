@@ -139,6 +139,7 @@ Every PR runs `claude plugin validate plugin --strict`, and passes today. From P
   - owner runs mode B once on the real machine before P4 (D-9 kept).
 
 **P4 — Agents.** Six `git mv bootstrap/agents/*.md plugin/agents/` in a pure-move commit, then the edits, then the `critics` config section. ci.yml:36 changes in the same PR. DoD: lint-prompts, validate --strict, `git log --follow` shows history, acceptance green.
+- **As built in P4.** The six roles were rewritten after the move, per PORT-MAP rows 13–18; the commit message lists the cuts per role. Subagents cannot ask the user questions, so `domain-researcher` and `solutions-architect` work from the caller's material and return open questions. The `critics` config section is deferred to P6: nothing reads it before the review skill, and config without a reader has no evidence under the selection rule (§2).
 
 **P5 — Planning skills.** Covers issue, plan, adr-author, domain-discovery and backlog-review, including ticket-audit.sh and plan-lint.sh. The ci.yml lines for moved scripts change in the same PR.
 

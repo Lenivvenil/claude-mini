@@ -75,12 +75,12 @@ LICENSE	KEEP				-
 README.md	MODERNISE				p9	
 STATE.md	KEEP-HISTORY				p9	docs/history/STATE.md
 bootstrap/VERSION	MERGE				p9	
-bootstrap/agents/backlog-groomer.md	PORT				p4	
-bootstrap/agents/docs-reviewer.md	PORT				p4	
-bootstrap/agents/domain-researcher.md	PORT				p4	
-bootstrap/agents/domain-reviewer.md	PORT				p4	
-bootstrap/agents/reliability-reviewer.md	PORT				p4	
-bootstrap/agents/solutions-architect.md	PORT				p4	
+bootstrap/agents/backlog-groomer.md	PORT	on-demand backlog grooming role	plugin/agents/backlog-groomer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
+bootstrap/agents/docs-reviewer.md	PORT	on-demand documentation review role	plugin/agents/docs-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
+bootstrap/agents/domain-researcher.md	PORT	on-demand domain research role	plugin/agents/domain-researcher.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
+bootstrap/agents/domain-reviewer.md	PORT	on-demand domain-model review role	plugin/agents/domain-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
+bootstrap/agents/reliability-reviewer.md	PORT	on-demand reliability review role	plugin/agents/reliability-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
+bootstrap/agents/solutions-architect.md	PORT	on-demand solution design role	plugin/agents/solutions-architect.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/commands/adr.md	MERGE				p5	
 bootstrap/commands/codex-review.md	MODERNISE				p6	
 bootstrap/commands/feature.md	MODERNISE				p6	
@@ -222,7 +222,13 @@ docs/synthesis/2026-04-29-pipeline-restructuring.md	MERGE				p9
 plugin/.claude-plugin/plugin.json	KEEP				-	
 plugin/agents/adr-reviewer.md	KEEP				-	
 plugin/agents/adversarial-critic.md	KEEP				-	
+plugin/agents/backlog-groomer.md	KEEP				p4	
+plugin/agents/docs-reviewer.md	KEEP				p4	
+plugin/agents/domain-researcher.md	KEEP				p4	
+plugin/agents/domain-reviewer.md	KEEP				p4	
+plugin/agents/reliability-reviewer.md	KEEP				p4	
 plugin/agents/security-reviewer.md	KEEP				-	
+plugin/agents/solutions-architect.md	KEEP				p4	
 plugin/bin/config	KEEP				p1	
 plugin/config/defaults.json	KEEP				p1	
 plugin/config/schema.json	KEEP				p1	

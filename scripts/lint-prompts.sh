@@ -6,14 +6,14 @@
 # Exit 0: all files clean (including zero-args). Exit 1: one or more findings.
 #
 # Artifact types and rules:
-#   bootstrap/agents/*.md      — frontmatter, Protocol/Output/Hard rules sections,
+#   plugin/agents/*.md         — frontmatter, Protocol/Output/Hard rules sections,
 #                                fenced output block if pure critic (NEVER writes files)
 #   bootstrap/commands/*.md    — Your task + Hard rules sections
 #   bootstrap/skills/*/SKILL.md — Output + Hard rules sections
 #   anything else              — skipped silently
 #
 # NOTE: file arguments must be relative paths from the repo root
-# (e.g. bootstrap/agents/foo.md). Absolute paths silently skip dispatch.
+# (e.g. plugin/agents/foo.md). Absolute paths silently skip dispatch.
 
 set -uo pipefail
 

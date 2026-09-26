@@ -33,7 +33,7 @@ jobs:
       - name: Lint prompt artifacts
         run: |
           shopt -s nullglob
-          bash scripts/lint-prompts.sh bootstrap/agents/*.md plugin/agents/*.md bootstrap/commands/*.md bootstrap/skills/*/SKILL.md plugin/skills/*/SKILL.md
+          bash scripts/lint-prompts.sh plugin/agents/*.md bootstrap/commands/*.md bootstrap/skills/*/SKILL.md plugin/skills/*/SKILL.md
       - name: Validate JSON/YAML
         run: |
           for f in bootstrap/templates/*.yml; do
