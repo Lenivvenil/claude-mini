@@ -10,9 +10,11 @@
 
 Ядро харнесса ставится штатным плагином, без `universal-setup.sh` и без флага платформы.
 
+**Развёртывание в проект — [DEPLOY.md](DEPLOY.md)** (пишется в фазах P2–P3, решение — [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md), план — [docs/port/PLAN.md](docs/port/PLAN.md)).
+
 ```bash
-claude plugin marketplace add Lenivvenil/claude-mini        # или путь к локальному клону
 cd <твой-проект>
+claude plugin marketplace add --scope local Lenivvenil/claude-mini  # или путь к локальному клону
 claude plugin install claude-mini@claude-mini --scope local # только этот проект, только ты
 ```
 
