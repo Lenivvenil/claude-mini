@@ -284,7 +284,7 @@ if [ -n "$TARGET_PATH" ]; then
 
     # STATE.md (#128: Session Continuity BC aggregate root; ADR-0024)
     _copy_template \
-        "$REPO_ROOT_T/bootstrap/templates/STATE.md.template" \
+        "$REPO_ROOT_T/plugin/skills/handoff/templates/STATE.md" \
         "$TARGET_DIR/STATE.md" \
         "STATE.md"
 

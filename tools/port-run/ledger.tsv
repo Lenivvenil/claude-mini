@@ -247,6 +247,7 @@ plugin/skills/backlog-review/SKILL.md	KEEP				p5
 plugin/skills/codex-review/SKILL.md	KEEP				-	
 plugin/skills/domain-discovery/SKILL.md	KEEP				p5	
 plugin/skills/feature/SKILL.md	KEEP				p6	
+plugin/skills/handoff/SKILL.md	KEEP				p6	
 plugin/skills/handoff/templates/STATE.md	KEEP				p6	
 plugin/skills/plan/SKILL.md	KEEP				-	
 scripts/lint-prompts.sh	MODERNISE				p9	

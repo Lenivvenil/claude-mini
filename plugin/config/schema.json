@@ -83,7 +83,9 @@
       "paths": {
         "type": "object",
         "properties": {
-          "run_dir": {"type": "string", "doc": "Project-relative directory for harness state, reports and backups."}
+          "run_dir": {"type": "string", "doc": "Project-relative directory for harness state, reports and backups."},
+          "state": {"type": "string", "doc": "Project-relative handoff snapshot file, replaced on each handoff."},
+          "handoff": {"type": "string", "doc": "Project-relative directory of the append-only handoff journal."}
         }
       }
     }

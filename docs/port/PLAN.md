@@ -152,6 +152,8 @@ Every PR runs `claude plugin validate plugin --strict`, and passes today. From P
 - :188,
 - :95 (a plugin path, not a bootstrap one, which v1 mislabelled; it moves with the test).
 
+- **As built in P6.** One `feature` skill runs the cycle from issue to PR: branch, plan, implement, verify with the project's own commands, map acceptance criteria to evidence, critics chosen by what the change touches plus Codex, commit and PR, handoff. `implement`, `intent-check`, `qa` and `review` merged into it, so ADR-0031 п. 7 holds with one stage skill. The `handoff` skill replaces the Stop hook: journal first, then the snapshot, a warning on unfilled fields (ADR-0024 sub-decisions 4 and 9). Paths come from new config keys `paths.state` and `paths.handoff`. `plan` and `codex-review` lost `disable-model-invocation`, because a skill with it cannot be called by `feature`. `adr-author` lost its numeric quotas. The formatter hook, verify.sh, mutation and SARIF tools, hedging lint, notify, forge and sprint are KEEP-HISTORY. No ci.yml line changes: none of those files moved.
+
 **P7 — Project skills and templates.** Covers project-bootstrap, project-health (with the CodeBurn report, §7) and adr-retirement-audit. ci.yml edits in the same PR:
 - :39 and :43, template readers that v1 missed (A#10);
 - :73 (`folder-path: 'docs, bootstrap'`), which v1 missed (F);

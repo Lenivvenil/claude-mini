@@ -18,7 +18,7 @@ Invoked by `/adr` command or when operator says:
 Before starting, verify:
 
 1. Issue linked (`gh issue view` returns the issue).
-2. Decision qualifies as architecturally-significant per `docs/runbooks/adr-trigger.md`. If not, REFUSE: "This is a plan, not a decision. Use `/plan`."
+2. Decision is architecturally significant by the project's own criteria (`AGENTS.md` or an ADR trigger doc; otherwise the list in the `plan` skill). If not, say "This is a plan, not a decision" and suggest `claude-mini:plan`.
 
 ## The seven-step interview
 
@@ -31,17 +31,17 @@ Ask:
 
 Two-to-four sentences. Write as-is into Context section.
 
-### Step 2: Decision Drivers (≥3)
+### Step 2: Decision Drivers
 
 Ask:
-> Какие силы определяют выбор? Перечислите минимум три. Если только одна — вы не на уровне решения, вы на уровне задачи.
+> Какие силы определяют выбор?
 
-If operator gives < 3, REFUSE to proceed. Ask again until ≥3.
+If there is only one driver, say so: this may be a task, not a decision.
 
-### Step 3: Considered Options (≥3 realistic)
+### Step 3: Considered Options
 
 Ask:
-> Какие варианты вы реально рассмотрели? Минимум три. Strawmen не считаются — не пишите "ничего не делать" просто чтобы было три.
+> Какие варианты вы реально рассмотрели? Соломенные чучела не считаются. Если текущее положение дел — реальный вариант, включите его.
 
 For each option:
 > Дайте одно предложение, что это — чтобы человек через полгода понял.
@@ -52,22 +52,19 @@ If an option looks obviously wrong or a strawman, PUSH BACK:
 ### Step 4: Pros and Cons per option
 
 For each option, ask:
-> Хорошее (≥2 пункта) и плохое (≥2 пункта). Если плохого не видите — вы себе льстите. Задумайтесь ещё раз.
+> Что хорошего и что плохого? Если у варианта нет цены, её ещё не нашли.
 
 ### Step 5: Decision Outcome
 
 Ask:
 > Какой вариант выбираете и почему? Обоснование должно ссылаться на Decision Drivers.
 
-Check: choice must link to at least one principle in `docs/principles.md`. If not, ASK:
-> Какой принцип из `docs/principles.md` здесь задействован? Если ни один — это не архитектурное решение, это предпочтение.
+If the project has written principles or rules (`AGENTS.md`, `docs/principles.md`), cite the ones the choice relies on.
 
 ### Step 6: Positive/Negative Consequences
 
 Ask:
-> Положительные последствия и отрицательные. ЖЁСТКОЕ правило: **отрицательных должно быть не меньше, чем положительных**. Если вы видите только плюсы, вы себя уговариваете, а не принимаете решение.
-
-If Bad < Good, REFUSE and ask again.
+> Положительные последствия и отрицательные. Если отрицательных нет, вы себя уговариваете, а не принимаете решение.
 
 ### Step 7: Confirmation + Re-visit Trigger
 
@@ -89,6 +86,5 @@ After writing:
 ## Hard rules
 
 - НЕ пропускайте шаги, даже если operator торопится.
-- НЕ переходите к следующему шагу, если на текущем не выполнены quantitative-требования (3+ drivers, 3+ options, Bad≥Good).
 - НЕ пишите за оператора. Если оператор даёт общие слова — переспрашивайте.
 - НЕ сокращайте interview до template-filling. Смысл skill — в качестве мышления, а не в форме.

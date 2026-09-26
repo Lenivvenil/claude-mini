@@ -2,7 +2,6 @@
 name: codex-review
 description: Second-opinion code review by OpenAI Codex CLI over the whole branch against its base, plus uncommitted changes. Run before committing, opening or merging a PR.
 argument-hint: "[base-branch, default from config git.base_branch]"
-disable-model-invocation: true
 allowed-tools: Bash(codex review:*) Bash(git merge-base:*) Bash(git rev-parse:*) Bash(git diff:*) Bash(git status:*) Bash(${CLAUDE_PLUGIN_ROOT}/bin/config:*)
 ---
 

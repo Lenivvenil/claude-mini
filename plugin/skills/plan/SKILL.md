@@ -2,7 +2,6 @@
 name: plan
 description: Plan a change against a GitHub issue before writing code. Writes plan.md with considered approaches, test strategy and risks; does not touch code.
 argument-hint: "[issue-number]"
-disable-model-invocation: true
 allowed-tools: Bash(gh issue view:*) Read Glob Grep Write
 ---
 
