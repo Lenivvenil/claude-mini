@@ -5,7 +5,9 @@ Input: env CMD (the command), CWD (the session's working directory).
 Output, one line per commit invocation found, in order:
     ALLOW                      no subject to check (reuse / fixup / squash / amend / dry run)
     NOMSG                      no message source: git would open an editor
-    SUBJECT<TAB><subject>      first line of the first message source
+    SUBJECT<TAB><dir><TAB><subject>  first line of the first message source; <dir> is the
+                               effective directory of that commit (cd, subshell, git -C)
+    BADDIR                     that directory contains a tab or newline (hook denies)
 Nothing is printed when the command runs no `git ... commit`.
 
 Top-level heredoc bodies are cut out before tokenising (they are data, not commands)
@@ -213,7 +215,13 @@ def main():
                 continue
             args.append(toks[k])
             k += 1
-        print(analyse(args, git_dir, body))
+        verdict = analyse(args, git_dir, body)
+        if verdict.startswith("SUBJECT\t"):
+            if "\t" in git_dir or "\n" in git_dir:
+                verdict = "BADDIR"
+            else:
+                verdict = "SUBJECT\t" + git_dir + "\t" + verdict[len("SUBJECT\t"):]
+        print(verdict)
         i = k
     return 0
 
