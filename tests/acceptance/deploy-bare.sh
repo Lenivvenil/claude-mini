@@ -12,7 +12,10 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 iso_require_token
 
 # Temp projects live outside the repository, so no CLAUDE.md or AGENTS.md above them is loaded.
-T=$(mktemp -d "${TMPDIR:-/tmp}/claude-mini-accept.XXXXXX")
+# Physical path: Claude Code records the project by it (/private/var on macOS), and the checks compare.
+# Checked before the cleanup trap: an empty T would make the trap remove the current directory.
+T=$(mktemp -d "${TMPDIR:-/tmp}/claude-mini-accept.XXXXXX") && [ -d "$T" ] && T=$(cd "$T" && pwd -P) && [ -n "$T" ] \
+    || { echo "  FAIL cannot create a temp dir under ${TMPDIR:-/tmp}"; exit 1; }
 trap '[ -n "${KEEP:-}" ] || rm -rf "$T"' EXIT
 d="$T"; while [ "$d" != / ]; do
     d=$(dirname "$d")
@@ -58,8 +61,11 @@ snapshot "$T/proj" "$T/proj.before"; cp "$T/proj/.git/info/exclude" "$T/exclude.
 snapshot "$T/sibling" "$T/sibling.before"
 
 echo "deploy"
+# The owner would answer the permission prompts; a headless run has nobody to ask. So the session
+# gets what the owner grants: the clone as a readable working directory and the harness commands.
 session "$T/proj" "deploy my harness for this project. Harness: $REPO" "$T/deploy.jsonl" \
-    --allowedTools "Read,Edit,Write,Bash(git *),Bash($REPO/setup/harness *),Bash(python3 $REPO/setup/harness *)" \
+    --add-dir "$REPO" \
+    --allowedTools "Read,Glob,Grep,Edit,Write,Bash(ls *),Bash(git *),Bash($REPO/setup/harness *),Bash(python3 $REPO/setup/harness *)" \
     --disallowedTools "Bash(git push *),Bash(gh *)"
 echo "  session exit $?; transcript: $T/deploy.jsonl"
 
