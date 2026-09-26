@@ -89,7 +89,7 @@ bootstrap/commands/intent-check.md	MERGE	map each acceptance criterion to eviden
 bootstrap/commands/issue-to-task.md	KEEP-HISTORY				p9	docs/history/bootstrap/commands/issue-to-task.md
 bootstrap/commands/plan.md	MERGE	plan a change: six sections, architectural-significance flag	plugin/skills/plan/SKILL.md	plugin/skills/plan/SKILL.md sections 1-6 and the ADR suggestion; claude plugin validate plugin --strict	p9	
 bootstrap/commands/task-to-issue.md	KEEP-HISTORY				p9	docs/history/bootstrap/commands/task-to-issue.md
-bootstrap/hardware/mac-mini-2018.md	MODERNISE				p2	
+bootstrap/hardware/mac-mini-2018.md	KEEP				p9	
 bootstrap/hooks/commit-msg-governance.sh	MERGE	commit subject format; issue ref in the PR	plugin/scripts/commit-msg-check.sh	plugin/scripts/test-commit-msg-check.sh; plugin/skills/feature/SKILL.md step Pull request	p9	
 bootstrap/hooks/governance-rules-lib.sh	MERGE	shared commit format rule	plugin/scripts/commit-msg-check.sh	plugin/scripts/test-commit-msg-check.sh	p9	
 bootstrap/hooks/posttooluse-format.sh	KEEP-HISTORY				p9	docs/history/bootstrap/hooks/posttooluse-format.sh
@@ -106,8 +106,8 @@ bootstrap/scripts/gate-audit-lib.sh	KEEP-HISTORY				p9	docs/history/bootstrap/sc
 bootstrap/scripts/hedging-lint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/hedging-lint.sh
 bootstrap/scripts/mini-bootstrap-demo.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mini-bootstrap-demo.sh
 bootstrap/scripts/mini-bootstrap-project.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mini-bootstrap-project.sh
-bootstrap/scripts/mini-health.sh	MERGE				p2	
-bootstrap/scripts/mini-preflight.sh	MERGE				p2	
+bootstrap/scripts/mini-health.sh	KEEP				p9	
+bootstrap/scripts/mini-preflight.sh	KEEP				p9	
 bootstrap/scripts/mini-session.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mini-session.sh
 bootstrap/scripts/mutation-summary.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mutation-summary.sh
 bootstrap/scripts/mutmut-to-sarif.py	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/mutmut-to-sarif.py
@@ -122,7 +122,7 @@ bootstrap/scripts/test-gate-audit.sh	KEEP-HISTORY				p9	docs/history/bootstrap/s
 bootstrap/scripts/test-governance-hook.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-governance-hook.sh
 bootstrap/scripts/test-hedging-lint.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-hedging-lint.sh
 bootstrap/scripts/test-install-verification.sh	MERGE	the install writes nothing outside its allowed places	tests/setup/run.sh	tests/setup/run.sh (HOME files and the sibling project are unchanged)	p9	
-bootstrap/scripts/test-mini-preflight.sh	MERGE				p2	
+bootstrap/scripts/test-mini-preflight.sh	KEEP				p9	
 bootstrap/scripts/test-mutation-summary.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-mutation-summary.sh
 bootstrap/scripts/test-posttooluse-hook.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-posttooluse-hook.sh
 bootstrap/scripts/test-stop-hook.sh	KEEP-HISTORY				p9	docs/history/bootstrap/scripts/test-stop-hook.sh
@@ -169,56 +169,56 @@ bootstrap/tests/verify/fixtures/todo_violation.py	KEEP-HISTORY				p9	docs/histor
 bootstrap/tests/verify/run.sh	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/run.sh
 bootstrap/tests/verify/test-notify.sh	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/test-notify.sh
 bootstrap/universal-setup.sh	MERGE	deploy the harness into a machine and a project, reversibly	setup/harness	tests/setup/run.sh; tests/acceptance/deploy-bare.sh (not yet run)	p9	
-docs/PROJECT-PLAN.md	MERGE				p9	
-docs/adr-audit/2026-W24.md	MERGE				p9	
-docs/anti-patterns.md	MERGE				p9	
-docs/architecture/.keep	MERGE				p9	
-docs/architecture/layers.md	MERGE				p9	
-docs/architecture/overview.md	MERGE				p9	
-docs/architecture/sprint-orchestrator.md	MERGE				p9	
-docs/backlog/grooming-2026-04-24.md	MERGE				p9	
-docs/backlog/grooming-2026-04-26.md	MERGE				p9	
-docs/domain/.keep	MERGE				p9	
-docs/domain/context-map.md	MERGE				p9	
-docs/domain/continuity-discovery.md	MERGE				p9	
-docs/domain/meta/overview.md	MERGE				p9	
-docs/domain/meta/vocabulary.md	MERGE				p9	
-docs/domain/scratch/third-voice-vocabulary-draft.md	MERGE				p9	
-docs/domain/session-continuity/overview.md	MERGE				p9	
-docs/gate-audit/events.jsonl	MERGE				p9	
-docs/gate-audit/fixtures/events-4w-sample.jsonl	MERGE				p9	
-docs/gate-audit/schema.md	MERGE				p9	
-docs/metrics/.keep	MERGE				p9	
-docs/metrics/onboarding.md	MERGE				p9	
-docs/onboarding/GETTING-STARTED.md	MERGE				p9	
-docs/onboarding/first-week.md	MERGE				p9	
+docs/PROJECT-PLAN.md	KEEP-HISTORY				p9	docs/history/docs/PROJECT-PLAN.md
+docs/adr-audit/2026-W24.md	KEEP-HISTORY				p9	docs/history/docs/adr-audit/2026-W24.md
+docs/anti-patterns.md	KEEP				p9	
+docs/architecture/.keep	KEEP-HISTORY				p9	docs/history/docs/architecture/.keep
+docs/architecture/layers.md	KEEP-HISTORY				p9	docs/history/docs/architecture/layers.md
+docs/architecture/overview.md	KEEP-HISTORY				p9	docs/history/docs/architecture/overview.md
+docs/architecture/sprint-orchestrator.md	KEEP-HISTORY				p9	docs/history/docs/architecture/sprint-orchestrator.md
+docs/backlog/grooming-2026-04-24.md	KEEP-HISTORY				p9	docs/history/docs/backlog/grooming-2026-04-24.md
+docs/backlog/grooming-2026-04-26.md	KEEP-HISTORY				p9	docs/history/docs/backlog/grooming-2026-04-26.md
+docs/domain/.keep	KEEP-HISTORY				p9	docs/history/docs/domain/.keep
+docs/domain/context-map.md	KEEP-HISTORY				p9	docs/history/docs/domain/context-map.md
+docs/domain/continuity-discovery.md	KEEP-HISTORY				p9	docs/history/docs/domain/continuity-discovery.md
+docs/domain/meta/overview.md	KEEP-HISTORY				p9	docs/history/docs/domain/meta/overview.md
+docs/domain/meta/vocabulary.md	KEEP-HISTORY				p9	docs/history/docs/domain/meta/vocabulary.md
+docs/domain/scratch/third-voice-vocabulary-draft.md	KEEP-HISTORY				p9	docs/history/docs/domain/scratch/third-voice-vocabulary-draft.md
+docs/domain/session-continuity/overview.md	KEEP-HISTORY				p9	docs/history/docs/domain/session-continuity/overview.md
+docs/gate-audit/events.jsonl	KEEP-HISTORY				p9	docs/history/docs/gate-audit/events.jsonl
+docs/gate-audit/fixtures/events-4w-sample.jsonl	KEEP-HISTORY				p9	docs/history/docs/gate-audit/fixtures/events-4w-sample.jsonl
+docs/gate-audit/schema.md	KEEP-HISTORY				p9	docs/history/docs/gate-audit/schema.md
+docs/metrics/.keep	KEEP-HISTORY				p9	docs/history/docs/metrics/.keep
+docs/metrics/onboarding.md	KEEP-HISTORY				p9	docs/history/docs/metrics/onboarding.md
+docs/onboarding/GETTING-STARTED.md	KEEP-HISTORY				p9	docs/history/docs/onboarding/GETTING-STARTED.md
+docs/onboarding/first-week.md	KEEP-HISTORY				p9	docs/history/docs/onboarding/first-week.md
 docs/port/JEV-DESIGN.md	KEEP				p0	
 docs/port/PLAN.md	KEEP				p0	
 docs/port/PORT-MAP.md	KEEP				p0	
 docs/port/followups.md	KEEP				p0	
-docs/principles.md	MERGE				p9	
-docs/runbooks/adr-trigger.md	MERGE				p9	
-docs/runbooks/adr-workflow.md	MERGE				p9	
-docs/runbooks/advisor-policy.md	MERGE				p9	
-docs/runbooks/banned-terms.md	MERGE				p9	
-docs/runbooks/codex-auth-recovery.md	MERGE				p9	
-docs/runbooks/daily-session.md	MERGE				p9	
-docs/runbooks/dod-checklist.md	MERGE				p9	
-docs/runbooks/feature-pipeline.md	MERGE				p9	
-docs/runbooks/first-feature-session-log.md	MERGE				p9	
-docs/runbooks/hedging-lint.md	MERGE				p9	
-docs/runbooks/incident-recovery.md	MERGE				p9	
-docs/runbooks/macmini-headless-recovery.md	MERGE				p9	
-docs/runbooks/mcp-quarterly-review.md	MERGE				p9	
-docs/runbooks/onboarding-repo.md	MERGE				p9	
-docs/runbooks/qa-pbt.md	MERGE				p9	
-docs/runbooks/resume-drill.md	MERGE				p9	
-docs/runbooks/setup-target-domain.md	MERGE				p9	
-docs/runbooks/sprint.md	MERGE				p9	
-docs/runbooks/vendor-migration.md	MERGE				p9	
-docs/runbooks/weekly-maintenance.md	MERGE				p9	
-docs/skills/audit-pass.md	MERGE				p9	
-docs/synthesis/2026-04-29-pipeline-restructuring.md	MERGE				p9	
+docs/principles.md	KEEP				p9	
+docs/runbooks/adr-trigger.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/adr-trigger.md
+docs/runbooks/adr-workflow.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/adr-workflow.md
+docs/runbooks/advisor-policy.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/advisor-policy.md
+docs/runbooks/banned-terms.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/banned-terms.md
+docs/runbooks/codex-auth-recovery.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/codex-auth-recovery.md
+docs/runbooks/daily-session.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/daily-session.md
+docs/runbooks/dod-checklist.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/dod-checklist.md
+docs/runbooks/feature-pipeline.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/feature-pipeline.md
+docs/runbooks/first-feature-session-log.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/first-feature-session-log.md
+docs/runbooks/hedging-lint.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/hedging-lint.md
+docs/runbooks/incident-recovery.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/incident-recovery.md
+docs/runbooks/macmini-headless-recovery.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/macmini-headless-recovery.md
+docs/runbooks/mcp-quarterly-review.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/mcp-quarterly-review.md
+docs/runbooks/onboarding-repo.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/onboarding-repo.md
+docs/runbooks/qa-pbt.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/qa-pbt.md
+docs/runbooks/resume-drill.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/resume-drill.md
+docs/runbooks/setup-target-domain.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/setup-target-domain.md
+docs/runbooks/sprint.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/sprint.md
+docs/runbooks/vendor-migration.md	KEEP-HISTORY				p9	docs/history/docs/runbooks/vendor-migration.md
+docs/runbooks/weekly-maintenance.md	KEEP				p9	
+docs/skills/audit-pass.md	KEEP-HISTORY				p9	docs/history/docs/skills/audit-pass.md
+docs/synthesis/2026-04-29-pipeline-restructuring.md	KEEP-HISTORY				p9	docs/history/docs/synthesis/2026-04-29-pipeline-restructuring.md
 plugin/.claude-plugin/plugin.json	KEEP				-	
 plugin/agents/adr-reviewer.md	KEEP				-	
 plugin/agents/adversarial-critic.md	KEEP				-	
