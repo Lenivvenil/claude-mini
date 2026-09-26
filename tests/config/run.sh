@@ -43,6 +43,12 @@ expect 1 "schema_version mismatch rejected" python3 "$CFG" validate "$p/.claude/
 p=$(project badenum '{"codex":{"modes":["sometimes"]}}')
 expect 1 "enum value rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
 expect 2 "usage error without a command" python3 "$CFG"
+p=$(project emptytypes '{"commit":{"types":[]}}')
+expect 1 "empty commit.types rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+p=$(project regextype '{"commit":{"types":["build.ci"]}}')
+expect 1 "commit type with regex characters rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+p=$(project emptytype '{"commit":{"types":["feat",""]}}')
+expect 1 "empty commit type rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
 
 p=$(project merge '{"commit":{"types":["feat","fix"]}}')
 got=$(python3 "$CFG" get commit.types --project "$p" | paste -sd, -)
@@ -61,6 +67,16 @@ p=$(project broken '{"commit":{"types":"feat"}}')
 is "$(hook "$p" 'git commit -m "feat: x"')" deny "invalid project config fails closed"
 p=$(project plain)
 is "$(hook "$p" 'git commit -m "chore: x"')" allow "no override uses defaults"
+is "$(hook "$p" 'git commit -m ": x"')" deny "subject without a type is denied"
+p=$(project badscope '{"commit":{"scope_pattern":"[a-z"}}')
+out=$(jq -n --arg c 'git commit -m "feat(x): y"' --arg d "$p" '{tool_input:{command:$c},cwd:$d}' | bash "$HOOK" 2>/dev/null)
+is "$(printf '%s' "$out" | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -c 'scope_pattern is not a valid ERE')" 1 "invalid scope_pattern names the config, not the subject"
+p=$(project brokencfg '{"commit":{"types":"feat"}}')
+is "$(hook "$p" 'git log --grep=commit')" allow "broken config does not block commands without a commit"
+q=$(project onlyfix '{"commit":{"types":["fix"]}}')
+is "$(hook "$p" "git -C $q commit -m 'fix: x'")" allow "git -C uses the target repository's config"
+r=$(project plain2)
+is "$(hook "$r" "cd $q && git commit -m 'feat: x'")" deny "cd target's config applies (feat not allowed there)"
 
 [ "$FAIL" -eq 0 ] && echo "All passed." || echo "$FAIL failed."
 exit "$FAIL"

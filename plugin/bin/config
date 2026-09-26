@@ -13,6 +13,7 @@ Exit: 0 ok · 1 invalid config or unknown key · 2 usage error.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -57,11 +58,15 @@ def check(node, value, where, errors, partial):
         if not isinstance(value, list):
             errors.append(f"{where}: expected array")
             return
+        if len(value) < node.get("min_items", 0):
+            errors.append(f"{where}: needs at least {node['min_items']} item(s)")
         for i, item in enumerate(value):
             check(node["items"], item, f"{where}[{i}]", errors, partial)
     elif t == "string":
         if not isinstance(value, str):
             errors.append(f"{where}: expected string")
+        elif "pattern" in node and not re.fullmatch(node["pattern"], value):
+            errors.append(f"{where}: {value!r} does not match {node['pattern']!r}")
     elif t == "int":
         if isinstance(value, bool) or not isinstance(value, int):
             errors.append(f"{where}: expected int")

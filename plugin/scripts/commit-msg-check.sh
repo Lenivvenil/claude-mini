@@ -53,39 +53,63 @@ command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/nul
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null) || cwd=""
 [ -n "$command" ] || exit 0
 
-# Parser output: one line per commit invocation — ALLOW | NOMSG | SUBJECT<TAB><subject>;
-# empty when the command runs no `git ... commit`.
+# Parser output: one line per commit invocation — ALLOW | NOMSG | BADDIR |
+# SUBJECT<TAB><dir><TAB><subject>; empty when the command runs no `git ... commit`.
 _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-result=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py") \
-    || deny "claude-mini: commit message parser failed — see stderr."
+if ! result=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py" 2>/dev/null); then
+    err=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py" 2>&1 >/dev/null | tail -1)
+    deny "claude-mini: commit message parser failed: ${err:-no error text}"
+fi
+# No commit in the command: nothing to check, and a broken project config must not block it.
+[[ $result == *SUBJECT* || $result == *NOMSG* || $result == *BADDIR* ]] || exit 0
 
-# Commit rules come from config (ADR-0031 §4): plugin defaults merged with the project's
-# .claude/claude-mini.json. The project is the git top level of the command's cwd.
-root=$(git -C "${cwd:-.}" rev-parse --show-toplevel 2>/dev/null) || root="${cwd:-.}"
+# Commit rules come from config (ADR-0031 §4): plugin defaults merged with the
+# .claude/claude-mini.json of the repository that receives the commit (git top level of the
+# commit's effective directory). The validator keeps types to plain words, so they are
+# literal in the regex; scope_pattern is an ERE by contract and is checked before use.
 cfg="$_self_dir/../bin/config"
-types=$(python3 "$cfg" get commit.types --project "$root" 2>&1) \
-    || deny "claude-mini: project config is invalid — fix .claude/claude-mini.json: $types"
-scope=$(python3 "$cfg" get commit.scope_pattern --project "$root" 2>&1) \
-    || deny "claude-mini: project config is invalid: $scope"
-skips=$(python3 "$cfg" get commit.skip_prefixes --project "$root" 2>&1) \
-    || deny "claude-mini: project config is invalid: $skips"
-types_alt=$(printf '%s' "$types" | paste -sd'|' -)
-CC_REGEX="^(${types_alt})(\\((${scope})\\))?!?:[[:space:]]+[^[:space:]]"
+rules_root=""
+load_rules() {  # load_rules <dir>: sets types_alt, scope, skips for that repository
+    local root
+    root=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) || root="$1"
+    [ "$root" = "$rules_root" ] && return 0
+    local types
+    types=$(python3 "$cfg" get commit.types --project "$root" 2>&1) \
+        || deny "claude-mini: project config is invalid — fix $root/.claude/claude-mini.json: $types"
+    scope=$(python3 "$cfg" get commit.scope_pattern --project "$root" 2>&1) \
+        || deny "claude-mini: project config is invalid: $scope"
+    skips=$(python3 "$cfg" get commit.skip_prefixes --project "$root" 2>&1) \
+        || deny "claude-mini: project config is invalid: $skips"
+    types_alt=$(printf '%s' "$types" | paste -sd'|' -)
+    [ -n "$types_alt" ] || deny "claude-mini: commit.types is empty in $root — no subject can pass."
+    local rc=0
+    printf '' | grep -qE "(${scope})" 2>/dev/null || rc=$?
+    [ "$rc" -le 1 ] || deny "claude-mini: commit.scope_pattern is not a valid ERE in $root: '$scope'"
+    rules_root=$root
+}
 
 # One line per commit invocation; every commit in the command must pass.
 while IFS= read -r line; do
     case "$line" in
         ""|ALLOW) continue ;;
         NOMSG) deny "claude-mini: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\"" ;;
+        BADDIR) deny "claude-mini: commit directory contains a tab or newline — cannot resolve its config." ;;
     esac
-    subject=${line#SUBJECT$'\t'}
+    rest=${line#SUBJECT$'\t'}
+    dir=${rest%%$'\t'*}
+    subject=${rest#*$'\t'}
+    load_rules "$dir"
     skipped=0
     while IFS= read -r prefix; do
         [ -n "$prefix" ] && case "$subject" in "$prefix"*) skipped=1 ;; esac
-    done <<< "$skips"
+    done < <(printf '%s\n' "$skips")
     [ "$skipped" -eq 1 ] && continue
-    if ! printf '%s' "$subject" | grep -qE "$CC_REGEX"; then
-        deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types ${types_alt}. Got: '$subject'"
-    fi
-done <<< "$result"
+    rc=0
+    printf '%s' "$subject" | grep -qE "^(${types_alt})(\\((${scope})\\))?!?:[[:space:]]+[^[:space:]]" || rc=$?
+    case "$rc" in
+        0) ;;
+        1) deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types ${types_alt}. Got: '$subject'" ;;
+        *) deny "claude-mini: subject check failed (grep exit $rc) — commit not allowed." ;;
+    esac
+done < <(printf '%s\n' "$result")
 exit 0

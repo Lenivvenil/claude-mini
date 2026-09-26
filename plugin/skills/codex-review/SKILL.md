@@ -8,7 +8,7 @@ allowed-tools: Bash(codex review:*) Bash(git merge-base:*) Bash(git rev-parse:*)
 
 # /codex-review
 
-Base branch: `$ARGUMENTS` if given, otherwise the project's configured base: run `"${CLAUDE_PLUGIN_ROOT}/bin/config" get git.base_branch` (plugin defaults merged with `.claude/claude-mini.json`).
+Base branch: `$ARGUMENTS` if given, otherwise the project's configured base: run `"${CLAUDE_PLUGIN_ROOT}/bin/config" get git.base_branch`, which prints one branch name (`main` unless `.claude/claude-mini.json` sets `git.base_branch`). If it exits non-zero, stop and show its message: the project config is invalid.
 
 Branch: !`git rev-parse --abbrev-ref HEAD`
 Head: !`git rev-parse --short HEAD`
