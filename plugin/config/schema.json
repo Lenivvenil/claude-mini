@@ -30,7 +30,12 @@
       "jev": {
         "type": "object",
         "properties": {
-          "enabled": {"type": "bool", "doc": "Advisory only (ADR-0031 §6). Off by default."}
+          "enabled": {"type": "bool", "doc": "Advisory only (ADR-0031 §6). Off by default."},
+          "model": {"type": "string", "doc": "Pinned Jev model id (docs.typesafe.ai/models)."},
+          "endpoint": {"type": "string", "doc": "System One endpoint."},
+          "key_env": {"type": "string", "doc": "Name of the environment variable that holds the API key. The key itself never goes into config."},
+          "timeout_ms": {"type": "int", "doc": "Network timeout for one plan check."},
+          "finding_threshold_pct": {"type": "int", "doc": "Probability, in percent, at which a Noul answer becomes an advisory finding. Uncalibrated."}
         }
       },
       "codeburn": {

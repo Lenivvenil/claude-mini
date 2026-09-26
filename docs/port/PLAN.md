@@ -182,6 +182,8 @@ DoD for P5–P7:
   - thresholds are marked uncalibrated in config.
 - ADR-trigger shadowing and critic grading stay in followups.
 
+- **As built in P8.** `plugin/bin/jev-check` sends three Noul questions and the plan to System One and prints one JSON line; the `plan` skill appends findings as `## Advisory (Jev)`. The request and answer shapes follow docs.typesafe.ai/api and the model id docs.typesafe.ai/models, both read 2026-09-26. Differences from the line above: plan-lint.sh went to history in P5, so the plan skill calls jev-check directly; the questions live in `plugin/skills/plan/jev-questions.v1.json`, not in config; the threshold is one integer percent, `finding_threshold_pct`, marked uncalibrated; the key comes from the environment variable named by `jev.key_env`. `tests/jev/run.sh` covers all five statuses from the DoD, HTTP 401, out-of-range answers and that the key stays out of output, against a local stub. The live smoke with a key (S5) is not done.
+
 **P9 — Removal and docs** (capability-gated)
 - `git rm` only for rows with `evidence` passing, or with `KEEP-HISTORY` and `archive_dest`.
 - README, AGENTS and CLAUDE are rewritten. principles.md §5 is rewritten per the S1 ADR (F#5).

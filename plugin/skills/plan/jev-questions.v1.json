@@ -1,0 +1,26 @@
+{
+  "unsupported_assertion": {
+    "type": "noul",
+    "instructions": "Does the plan make a design assertion that nothing in the plan, the issue or the cited code supports?",
+    "criteria": {
+      "true": "At least one design claim has no supporting evidence in the given material",
+      "false": "Every design claim is supported by the plan, the issue or cited code"
+    }
+  },
+  "adr_claim_unsupported": {
+    "type": "noul",
+    "instructions": "Does the plan claim that an ADR or project rule supports a choice, while the quoted or cited text does not say so?",
+    "criteria": {
+      "true": "A cited ADR or rule does not support the claim made about it",
+      "false": "Every cited ADR or rule supports the claim, or none is cited"
+    }
+  },
+  "ac_without_verification": {
+    "type": "noul",
+    "instructions": "Is there an acceptance criterion for which the plan describes no way to verify it?",
+    "criteria": {
+      "true": "At least one acceptance criterion has no test or check described",
+      "false": "Every acceptance criterion has a described test or check"
+    }
+  }
+}

@@ -106,6 +106,8 @@ jobs:
         run: bash tests/lint/no-hardcode.sh
       - name: Config contract (validator, merge, hook reads config)
         run: bash tests/config/run.sh
+      - name: Jev advisory plan check (local stub, no network)
+        run: bash tests/jev/run.sh
 
   setup-harness:
     # Machine layer of setup/harness (docs/port/PLAN.md P2, #313) on both OS families.

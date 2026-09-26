@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""jev-check — advisory plan check by Jev (TypeSafe System One). Never blocks anything.
+
+Usage: jev-check PLAN_FILE [ISSUE_FILE] [--project DIR]
+
+Prints one JSON object: {"status": ..., "findings": [...], ...}. Exit 0 whatever the status, so the
+caller always goes on. Status is one of: ok, disabled, unavailable, timeout, invalid_response,
+oversized_state. Only "ok" carries answers; no other status means "the plan is fine".
+
+Config (effective, see `config effective`): jev.enabled, jev.model, jev.endpoint, jev.key_env,
+jev.timeout_ms, jev.finding_threshold_pct. The key is read from the environment variable named by
+jev.key_env, sent only in the Authorization header, and never printed.
+API: POST <endpoint> with {state, model, questions}; Noul answers are {"type": "noul", "noul": p}
+(https://docs.typesafe.ai/api, read 2026-09-26).
+"""
+import json
+import math
+import os
+import socket
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+QUESTIONS = os.path.join(HERE, "..", "skills", "plan", "jev-questions.v1.json")
+# docs.typesafe.ai/models: 32k tokens for state plus the longest question. Four bytes per token is a
+# conservative estimate for English text; the check refuses before sending rather than truncating.
+STATE_TOKEN_LIMIT = 32000
+BYTES_PER_TOKEN = 4
+
+
+def out(status, **extra):
+    print(json.dumps({"status": status, **extra}, ensure_ascii=False))
+    sys.exit(0)
+
+
+def effective_config(project):
+    cmd = [os.path.join(HERE, "config"), "effective"] + (["--project", project] if project else [])
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        out("unavailable", reason="config invalid: " + res.stderr.strip().splitlines()[-1] if res.stderr.strip() else "config invalid")
+    return json.loads(res.stdout)
+
+
+def main(argv):
+    project = None
+    if "--project" in argv:
+        i = argv.index("--project")
+        if i + 1 >= len(argv):
+            print("usage: jev-check PLAN_FILE [ISSUE_FILE] [--project DIR]", file=sys.stderr)
+            return 2
+        project = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    if not 1 <= len(argv) <= 2:
+        print("usage: jev-check PLAN_FILE [ISSUE_FILE] [--project DIR]", file=sys.stderr)
+        return 2
+
+    jev = effective_config(project).get("jev", {})
+    if not jev.get("enabled"):
+        out("disabled")
+    key = os.environ.get(jev.get("key_env", ""), "")
+    if not key:
+        out("unavailable", reason=f"no key in ${jev.get('key_env', '')}")
+
+    try:
+        state = {"plan": open(argv[0], encoding="utf-8").read()}
+        if len(argv) == 2:
+            state["issue"] = open(argv[1], encoding="utf-8").read()
+    except OSError as e:
+        out("unavailable", reason=f"cannot read input: {e.strerror}")
+    with open(QUESTIONS, encoding="utf-8") as f:
+        questions = json.load(f)
+
+    longest = max(len(json.dumps(q)) for q in questions.values())
+    if (len(json.dumps(state).encode()) + longest) / BYTES_PER_TOKEN > STATE_TOKEN_LIMIT:
+        out("oversized_state", reason=f"state plus longest question exceeds about {STATE_TOKEN_LIMIT} tokens")
+
+    body = json.dumps({"state": state, "model": jev["model"], "questions": questions}).encode()
+    req = urllib.request.Request(jev["endpoint"], data=body, method="POST", headers={
+        "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=jev["timeout_ms"] / 1000) as resp:
+            raw = resp.read()
+    except urllib.error.HTTPError as e:
+        out("unavailable", reason=f"HTTP {e.code}")
+    except (TimeoutError, socket.timeout):
+        out("timeout", reason=f"no answer within {jev['timeout_ms']} ms")
+    except urllib.error.URLError as e:
+        if isinstance(e.reason, (TimeoutError, socket.timeout)):
+            out("timeout", reason=f"no answer within {jev['timeout_ms']} ms")
+        out("unavailable", reason=f"network: {e.reason}")
+
+    try:
+        data = json.loads(raw)
+        answers = data["answers"]
+        probs = {}
+        for qid in questions:
+            a = answers[qid]
+            p = a["noul"]
+            if a.get("type") != "noul" or isinstance(p, bool) or not isinstance(p, (int, float)) \
+                    or not math.isfinite(p) or not 0 <= p <= 1:
+                raise ValueError(qid)
+            probs[qid] = p
+    except (ValueError, KeyError, TypeError):
+        out("invalid_response")
+
+    threshold = jev["finding_threshold_pct"] / 100
+    findings = [{"id": q, "probability": round(p, 3), "question": questions[q]["instructions"]}
+                for q, p in probs.items() if p >= threshold]
+    out("ok", model=data.get("model"), findings=findings,
+        probabilities={q: round(p, 3) for q, p in probs.items()}, usage=data.get("usage"))
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

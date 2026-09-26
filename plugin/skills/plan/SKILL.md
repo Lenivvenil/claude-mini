@@ -2,7 +2,7 @@
 name: plan
 description: Plan a change against a GitHub issue before writing code. Writes plan.md with considered approaches, test strategy and risks; does not touch code.
 argument-hint: "[issue-number]"
-allowed-tools: Bash(gh issue view:*) Read Glob Grep Write
+allowed-tools: Bash(gh issue view:*) Read Glob Grep Write Bash(${CLAUDE_PLUGIN_ROOT}/bin/jev-check:*)
 ---
 
 # /plan
@@ -23,6 +23,12 @@ Write `plan.md` in the repo root with exactly these sections:
 6. **Risks and unknowns** — an honest list; "none" is a smell.
 
 If the change is architecturally significant by the project's own rules (a new cross-cutting dependency, a changed public API or contract, a hard-to-reverse constraint, a security or data-model change), say so at the top of plan.md and suggest `/claude-mini:adr-author` before implementation.
+
+## Advisory check
+
+After writing `plan.md`, run `"${CLAUDE_PLUGIN_ROOT}/bin/jev-check" plan.md` and read its one-line JSON.
+- `ok` with findings: append a section `## Advisory (Jev)` to `plan.md`, one line per finding with its probability. Review each and fix the plan where you agree. Advice only: it does not block, approve or waive anything.
+- Any other status (`disabled`, `unavailable`, `timeout`, `invalid_response`, `oversized_state`): mention it in the chat line. It says nothing about plan quality.
 
 ## Output
 
