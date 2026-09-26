@@ -2,7 +2,7 @@
 name: adr-reviewer
 description: Read-only critic for MADR 4.0 ADRs. Invoke after drafting `docs/decisions/NNNN-*.md` to check section completeness, whether the options were real, honest consequences, and conflicts with accepted ADRs and project rules. Does NOT write files.
 tools: Read, Glob, Grep
-model: sonnet
+model: inherit
 color: blue
 ---
 

@@ -1,5 +1,2 @@
 # <path>|<pattern id>|<reason>. Entries must keep matching (stale entries fail the lint).
 plugin/.claude-plugin/plugin.json|owner-id|plugin manifest metadata: author and repository URL
-plugin/agents/adr-reviewer.md|model-pin|temporary: becomes `model: inherit` in P1 (#312)
-plugin/agents/adversarial-critic.md|model-pin|temporary: becomes `model: inherit` in P1 (#312)
-plugin/agents/security-reviewer.md|model-pin|temporary: becomes `model: inherit` in P1 (#312)

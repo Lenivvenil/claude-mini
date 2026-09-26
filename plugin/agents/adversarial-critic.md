@@ -2,7 +2,7 @@
 name: adversarial-critic
 description: Read-only lazy-pattern detector for PRs. Checks LLM anti-patterns: duplicate code, symptom-fix, narrow special-case, copy-paste, truncated files, magic constants, TODO-without-ticket, commented-out code. Loads docs/anti-patterns.md. Invoked inside /review after deterministic gates pass. NEVER writes files.
 tools: Read, Glob, Grep
-model: sonnet
+model: inherit
 color: yellow
 ---
 

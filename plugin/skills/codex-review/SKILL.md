@@ -1,14 +1,14 @@
 ---
 name: codex-review
 description: Second-opinion code review by OpenAI Codex CLI over the whole branch against its base, plus uncommitted changes. Run before committing, opening or merging a PR.
-argument-hint: "[base-branch, default main]"
+argument-hint: "[base-branch, default from config git.base_branch]"
 disable-model-invocation: true
-allowed-tools: Bash(codex review:*) Bash(git merge-base:*) Bash(git rev-parse:*) Bash(git diff:*) Bash(git status:*)
+allowed-tools: Bash(codex review:*) Bash(git merge-base:*) Bash(git rev-parse:*) Bash(git diff:*) Bash(git status:*) Bash(${CLAUDE_PLUGIN_ROOT}/bin/config:*)
 ---
 
 # /codex-review
 
-Base branch: `$ARGUMENTS` if given, otherwise `main`.
+Base branch: `$ARGUMENTS` if given, otherwise the project's configured base: run `"${CLAUDE_PLUGIN_ROOT}/bin/config" get git.base_branch` (plugin defaults merged with `.claude/claude-mini.json`).
 
 Branch: !`git rev-parse --abbrev-ref HEAD`
 Head: !`git rev-parse --short HEAD`
