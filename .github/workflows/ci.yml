@@ -107,6 +107,25 @@ jobs:
       - name: Config contract (validator, merge, hook reads config)
         run: bash tests/config/run.sh
 
+  setup-harness:
+    # Machine layer of setup/harness (docs/port/PLAN.md P2, #313) on both OS families.
+    # Read-only and dry-run only: nothing is installed on the runner.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Harness tests (fake package managers, temp HOME)
+        run: bash tests/setup/run.sh
+      - name: assess --json on the runner
+        run: |
+          python3 setup/harness assess --project . --json > assess.json
+          python3 -c "import json; d=json.load(open('assess.json')); print(d['package_manager'], d['delta'])"
+      - name: apply --dry-run on the runner
+        run: python3 setup/harness apply --project . --dry-run
+
   plugin-validate:
     runs-on: ubuntu-latest
     steps:
