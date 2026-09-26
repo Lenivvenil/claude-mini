@@ -111,3 +111,8 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: the Definition of Done, the ADR trigger and the advisor policy sections of `docs/principles.md`, and `.github/pull_request_template.md`, list v1 rituals: `/review`, two mandatory advisor calls, deferred-review issues, coverage floor. ADR-0031 allows text edits to principles §5–7 only, so P9 changed their paths to `docs/history/`, not their content.
 - Proposed fix: the owner decides whether a new ADR replaces these sections with the feature skill's checks, or they stay as history.
+
+## Acceptance mode B: two test hardenings (Codex, 2026-09-27, P2)
+
+- Mode B: when the final uninstall fails, the EXIT trap still deletes `$T` unless `KEEP=1`. The real registry would keep an entry while the project and its log are gone. Keep `$T` whenever a check in (g) failed. Workaround: run mode B with `KEEP=1`.
+- `watch_state` exit status is not checked. An unreadable watched file gives a truncated snapshot, and two equal truncated snapshots compare as equal. Abort when a snapshot fails.
