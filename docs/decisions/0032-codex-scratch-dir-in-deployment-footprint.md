@@ -1,6 +1,6 @@
 # 0032. Allow the Codex per-run scratch directory in the deployment footprint
 
-* Status: proposed
+* Status: accepted (2026-09-27, PR #338 merged)
 * Superseded-by: ~
 * Date: 2026-09-27
 * Deciders: Lenivvenil (operator); draft by Claude
