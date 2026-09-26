@@ -7,13 +7,13 @@
 > - **S4** No API money: "we work within subscriptions". No `--max-budget-usd` (it bills API usage, not subscription limits); the limiter is subscription quota, watched with `codeburn quota`. Acceptance mode A runs **locally only**, never in CI. Isolated runs (tests, driver) authenticate with a long-lived subscription token from `claude setup-token` **[verified 2026-09-26: the command exists on 2.1.283; an isolated `CLAUDE_CONFIG_DIR` is otherwise "Not logged in"]**, stored by the owner in the macOS Keychain item `claude-mini-test-oauth` and passed as `CLAUDE_CODE_OAUTH_TOKEN`; never logged. Without it, isolated tests exit 77 (SKIPPED), which never counts as a pass.
 > - **S5** Jev key: open. Without it P8 is tested on the no-key path only.
 
-- **Inputs:** run-plan-claude.md (v1, unchanged), review-astra.md (Codex), review-fable.md (Fable), jev-astra.md, and the owner's additions. The repo was read at `~/Projects/claude-mini` `main` 48867dc, 2026-09-26, and was not changed.
+- **Inputs:** plan v1, the Codex review ("A"), the Fable review ("F"), the port map (committed verbatim as [PORT-MAP.md](PORT-MAP.md), line numbers preserved), the Jev design (committed verbatim as [JEV-DESIGN.md](JEV-DESIGN.md), line numbers preserved), and the owner's additions. Plan v1 and the two reviews are not in the repository; every finding they raised is carried, with its resolution, in the last section, so this plan does not need them. The repo was read at `~/Projects/claude-mini` `main` 48867dc, 2026-09-26, and was not changed.
 - **Evidence:**
   - `path:line` means checked on disk by me.
   - **[verified 2026-09-26]** means verified by the orchestrating session on this machine.
   - **[owner]** means a fact supplied by the owner.
   - **[unverified]** means still open.
-- **Findings:** "A#n" / "F#n" refer to the numbered findings of review-astra / review-fable. The last section maps every P0/P1 to a resolution.
+- **Findings:** "A#n" / "F#n" are labels of the numbered findings of the Codex / Fable reviews. The last section maps every P0/P1 to a resolution.
 
 ## 0. Must decide before P0 starts (the run refuses to start without these)
 - **S1. Migration ADR.** Three changes hit the explicit ADR triggers in docs/runbooks/adr-trigger.md:10 and :12 (public API, security model):
@@ -30,25 +30,25 @@
 
   CodeBurn adds `~/.cache/codeburn` and `~/.config/codeburn` **[owner]**. Decision needed: accept these as the only permitted out-of-project writes, compared **per entry** (never wholesale), or reject.
 - **S4. Spending cap and auth for the run.**
-  - The cap, in USD, applies to the whole run and to each phase, and is passed to every session as `--max-budget-usd`.
+  - Superseded by the owner decision S4 above: no USD cap, no `--max-budget-usd`.
   - Auth inside the isolated run config dir (§8) is either `ANTHROPIC_API_KEY` or an OAuth token via `--settings` apiKeyHelper **[unverified which works on 2.1.283]**.
 - **S5. Jev key.** Is a TypeSafe key available for P8? Without it, P8 ships and is tested in the no-key path only.
 
-## 1. Critique of port-astra.md (v1 content, corrected)
+## 1. Critique of the port map, PORT-MAP.md (v1 content, corrected)
 - **Checked claims.** 14 claims were checked on disk and 13 are correct. The details are in v1 §1.1, and both reviewers re-confirmed them.
 - **Corrections to v1:**
   - hooks.json has 19 lines, not 20;
   - open weekly ADR-audit PRs are **15, #270–#302**, and mutation issues are 16, #250–#301 (checked with `gh`);
   - `.claude/scratch/handoff-2026-04-29/` has **57** tracked files;
   - the ci.yml list is corrected in §3.
-- **Stale claim.** port-astra's "mutation cron not verified" is stale. mutation.yml was deleted today in aa83609, and the issues it created are still open.
+- **Stale claim.** PORT-MAP.md's "mutation cron not verified" is stale. mutation.yml was deleted today in aa83609, and the issues it created are still open.
 - **Wrong or missing verdicts (unchanged from v1):**
   - the hardware DROP was overridden by the owner;
   - `plugin/evals/results/` is gitignored (.gitignore:27), so `git mv` does not apply to it;
   - VERSION 1.5.0 differs from plugin.json 2.0.0;
   - agent `model:` pins in plugin/agents/*:5;
   - `CC_REGEX` is hardcoded at commit-msg-check.sh:62 and :73.
-- **Unmapped components.** No phase in port-astra owns: `.claude/scratch/handoff-2026-04-29/` (57 files), `.github/ISSUE_TEMPLATE/*`, `pull_request_template.md`, `markdown-link-check.json`, root `.semgrep/hedging.yml`, `.semgrepignore`, eval graders and prompt. They are assigned in the P0 ledger (§3), which answers F-req1.
+- **Unmapped components.** No phase in PORT-MAP.md owns: `.claude/scratch/handoff-2026-04-29/` (57 files), `.github/ISSUE_TEMPLATE/*`, `pull_request_template.md`, `markdown-link-check.json`, root `.semgrep/hedging.yml`, `.semgrepignore`, eval graders and prompt. They are assigned in the P0 ledger (§3), which answers F-req1.
 - **Phase order.** Config, the safety net and deployment come before porting. CI is edited in the same PR as every move. Removal is gated by capability, not by filename (A#10).
 
 ## 2. Design principles (binding, proportional)
@@ -159,7 +159,7 @@ DoD for P5–P7:
 - acceptance is green.
 
 **P8 — Jev: one advisory plan check** (was P9; now a deliverable, per A#8 and F-req2)
-- Scope is jev-astra.md:46–50 and :125, cut 1 only: advisory plan lint. There are three Noul questions:
+- Scope is [JEV-DESIGN.md](JEV-DESIGN.md#L46) item 6 (lines 46–50, "Plan quality lint") and rollout step 1 at line 125, cut 1 only: advisory plan lint. There are three Noul questions:
   - unsupported design assertion,
   - claimed ADR support absent from the cited excerpt,
   - AC without a verification method.
@@ -259,7 +259,7 @@ DoD for P5–P7:
 5. **Modes.**
    - **A** (CI and default): `HOME=$T/home CLAUDE_CONFIG_DIR=$T/home/.claude`, auth per S4.
    - **B** (real machine, owner go only): snapshot and diff. It excludes the pre-existing `claude-mini@claude-mini` entry for projectPath `…/likec4` and likec4's own files, so they do not fail (e) and (g) spuriously (F#8).
-6. **Parsing.** `--output-format json` returns an **array** on 2.1.283 (nested-test.json: a list of 4, with `session_id` and `total_cost_usd` in the last element). jq uses `if type=="array" then .[-1] else . end` (F#4).
+6. **Parsing.** `--output-format json` returns an **array** on 2.1.283 (a nested-session test on 2026-09-26 returned a list of 4, with `session_id` and `total_cost_usd` in the last element). jq uses `if type=="array" then .[-1] else . end` (F#4).
 
 ## 6. Config keys (defaults in plugin, override in project)
 - **Keys:**
@@ -295,8 +295,9 @@ DoD for P5–P7:
 
 ## 8. Guardrails and the execution boundary (A#2, F#1)
 - **Isolated run config.** Every run session uses `CLAUDE_CONFIG_DIR=<repo>/.port-run/claude-config` (persistent across phases, gitignored), plus:
-  - `--setting-sources project` **[unverified that project-only excludes user hooks]**;
-  - `--strict-mcp-config --mcp-config '{}'`.
+  - `--setting-sources project,local` (user settings and hooks are not loaded);
+  - `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`;
+  - `HOME` pointed at `.port-run/agent-home`, so the agent sees no shell profile, git or gh credentials of the owner; git identity is copied into a sandbox `GIT_CONFIG_GLOBAL`.
 
   Transcripts, local permissions and the user's own hooks stay out of `~/.claude`. Git writes that go into the shared `.git` of the main checkout (worktree metadata, refs) are documented and permitted.
 - **Allowed writes:**
@@ -319,12 +320,12 @@ DoD for P5–P7:
   - editing tests to make them pass;
   - moving `plugin/` or `marketplace.json` (likec4).
 - **Commits.** Conventional Commits `type(scope): subject #N` (AGENTS.md:124, :134–135). A pure `git mv` commit comes first. The attribution lines follow current practice: the last 5 commits carry them (5 matching lines, `git log -5`), so the default is yes (D-6).
-- **Blocked channel (F#3).** The agent cannot set the exit code. It writes `status: blocked` plus a question into `.port-run/state.json`, and the driver reads the state before trusting the exit code. The run blocks on any of:
+- **Blocked channel (F#3).** The agent cannot set the exit code. It writes `{"status":"done"}` or `{"status":"blocked","question":…}` into `.port-run/pN.signal.json` inside its worktree, and the driver publishes nothing without a `done` signal. The run blocks on any of:
   - a system-binary need;
   - a new ADR trigger beyond S1;
   - an unresolved P0/P1 after 2 rounds;
   - acceptance red outside the phase;
-  - a ledger row without a capability;
+  - a path leaving the tree without a capability, entry point and evidence in its ledger row;
   - out-of-list files;
   - the same failure 3 times.
 
@@ -343,14 +344,14 @@ DoD for P5–P7:
 - **Parser edge cases** are P2 unless a bad message passes or a good one is blocked.
 
 ## 10. Driver (simplified per §8 proportionality; A#3)
-- **Commands.** `driver.sh start pN | resume | status`. There is no multi-state machine. State is one JSON file per phase, `.port-run/pN.json`: `{issue, branch, base_sha, worktree, session_id, pr, reviewed_sha, status: running|blocked|awaiting-merge|done, cost}`. It is written with tmp+`mv`. A single lock `.port-run/lock` holds the PID and is checked for liveness.
+- **Commands.** `driver.sh start pN | resume | status`. There is no multi-state machine. State is one JSON file per phase, `.port-run/pN.json`: `{issue, branch, base_ref, base_sha, worktree, session_id, last_exit, pr, pushed_sha, status: starting|running|interrupted|blocked|dod-failed|awaiting-merge, question}`. It is written with tmp+`mv`. A single lock `.port-run/lock` holds the PID and is checked for liveness.
 - **Start:**
-  1. `git fetch`. Verify that the previous phase's PR is merged and record its merge SHA as `base_sha`. Never branch from a stale `origin/main`.
+  1. `git fetch`. Find the previous phase's PR by its branch name `port/<prev>-<slug>` (so phases done by hand count) and require it merged; record `origin/main` as `base_sha`. `PORT_STACK=1` stacks on the unmerged predecessor branch instead. Never branch from a stale `origin/main`.
   2. `git worktree add .port-run/wt/pN -b port/pN-slug <base_sha>`.
-  3. Generate a UUID and **persist it before launch**. Run `claude -p "$(cat tools/port-run/prompts/pN.md)" --session-id <uuid> --output-format json --permission-mode acceptEdits --permission-prompts none --max-budget-usd <remaining> <phase allow/deny lists>` with the §8 env.
-  4. The driver runs the DoD commands itself, then the review session (§9).
-  5. The driver pushes, and `gh pr create` runs only if `gh pr list --head <branch>` finds nothing (A#3).
-- **Resume.** Replays the **full** launch command and env with `--resume <uuid>`, because the permission mode is not restored (A#3). A worktree with uncommitted work is committed to `wip/pN` before any cleanup.
+  3. Compose the prompt from `prompts/common.md`, the phase issue text and an optional `prompts/pN.md`, check the token and snapshot the §8 watch list, all before the worktree exists. Generate a UUID and **persist it before launch**. Run `claude -p <prompt> --session-id <uuid> --output-format json --permission-mode acceptEdits --permission-prompts none <allow/deny lists>` with the §8 env under `timeout`.
+  4. Critics run inside the phase session (prompts/common.md); PR-level review follows §9 on the draft PR.
+  5. With a `done` signal, an unchanged watch list, clean trees, a green DoD and written PR files, the driver pushes and opens a **draft** PR only if `gh pr list --head <branch>` finds nothing (A#3).
+- **Resume.** Replays the **full** launch command and env with `--resume <uuid>`, because the permission mode is not restored (A#3). The driver never deletes a worktree; uncommitted work blocks publication.
 - **Stacking.** The owner merge gate stays; stacking is off (D-2).
 
 ## 11. Budget (uncalibrated; P0 is the calibration run)
@@ -359,9 +360,9 @@ DoD for P5–P7:
 - **Known data points (F):**
   - eval run: $0.254;
   - trivial `-p` call: $0.005;
-  - Jev lint: ≈ $0.0003 per call (jev-astra.md:50).
+  - Jev lint: ≈ $0.0003 per call ([JEV-DESIGN.md](JEV-DESIGN.md#L50)).
 - **Wall time:** ≈18–28 h of agent time, plus rework and merge latency. Re-estimate after P0 and P1 from CodeBurn per-PR data.
-- **Hard stop:** `--max-budget-usd` per session, derived from the remaining S4 cap. **[unverified]** whether `--max-turns` exists on 2.1.283 (it is not in `--help`), so the wall-clock cap is a `timeout` wrapper in the driver.
+- **Hard stop:** the wall-clock `timeout` wrapper in the driver (`timeout_s` in phases.json); `--max-turns` is not in `--help` on 2.1.283 and `--max-budget-usd` is out per S4.
 
 ## 12. Remaining owner decisions (not blocking P0)
 - D-2. Stacked branches instead of a merge after every PR. Default: off.
