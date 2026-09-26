@@ -69,3 +69,9 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: if `.claude/settings.local.json` already had `enabledPlugins["claude-mini@claude-mini"] = false`, apply enables it and Claude Code's uninstall removes the entry, so the file no longer equals the original and setup leaves it (reported as disabled, bytes differ).
 - Proposed fix: restore the owned keys to their original values, not only the whole file when nothing else changed.
+
+## `critics` config section deferred from P4 to P6
+- Source: P4, PR for #315
+- Severity: P2
+- What: PLAN P4 put the `critics[{agent,paths,labels}]` section in P4. No component reads it until the review skill arrives in P6, so in P4 it would be config without a reader.
+- Proposed fix: add the section in P6 together with the review skill that reads it, or drop it if the agent descriptions prove enough for delegation.
