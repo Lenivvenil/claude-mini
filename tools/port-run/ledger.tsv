@@ -83,7 +83,7 @@ bootstrap/agents/reliability-reviewer.md	PORT	on-demand reliability review role	
 bootstrap/agents/solutions-architect.md	PORT	on-demand solution design role	plugin/agents/solutions-architect.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/commands/adr.md	MERGE	ADR draft via interview, then separate adr/ branch and PR with type:adr	plugin/skills/adr-author/SKILL.md	plugin/skills/adr-author/SKILL.md Hand-off; scripts/next_adr_number.sh	p9	
 bootstrap/commands/codex-review.md	MODERNISE				p6	
-bootstrap/commands/feature.md	MODERNISE				p6	
+bootstrap/commands/feature.md	MODERNISE	one feature cycle: issue to PR, then handoff	plugin/skills/feature/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p6	
 bootstrap/commands/implement.md	MODERNISE				p6	
 bootstrap/commands/intent-check.md	MODERNISE				p6	
 bootstrap/commands/issue-to-task.md	KEEP-HISTORY				p9	docs/history/bootstrap/commands/issue-to-task.md
@@ -148,7 +148,7 @@ bootstrap/templates/.semgrep/tests/test_llm_commented_block.py	MODERNISE				p7
 bootstrap/templates/.semgrep/tests/test_llm_todo_without_ticket.py	MODERNISE				p7	
 bootstrap/templates/AGENTS.md.template	MODERNISE				p7	
 bootstrap/templates/CLAUDE.md.template	MODERNISE				p7	
-bootstrap/templates/STATE.md.template	MODERNISE				p7	
+bootstrap/templates/STATE.md.template	MODERNISE	session snapshot template	plugin/skills/handoff/templates/STATE.md	plugin/skills/handoff/SKILL.md reads it; claude plugin validate plugin --strict	p6	
 bootstrap/templates/adr-template.md	MODERNISE				p7	
 bootstrap/templates/ci-go.yml	MODERNISE				p7	
 bootstrap/templates/ci-node.yml	MODERNISE				p7	
@@ -246,6 +246,8 @@ plugin/skills/adr-author/scripts/next_adr_number.sh	KEEP				-
 plugin/skills/backlog-review/SKILL.md	KEEP				p5	
 plugin/skills/codex-review/SKILL.md	KEEP				-	
 plugin/skills/domain-discovery/SKILL.md	KEEP				p5	
+plugin/skills/feature/SKILL.md	KEEP				p6	
+plugin/skills/handoff/templates/STATE.md	KEEP				p6	
 plugin/skills/plan/SKILL.md	KEEP				-	
 scripts/lint-prompts.sh	MODERNISE				p9	
 scripts/sweep-worktree.sh	MODERNISE				p9	
