@@ -574,8 +574,10 @@ def apply_project_item(t, item):
         shutil.copy2(settings, backup)
     data = read_settings_local(project) or {}
     declared = mkt in (data.get("extraKnownMarketplaces") or {})
+    known = marketplace_known(mkt, project)
     base = {"op": "plugin", "item": item["id"], "path": SETTINGS_LOCAL}
     t.append(dict(base, state="started", sha_before=before, declared_before=declared,
+                  marketplace_known_before=known,
                   backup=os.path.relpath(backup, project) if backup else None))
     steps = [] if declared else [["claude", "plugin", "marketplace", "add", "--scope", "local", HARNESS_ROOT]]
     steps.append(["claude", "plugin", "install", pid, "--scope", "local"])
@@ -583,7 +585,8 @@ def apply_project_item(t, item):
         code, tail = run_claude(argv, project)
         if code != 0:
             # undo what already succeeded, so a failed setup leaves nothing half-done
-            if not declared and argv[2] == "install":
+            if not declared and argv[2] == "install" and known is False \
+                    and marketplace_in_use(mkt, project) is False:
                 run_claude(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"], project)
             restore_settings(t, dict(base, sha_before=before,
                                      backup=os.path.relpath(backup, project) if backup else None))
@@ -603,6 +606,40 @@ def run_claude(argv, project):
     except (OSError, subprocess.TimeoutExpired) as e:
         return 127, str(e)
     return res.returncode, " | ".join((res.stdout + res.stderr).strip().splitlines()[-2:])
+
+
+def claude_json(argv, project):
+    """Parsed JSON output of a read-only `claude ... --json` command, or None if it cannot be read."""
+    try:
+        res = subprocess.run(argv, cwd=project, capture_output=True, text=True, timeout=300)
+        return json.loads(res.stdout) if res.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+
+
+def marketplace_known(mkt, project):
+    """Whether Claude Code already knows the marketplace on this machine; None if unknown."""
+    data = claude_json(["claude", "plugin", "marketplace", "list", "--json"], project)
+    if not isinstance(data, list):
+        return None
+    return any(isinstance(m, dict) and m.get("name") == mkt for m in data)
+
+
+def marketplace_in_use(mkt, project):
+    """Whether a plugin from the marketplace is installed anywhere but this project; None if unknown.
+    Claude Code's marketplace list is machine-wide: removing it uninstalls its plugins in every
+    project, so the marketplace stays while anyone else uses it."""
+    data = claude_json(["claude", "plugin", "list", "--json"], project)
+    if not isinstance(data, list):
+        return None
+    here = os.path.realpath(project)
+    for e in data:
+        if not isinstance(e, dict) or not str(e.get("id", "")).endswith("@" + mkt):
+            continue
+        path = e.get("projectPath")
+        if not path or os.path.realpath(path) != here:
+            return True
+    return False
 
 
 def restore_settings(t, started):
@@ -641,16 +678,44 @@ def undo_plugin(t, item_id):
         return True, f"{item_id}: not enabled by setup"
     mkt, pid = plugin_ids()
     project = t.project
-    steps = [["claude", "plugin", "uninstall", pid, "--scope", "local"]]
+    argv = ["claude", "plugin", "uninstall", pid, "--scope", "local"]
+    code, tail = run_claude(argv, project)
+    if code != 0:
+        return None, f"{item_id}: `{' '.join(argv)}` exit {code}: {tail}; plugin may still be enabled"
+    kept = ""
     if not started.get("declared_before"):
-        steps.append(["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"])
-    for argv in steps:
-        code, tail = run_claude(argv, project)
-        if code != 0:
-            return None, f"{item_id}: `{' '.join(argv)}` exit {code}: {tail}; plugin may still be enabled"
+        # Records from before this field existed carry no answer: then the marketplace stays.
+        in_use = marketplace_in_use(mkt, project)
+        if started.get("marketplace_known_before") is False and in_use is False:
+            argv = ["claude", "plugin", "marketplace", "remove", mkt, "--scope", "local"]
+            code, tail = run_claude(argv, project)
+            if code != 0:
+                return None, f"{item_id}: `{' '.join(argv)}` exit {code}: {tail}"
+        else:
+            # Only this project's declaration goes; the machine-wide marketplace stays.
+            undeclare_marketplace(project, mkt)
+            kept = (f"; marketplace {mkt} kept: " +
+                    ("it was on this machine before setup" if started.get("marketplace_known_before")
+                     else "another project uses it" if in_use
+                     else "could not check whether other projects use it"))
     restore_settings(t, started)
     t.append({"op": "plugin", "item": item_id, "path": SETTINGS_LOCAL, "state": "removed"})
-    return True, f"{item_id}: disabled for this project"
+    return True, f"{item_id}: disabled for this project{kept}"
+
+
+def undeclare_marketplace(project, mkt):
+    """Drop the marketplace from this project's local settings, as `marketplace remove` would there."""
+    data = read_settings_local(project)
+    known = (data or {}).get("extraKnownMarketplaces")
+    if not isinstance(known, dict) or mkt not in known:
+        return
+    del known[mkt]
+    path = os.path.join(project, SETTINGS_LOCAL)
+    tmp = path + ".claude-mini.tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+    os.replace(tmp, path)
 
 
 def cmd_uninstall(a):

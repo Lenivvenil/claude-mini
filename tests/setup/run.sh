@@ -70,7 +70,9 @@ EOF
 printf '#!/bin/sh\nexec "$@"\n' > "$SHIM/sudo"
 chmod +x "$SHIM/brew" "$SHIM/apt-get" "$SHIM/sudo" "$SHIM/dpkg-query"
 for b in jq gh codex node; do fake "$b"; done
-# Fake claude: --version, auth status, and the four plugin commands setup uses. It edits
+# Fake claude: --version, auth status, the four plugin commands setup uses and the two --json lists.
+# Like Claude Code, it keeps one machine-wide registry ($STATE/claude.registry.json): marketplaces and
+# installs with their project, and removing a marketplace uninstalls its plugins in every project. It edits
 # <cwd>/.claude/settings.local.json the way Claude Code does and leaves empty objects on removal.
 cat > "$SHIM/claude" <<EOF
 #!$PY
@@ -81,22 +83,38 @@ if a[:1] == ["--version"]:
     print("2.1.283 (Claude Code)"); sys.exit(0)
 if a[:2] == ["auth", "status"]:
     sys.exit(int(open("$STATE/claude.auth").read()) if os.path.exists("$STATE/claude.auth") else 0)
+R = "$STATE/claude.registry.json"
+reg = json.load(open(R)) if os.path.exists(R) else {"mkts": [], "installs": []}
+here = os.path.realpath(os.getcwd())
+def save_reg(): json.dump(reg, open(R, "w"))
+if a[:4] == ["plugin", "marketplace", "list", "--json"]:
+    if os.path.exists("$STATE/claude.fail-list"): sys.exit(1)
+    print(json.dumps([{"name": m} for m in reg["mkts"]])); sys.exit(0)
+if a[:3] == ["plugin", "list", "--json"]:
+    if os.path.exists("$STATE/claude.fail-list"): sys.exit(1)
+    print(json.dumps(reg["installs"])); sys.exit(0)
 p = os.path.join(os.getcwd(), ".claude", "settings.local.json")
 d = json.load(open(p)) if os.path.exists(p) else {}
 if a[:3] == ["plugin", "marketplace", "add"]:
     src = a[-1]; name = json.load(open(os.path.join(src, ".claude-plugin", "marketplace.json")))["name"]
     d.setdefault("extraKnownMarketplaces", {})[name] = {"source": {"source": "directory", "path": src}}
+    if name not in reg["mkts"]: reg["mkts"].append(name)
 elif a[:2] == ["plugin", "install"]:
     if os.path.exists("$STATE/claude.fail-install"): sys.exit(1)
     if a[2].split("@")[1] not in d.get("extraKnownMarketplaces", {}): sys.exit(1)
     d.setdefault("enabledPlugins", {})[a[2]] = True
+    reg["installs"].append({"id": a[2], "scope": "local", "projectPath": here})
 elif a[:2] == ["plugin", "uninstall"]:
     if os.path.exists("$STATE/claude.fail-uninstall"): sys.exit(1)
     d.setdefault("enabledPlugins", {}).pop(a[2], None)
+    reg["installs"] = [e for e in reg["installs"] if not (e["id"] == a[2] and e["projectPath"] == here)]
 elif a[:3] == ["plugin", "marketplace", "remove"]:
     d.setdefault("extraKnownMarketplaces", {}).pop(a[3], None)
+    reg["mkts"] = [m for m in reg["mkts"] if m != a[3]]
+    reg["installs"] = [e for e in reg["installs"] if not e["id"].endswith("@" + a[3])]
 else:
     sys.exit(0)
+save_reg()
 os.makedirs(os.path.dirname(p), exist_ok=True)
 json.dump(d, open(p, "w"), indent=2)
 EOF
@@ -443,6 +461,38 @@ run uninstall --project "$p"
 has "$(cat "$p/.git/info/exclude")" "my-own-line" "T11: a user edit after apply survives uninstall"
 has "$OUT" "was edited after setup; left as is" "and uninstall says so"
 is "$([ -d "$p/.claude/claude-mini" ] && echo kept)" kept "the log is kept while something is left undone"
+
+echo "a marketplace shared with another project"
+# Claude Code's marketplace list is machine-wide: removing it from one project uninstalled the
+# plugin in every other project (seen on a real machine). Uninstall must leave it to the others.
+mkts() { "$PY" -c 'import json,sys; print(" ".join(json.load(open(sys.argv[1]))["mkts"]) or "-")' "$STATE/claude.registry.json"; }
+users() { "$PY" -c 'import json,os,sys; print(" ".join(sorted(os.path.basename(e["projectPath"]) for e in json.load(open(sys.argv[1]))["installs"])) or "-")' "$STATE/claude.registry.json"; }
+rm -f "$STATE/claude.registry.json"
+pa=$(pproject shared-a); pb=$(pproject shared-b)
+ha0=$(full_hash "$pa"); hb0=$(full_hash "$pb")
+run apply --project "$pa"; run apply --project "$pb"
+is "$(users)" "shared-a shared-b" "both projects have the plugin"
+run uninstall --project "$pa"
+is "$RC" 0 "uninstall of the first project exits 0"
+is "$(users)" "shared-b" "the other project keeps its plugin"
+is "$(mkts)" "claude-mini" "the marketplace stays while another project uses it"
+has "$OUT" "marketplace claude-mini kept: another project uses it" "the report says why it stays"
+is "$(full_hash "$pa")" "$ha0" "the first project is back to its bytes"
+run uninstall --project "$pb"
+has "$OUT" "kept: it was on this machine before setup" "a marketplace that was there before setup stays"
+is "$(full_hash "$pb")" "$hb0" "the second project is back to its bytes"
+rm -f "$STATE/claude.registry.json"
+pc=$(pproject alone)
+run apply --project "$pc"; run uninstall --project "$pc"
+is "$(mkts)" "-" "the only project removes the marketplace it added"
+pc=$(pproject nolist)
+run apply --project "$pc"
+touch "$STATE/claude.fail-list"
+run uninstall --project "$pc"
+rm -f "$STATE/claude.fail-list"
+is "$(mkts)" "claude-mini" "when other projects cannot be checked the marketplace stays"
+has "$OUT" "could not check whether other projects use it" "and the report says so"
+rm -f "$STATE/claude.registry.json"
 
 p=$(pproject foreign)
 printf '{"extraKnownMarketplaces":{"claude-mini":{"source":{"source":"github","repo":"x/y"}}}}\n' > "$p/.claude/settings.local.json"
