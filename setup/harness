@@ -650,19 +650,32 @@ def marketplace_in_use(mkt, project):
 
 
 def restore_settings(t, started):
-    """Claude Code leaves empty objects behind; if nothing else in the local settings changed since
-    setup, put the original bytes back (or remove a file setup's commands created)."""
+    """Claude Code leaves empty objects behind and drops the plugin's entry even when it was `false`
+    before setup. If nothing but setup's own keys changed since setup, put the original bytes back
+    (or remove a file setup's commands created)."""
     settings = t.contain(SETTINGS_LOCAL)
     now = read_settings_local(t.project)
     if now is None:
         return
-    trimmed = {k: v for k, v in now.items()
-               if not (k in ("extraKnownMarketplaces", "enabledPlugins") and v == {})}
     orig = {}
     if started.get("backup"):
         with open(t.contain(started["backup"]), encoding="utf-8") as fh:
             orig = json.load(fh)
-    if trimmed == orig:
+    mkt, pid = plugin_ids()
+    # a marketplace declared before setup is the user's: its current value, edited or not, stays
+    owned = [("enabledPlugins", pid)] + ([] if started.get("declared_before") else
+                                         [("extraKnownMarketplaces", mkt)])
+    for section, key in owned:
+        was = orig.get(section)
+        if isinstance(was, dict) and key in was:
+            now.setdefault(section, {})[key] = was[key]
+        elif isinstance(now.get(section), dict):
+            now[section].pop(key, None)
+
+    def trim(d):
+        return {k: v for k, v in d.items()
+                if not (k in ("extraKnownMarketplaces", "enabledPlugins") and v == {})}
+    if trim(now) == trim(orig):
         if started.get("backup"):
             shutil.copy2(t.contain(started["backup"]), settings)
         elif os.path.exists(settings):

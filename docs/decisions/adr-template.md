@@ -14,13 +14,13 @@
 
 * {driver 1 — concrete, measurable where possible}
 * {driver 2}
-* {driver 3 — minimum three, otherwise you haven't thought enough}
+* {driver 3 — as many as really drive the choice; one driver may mean a task, not a decision}
 
 ## Considered Options
 
 * {Option A}
 * {Option B}
-* {Option C — minimum three, strawmen excluded}
+* {Option C — only options you would really choose; the count does not matter, strawmen are excluded}
 
 ## Decision Outcome
 
@@ -33,9 +33,8 @@ Chosen option: **{Option X}**, because {one-paragraph justification referencing 
 
 ### Negative Consequences
 
-* {bad thing 1 — if Bad < Good, you're rationalizing, redo}
+* {bad thing 1 — every real decision has a cost; name the real ones}
 * {bad thing 2}
-* {bad thing 3 — aim for Bad ≥ Good}
 
 ## Pros and Cons of the Options
 
