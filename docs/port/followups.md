@@ -63,3 +63,15 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P3
 - What: PLAN §7 planned per-PR cost from `codeburn --by-pr`. CodeBurn 0.9.25 `report` has no such flag, and the run driver was removed on 2026-09-26.
 - Proposed fix: none needed now. If per-PR cost is wanted, filter `report --format json` by date range of the PR.
+
+## uninstall leaves an empty `.claude` directory
+- Source: first v2 deployment on the Mac mini, 2026-09-27
+- Severity: P3
+- What: in a project that had no `.claude` directory, `apply` makes Claude Code create `.claude/` for the local settings file. `uninstall` removes the file and the run directory but leaves the empty `.claude/`. The acceptance test compares files, not directories, so it passes.
+- Proposed fix: record in the intent log whether `.claude/` existed before setup; uninstall removes it only if setup created it and it is empty. Add the directory check to the acceptance snapshot.
+
+## mini-preflight still checks the v1 advisor variable
+- Source: first v2 deployment on the Mac mini, 2026-09-27
+- Severity: P3
+- What: `bootstrap/scripts/mini-preflight.sh:62-65` warns when `CLAUDE_CODE_ENABLE_EXPERIMENTAL_ADVISOR_TOOL` is not set. v1 put it in `~/.zshrc`, v2 does not use it, and it was removed from the Mac mini, so the check now gives a false warning. The script also lost its `~/bin/mini-preflight` link and runs from the clone.
+- Proposed fix: drop the check, or ask the owner whether the variable is still wanted outside the harness.
