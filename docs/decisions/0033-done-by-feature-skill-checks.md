@@ -74,7 +74,7 @@ Chosen option: **Option A**, because только он даёт один ист�
 ## Confirmation
 
 * После принятия ADR отдельный PR правит `docs/principles.md`, `.github/pull_request_template.md` и ADR-0023 (статус superseded, `Superseded-by: 0033`). После него проверки такие.
-  * `grep -nE 'docs/history|/review|/codex-review|deferred-review|adversarial-critic|docs-reviewer|reliability-reviewer|80%|advisor × 2|gate-audit'` ничего не находит в `.github/pull_request_template.md` и в `docs/principles.md` от раздела Definition of Done до конца файла. Выше, в §2, критики названы как действующие агенты v2, и этот раздел решение не трогает.
+  * `grep -nE 'docs/history|/review|/codex-review|deferred-review|adversarial-critic|docs-reviewer|reliability-reviewer|80%|advisor × 2|gate-audit' docs/principles.md .github/pull_request_template.md` ничего не находит.
   * `grep -c '^- \[ \]' .github/pull_request_template.md` печатает 0. Шаблон просит отчёт, а не галочки.
   * В шаблоне есть заголовки разделов из п. 2, по одному на раздел.
 * Первый PR, собранный скиллом `feature` после этого, заполняет шаблон без пустых и ложных пунктов.

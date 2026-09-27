@@ -2,7 +2,7 @@
 
 Closes #
 
-<!-- ADR, если он был: docs/decisions/NNNN-*.md -->
+<!-- Если был ADR: Implements docs/decisions/NNNN-*.md -->
 
 ## Acceptance
 
