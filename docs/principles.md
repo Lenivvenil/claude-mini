@@ -102,31 +102,15 @@ Continuity не блокирующий приоритет в моменте — 
 
 ## Definition of Done
 
-> **Канонический источник после #117:** `docs/history/docs/runbooks/dod-checklist.md`. Секция остаётся здесь до мерджа ADR #117; после мерджа — только в runbook.
+Изменение готово, когда истинны три условия.
 
-Изменение **Done** когда все условия истинны:
+- Выполнены шаги 4–7 скилла `feature` (`plugin/skills/feature/SKILL.md`), и их результат приложен к PR по шаблону `.github/pull_request_template.md`.
+- CI зелёный на всех обязательных задачах.
+- PR влил владелец.
 
-- [ ] ADR открыт и смерджен, если изменение архитектурно-значимо
-- [ ] Domain-доки обновлены, если изменилась граница BC или термин
-- [ ] Unit-тесты написаны; integration-тесты для cross-BC путей; coverage ≥ project floor (дефолт 80%)
-- [ ] `/review` (Claude) одобрил
-- [ ] `adversarial-critic` запущен внутри `/review` (сканирует 8 классов LLM-ленивых паттернов, см. `docs/history/docs/runbooks/feature-pipeline.md §6`); BLOCK-findings устранены ИЛИ задокументированы как осознанный компромисс в PR-треде
-- [ ] `/codex-review` (Codex) одобрил ИЛИ создан `type:deferred-review` issue с обоснованием graceful degradation
-- [ ] Разногласия между Claude и Codex разрешены в PR-треде (консенсус или фиксация disagreement)
-- [ ] Human self-review выполнен
-- [ ] Security scans clean: `uv pip audit` / `cargo audit` / `npm audit --audit-level=high` / `govulncheck` — в зависимости от языка
-- [ ] Docs обновлены: README (при публичных изменениях), relevant runbook, CHANGELOG (через release-please)
-- [ ] Human-facing docs reviewed: если PR меняет `docs/runbooks/`, `docs/architecture/`, `docs/principles.md`, `README.md` — `docs-reviewer` одобрил ИЛИ изменений в этих путях нет
-- [ ] Reliability reviewed: если PR прод-bound (`bootstrap/`, `.github/workflows/`, `.git/hooks/`, label `prod-bound`) — `reliability-reviewer` одобрил ИЛИ изменений в прод-bound путях нет
-- [ ] CI зелёный на всех required jobs
-- [ ] Conventional Commits; governance-hook проверку прошёл
-- [ ] PR body ссылается на issue (`Closes #NNN`) и на ADR (`Implements docs/decisions/NNNN-*.md`) если был
-
-Этот чек-лист копируется в `pull_request_template.md` и проверяется на каждом PR.
+Список проверок живёт в скилле, здесь его нет. Решение — [ADR-0033](decisions/0033-done-by-feature-skill-checks.md).
 
 ## Что значит «архитектурно-значимо» (триггер для ADR)
-
-> **Канонический источник после #117:** `docs/history/docs/runbooks/adr-trigger.md`.
 
 Решение требует ADR, если истинно **хотя бы одно**:
 
@@ -139,24 +123,11 @@ Continuity не блокирующий приоритет в моменте — 
 
 Если ни одно — это story, а не decision. `/plan` достаточно.
 
-## Что значит «нетривиальная задача» (триггер для advisor × 2)
-
-> **Канонический источник после #117:** `docs/history/docs/runbooks/advisor-policy.md`.
-
-Задача требует два вызова advisor, если истинно **хотя бы одно**:
-
-- Затрагивает более одного модуля/пакета
-- Имеет неочевидные edge cases
-- Конкурирует с существующим похожим кодом (дублирование не очевидно)
-- Содержит асинхронность, concurrency, rare-path обработку ошибок
-
-Тривиальное (advisor не нужен): форматирование, rename, линт-фиксы, однострочные bug-fixes с тестом, обновление строки в docs.
-
 ---
 
 ## Operational rules (НЕ принципы)
 
-Внедряются через скиллы, runbook'и и чек-листы:
+Внедряются скиллами и агентами плагина.
 
-- **Детерминированный тулинг приоритетнее LLM-проверок** — формулируется в /review skill, в выборе верификаторов. Это не принцип, это применение Принципа 3.
-- **Gate ROI обязателен** — каждый gate производит audit trail (frequency, blocked-real-issue count, bypass count, false-positive count, cost). Weekly /gate-audit. Gate без доказанной пользы — удаляется. Pipeline — стамеска, не бюрократия.
+- **Детерминированный тулинг раньше LLM-проверок.** Скилл `feature` сначала запускает команды проекта (шаг 4), потом критиков и Codex (шаг 6). Это применение Принципа 3.
+- **Проверка входит только с названной ошибкой.** Проверка, шаг конвейера или пункт промпта добавляются в харнесс, только если названа ошибка, которую они предотвращают. Это случай из практики, eval или находка ревью. Периодического аудита нет. Проверку, которая перестала ловить ошибки, убирают, когда это заметили на ревью.

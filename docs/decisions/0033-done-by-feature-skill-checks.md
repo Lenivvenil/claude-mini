@@ -1,6 +1,6 @@
 # 0033. Define Done by the checks of the feature skill
 
-* Status: proposed
+* Status: accepted (2026-09-27, PR #342 merged)
 * Superseded-by: ~
 * Date: 2026-09-27
 * Deciders: Lenivvenil (operator); draft by Claude
