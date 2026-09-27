@@ -662,7 +662,10 @@ def restore_settings(t, started):
         with open(t.contain(started["backup"]), encoding="utf-8") as fh:
             orig = json.load(fh)
     mkt, pid = plugin_ids()
-    for section, key in (("extraKnownMarketplaces", mkt), ("enabledPlugins", pid)):
+    # a marketplace declared before setup is the user's: its current value, edited or not, stays
+    owned = [("enabledPlugins", pid)] + ([] if started.get("declared_before") else
+                                         [("extraKnownMarketplaces", mkt)])
+    for section, key in owned:
         was = orig.get(section)
         if isinstance(was, dict) and key in was:
             now.setdefault(section, {})[key] = was[key]

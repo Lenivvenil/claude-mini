@@ -460,6 +460,17 @@ h0=$(full_hash "$p")
 run apply --project "$p"; run uninstall --project "$p"
 is "$(full_hash "$p")" "$h0" "a plugin entry that was false before setup comes back as false"
 
+p=$(pproject declaredbefore)
+printf '{"extraKnownMarketplaces": {"claude-mini": {"source": {"source": "directory", "path": "%s"}}}}\n' "$REPO" > "$p/.claude/settings.local.json"
+run apply --project "$p"
+"$PY" - "$p/.claude/settings.local.json" <<'EOP'
+import json, sys
+d = json.load(open(sys.argv[1])); d["extraKnownMarketplaces"]["claude-mini"]["note"] = "mine"; json.dump(d, open(sys.argv[1], "w"))
+EOP
+run uninstall --project "$p"
+is "$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["extraKnownMarketplaces"]["claude-mini"].get("note"))' "$p/.claude/settings.local.json")" \
+   mine "a user edit to a marketplace declared before setup survives uninstall"
+
 p=$(pproject npmcache)
 h0=$(full_hash "$p")
 run apply --project "$p"
