@@ -8,8 +8,8 @@
 # too big to hash whole, so B compares the watch list of PLAN §4 T4 and the plugin registries entry
 # by entry; entries of other projects (likec4) must stay byte-equal. Credential files: size and mtime.
 # The owner's global hooks run too. A hook that rewrites commands (rtk turns `git commit` into
-# `rtk git commit`) changes what the permission rule sees: pass the rewritten form in EXTRA_ALLOW,
-# e.g. EXTRA_ALLOW='Bash(rtk git commit:*)'.
+# `rtk git commit`, `ls` into `rtk ls`) changes what the permission rule sees: pass the rewritten
+# forms in EXTRA_ALLOW, used by every session, e.g. EXTRA_ALLOW='Bash(rtk ls *),Bash(rtk git commit:*)'.
 # Exit: 0 pass · 1 fail · 77 skipped (no subscription token).
 set -uo pipefail
 
@@ -95,6 +95,8 @@ for name in sorted(plugins):
             print(f"registry:{name}\t{json.dumps(e, sort_keys=True)}")
 mk = os.path.join(home, ".claude/plugins/known_marketplaces.json")
 for name, e in sorted((json.load(open(mk)) if os.path.exists(mk) else {}).items()):
+    # lastUpdated moves when Claude Code refreshes a catalog by itself: session state, not deployment
+    e = {k: v for k, v in e.items() if k != "lastUpdated"} if isinstance(e, dict) else e
     print(f"marketplace:{name}\t{json.dumps(e, sort_keys=True)}")
 PYEOF
 }
@@ -118,7 +120,7 @@ echo "deploy"
 # gets what the owner grants: the clone as a readable working directory and the harness commands.
 session "$T/proj" "deploy my harness for this project. Harness: $REPO" "$T/deploy.jsonl" \
     --add-dir "$REPO" \
-    --allowedTools "Read,Glob,Grep,Edit,Write,Bash(ls *),Bash(git *),Bash($REPO/setup/harness *),Bash(python3 $REPO/setup/harness *)" \
+    --allowedTools "Read,Glob,Grep,Edit,Write,Bash(ls *),Bash(git *),Bash($REPO/setup/harness *),Bash(python3 $REPO/setup/harness *)${EXTRA_ALLOW:+,$EXTRA_ALLOW}" \
     --disallowedTools "Bash(git push *),Bash(gh *)"
 echo "  session exit $?; transcript: $T/deploy.jsonl"
 
