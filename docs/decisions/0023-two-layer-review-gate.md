@@ -1,6 +1,7 @@
 # 0023. Add deterministic two-layer gate to `/review`: static-analysis layer 1 before LLM layer 2
 
-* Status: accepted (2026-06-10)
+* Status: superseded (2026-09-27)
+* Superseded-by: [0033](0033-done-by-feature-skill-checks.md)
 * Date: 2026-04-30
 * Deciders: Lenivvenil (operator decides; draft by solutions-architect)
 * Tags: pipeline, review, tooling, static-analysis, gate, principle-3

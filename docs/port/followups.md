@@ -52,12 +52,6 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - What: PLAN P4 put the `critics[{agent,paths,labels}]` section in P4. No component reads it until the review skill arrives in P6, so in P4 it would be config without a reader.
 - Proposed fix: add the section in P6 together with the review skill that reads it, or drop it if the agent descriptions prove enough for delegation.
 
-## No `issue` skill in P5
-- Source: P5, PR for #316
-- Severity: P2
-- What: PLAN P5 and PORT-MAP rows 27, 29, 31, 76 and 106 put issue capture and the ticket audit into a new `issue` skill. Under the selection rule no failure was named that they prevent, so they are KEEP-HISTORY and the skill is not built. `audit-pass` implements ADR-0023.
-- Proposed fix: the owner accepts or reverses. If accepted, P9 marks ADR-0023 superseded when the files go.
-
 ## v1 `--target` no longer installs `/feature`
 - Source: P6, PR for #317
 - Severity: P2
@@ -69,9 +63,3 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P3
 - What: PLAN §7 planned per-PR cost from `codeburn --by-pr`. CodeBurn 0.9.25 `report` has no such flag, and the run driver was removed on 2026-09-26.
 - Proposed fix: none needed now. If per-PR cost is wanted, filter `report --format json` by date range of the PR.
-
-## DoD in principles.md and the PR template still describe v1
-- Source: P9b, PR for #320
-- Severity: P2
-- What: the Definition of Done, the ADR trigger and the advisor policy sections of `docs/principles.md`, and `.github/pull_request_template.md`, list v1 rituals: `/review`, two mandatory advisor calls, deferred-review issues, coverage floor. ADR-0031 allows text edits to principles §5–7 only, so P9 changed their paths to `docs/history/`, not their content.
-- Proposed fix: the owner decides whether a new ADR replaces these sections with the feature skill's checks, or they stay as history.
