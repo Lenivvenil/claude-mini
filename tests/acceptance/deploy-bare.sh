@@ -24,13 +24,14 @@ case "$MODE" in A) iso_require_token ;; B) ;; *) echo "MODE must be A or B" >&2;
 # Checked before the cleanup trap: an empty T would make the trap remove the current directory.
 T=$(mktemp -d "${TMPDIR:-/tmp}/claude-mini-accept.XXXXXX") && [ -d "$T" ] && T=$(cd "$T" && pwd -P) && [ -n "$T" ] \
     || { echo "  FAIL cannot create a temp dir under ${TMPDIR:-/tmp}"; exit 1; }
-trap '[ -n "${KEEP:-}" ] || rm -rf "$T"' EXIT
+# A failed run keeps T: in mode B a failed uninstall leaves a registry entry that names it.
+FAIL=0
+trap '[ -n "${KEEP:-}" ] || [ "$FAIL" -ne 0 ] || rm -rf "$T"' EXIT
 d="$T"; while [ "$d" != / ]; do
     d=$(dirname "$d")
     { [ -e "$d/CLAUDE.md" ] || [ -e "$d/AGENTS.md" ]; } && { echo "  FAIL instructions file above the temp dir: $d"; exit 1; }
 done
 [ "$MODE" = A ] && iso_home "$T"
-FAIL=0
 ok() { echo "  ok   $*"; }
 fail() { echo "  FAIL $*"; FAIL=$((FAIL + 1)); }
 check() {  # check <ok message> <fail message> <command...>
@@ -56,7 +57,8 @@ PYEOF
 # watch_state <out>: mode B's view of HOME. One line per watched path (sha256, or size+mtime for
 # credential files) and one per registry entry that does not name this test's projects.
 watch_state() {
-    python3 - "$HOME" "$T" > "$1" <<'PYEOF'
+    # a file it cannot read would give a cut snapshot, and two cut snapshots compare equal
+    python3 - "$HOME" "$T" > "$1" <<'PYEOF' || { fail "cannot read the HOME watch list into $1"; exit 1; }
 import hashlib, json, os, sys
 home, t = sys.argv[1], sys.argv[2]
 files = [".claude/settings.json", ".claude/CLAUDE.md", ".zshrc", ".zprofile", ".zshenv", ".bashrc",
@@ -198,5 +200,5 @@ if [ "$MODE" = B ]; then
         cmp -s "$T/home.before" "$T/home.final"
 fi
 
-[ "$FAIL" -eq 0 ] && echo "Acceptance passed." || echo "$FAIL failed; KEEP=1 keeps $T"
+[ "$FAIL" -eq 0 ] && echo "Acceptance passed." || echo "$FAIL failed; kept $T"
 exit "$([ "$FAIL" -eq 0 ] && echo 0 || echo 1)"

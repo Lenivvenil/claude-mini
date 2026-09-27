@@ -10,24 +10,6 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Proposed fix: <one paragraph>
 -->
 
-## Test projects live inside the repository
-- Source: P0, reliability review of PR #322
-- Severity: P2
-- What: `tests/plugin-scope/no-plugin-no-writes.sh` still creates its temp projects under `.port-run/tmp` inside this repository, so a session there also reads the repository's AGENTS.md. The acceptance test (P3) already uses a temp directory outside and checks that no instructions file sits above it.
-- Proposed fix: move the plugin-scope test to the same outside temp directory.
-
-## No-plugin test is not wired and its hook check is indirect
-- Source: P0, reliability review of PR #322
-- Severity: P2
-- What: `tests/plugin-scope/no-plugin-no-writes.sh` runs neither in CI nor in the phase DoD (it needs the subscription token). "Hook did not fire in B" is inferred from a successful commit; there is no control that the hook blocks the same commit in A, so a model that refuses the command looks the same as a hook.
-- Proposed fix: add the A-side control (the hook denies `bad subject` in A) and add the test to the local acceptance list in DEPLOY.md once P3 lands.
-
-## P0 DoD tests that need Claude were not executed
-- Source: P0, reliability review of PR #322
-- Severity: P2
-- What: PLAN §3 P0 DoD says the tests exit 0. The tests that start Claude exit 77 (SKIPPED) until the owner stores the subscription token, so they were not executed for P0.
-- Proposed fix: run them once the token is in the Keychain and record the result in the P1 PR.
-
 ## Ledger evidence is recorded, not executed
 - Source: P0, reliability review of PR #322
 - Severity: P2
@@ -64,12 +46,6 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - What: ADR-0031 п. 9 makes a hook in `.git/hooks` an optional project item, off by default, for commits made by people. P3 does not build it: the plugin hook already checks every commit made from Claude, and no request for checking human commits exists yet.
 - Proposed fix: add a `git-hook` project item when a project asks for it; it installs a `commit-msg` hook that calls the plugin's check, through the same txn primitive.
 
-## A plugin entry that was false before setup is not restored
-- Source: P3, Codex review
-- Severity: P2
-- What: if `.claude/settings.local.json` already had `enabledPlugins["claude-mini@claude-mini"] = false`, apply enables it and Claude Code's uninstall removes the entry, so the file no longer equals the original and setup leaves it (reported as disabled, bytes differ).
-- Proposed fix: restore the owned keys to their original values, not only the whole file when nothing else changed.
-
 ## `critics` config section deferred from P4 to P6
 - Source: P4, PR for #315
 - Severity: P2
@@ -82,23 +58,11 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - What: PLAN P5 and PORT-MAP rows 27, 29, 31, 76 and 106 put issue capture and the ticket audit into a new `issue` skill. Under the selection rule no failure was named that they prevent, so they are KEEP-HISTORY and the skill is not built. `audit-pass` implements ADR-0023.
 - Proposed fix: the owner accepts or reverses. If accepted, P9 marks ADR-0023 superseded when the files go.
 
-## adr-author keeps numeric quotas
-- Source: P5
-- Severity: P2
-- What: `plugin/skills/adr-author/SKILL.md` still refuses to proceed with fewer than three drivers or options, or fewer bad than good consequences. P4 removed the same quotas from `solutions-architect` and `adr-reviewer` asks for real options, not a count.
-- Proposed fix: in P6 or a separate PR, replace the quotas with the reviewer's rule: real options and real costs.
-
 ## v1 `--target` no longer installs `/feature`
 - Source: P6, PR for #317
 - Severity: P2
 - What: `bootstrap/commands/feature.md` became the plugin skill `feature`, so `universal-setup.sh --target` stops copying a `/feature` command into projects. The plugin skill replaces it where the plugin is enabled. Board status transitions with fixed project IDs were dropped with it; `tracker.*` config is not built.
 - Proposed fix: none while the plugin is the delivery path; P9 removes the v1 installer.
-
-## `npx` writes its package cache outside the project
-- Source: P7, PR for #318
-- Severity: P2
-- What: `project-health` runs CodeBurn with `npx -y codeburn@<pin>`. npx keeps the package in the npm cache under the home directory, which the closed list of ADR-0031 §3 does not name. It happens only when `codeburn.enabled` is true and the report runs, and npm uses the registry from the user's own npm config.
-- Proposed fix: the owner decides whether the npm cache joins the closed list next to `~/.cache/codeburn`, or CodeBurn runs with `npm_config_cache` inside the run directory.
 
 ## Run driver cost by PR
 - Source: P7
@@ -111,8 +75,3 @@ P2 findings and other deferred items from the port run (docs/port/PLAN.md §9). 
 - Severity: P2
 - What: the Definition of Done, the ADR trigger and the advisor policy sections of `docs/principles.md`, and `.github/pull_request_template.md`, list v1 rituals: `/review`, two mandatory advisor calls, deferred-review issues, coverage floor. ADR-0031 allows text edits to principles §5–7 only, so P9 changed their paths to `docs/history/`, not their content.
 - Proposed fix: the owner decides whether a new ADR replaces these sections with the feature skill's checks, or they stay as history.
-
-## Acceptance mode B: two test hardenings (Codex, 2026-09-27, P2)
-
-- Mode B: when the final uninstall fails, the EXIT trap still deletes `$T` unless `KEEP=1`. The real registry would keep an entry while the project and its log are gone. Keep `$T` whenever a check in (g) failed. Workaround: run mode B with `KEEP=1`.
-- `watch_state` exit status is not checked. An unreadable watched file gives a truncated snapshot, and two equal truncated snapshots compare as equal. Abort when a snapshot fails.

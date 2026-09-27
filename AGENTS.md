@@ -46,6 +46,7 @@ bash tests/setup/run.sh
 bash tests/jev/run.sh
 bash plugin/scripts/test-commit-msg-check.sh
 bash tests/acceptance/deploy-bare.sh   # нужен ключ подписки, без него выходит 77
+bash tests/plugin-scope/no-plugin-no-writes.sh   # тоже нужен ключ подписки
 ```
 
 ## Как идёт задача
