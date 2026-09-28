@@ -165,7 +165,13 @@ if [ "$MODE" = A ]; then
 else
     echo "(e) real HOME: the watch list and other projects' registry entries unchanged"
     watch_state "$T/home.after"
-    bad=$(diff "$T/home.before" "$T/home.after" | sed -n 's/^[<>] //p' | cut -f1 | sort -u || true)
+    # this deployment may add its own marketplace entry (ADR-0031 §3); a change to one that existed
+    # before is still a failure, and (g) compares everything after uninstall
+    mkt=$(jq -r .name "$REPO/.claude-plugin/marketplace.json")
+    added_own=""
+    grep -q "^marketplace:$mkt	" "$T/home.before" || added_own="marketplace:$mkt"
+    bad=$(diff "$T/home.before" "$T/home.after" | sed -n 's/^[<>] //p' | cut -f1 | sort -u \
+        | grep -vxF "${added_own:-//none//}" || true)
     check "watch list and other registry entries unchanged" "changed: $bad" same "$bad" ""
     reg="$HOME/.claude/plugins/installed_plugins.json"
     if jq -e --arg p "$T/proj" '[.plugins[][] | select(.projectPath == $p)] | length > 0' "$reg" >/dev/null; then
