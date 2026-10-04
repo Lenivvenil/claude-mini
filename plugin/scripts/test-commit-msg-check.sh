@@ -43,9 +43,9 @@ check allow "-C reuse message"               'git commit -C HEAD'
 check allow "-c reedit message"              'git commit -c HEAD~1'
 check allow "-F quoted path with spaces"     'git commit -F "dir with space/m.txt"'
 check deny  "blank subject after type"       'git commit -m "fix(s):    "'
-# shellcheck disable=SC2016  # literal $PATH: the hook must see the unexpanded text
 check deny  "config only under the old name"  'cd legacy && git commit -m "fix: x"'
 check allow "old and new config: new is read"  'cd both && git commit -m "fix: x"'
+# shellcheck disable=SC2016  # literal $PATH: the hook must see the unexpanded text
 check allow "not a commit: echo \$PATH"       'echo "$PATH"'
 check allow "not a commit: quoted mention"   'echo "git commit -m x"'
 check allow "Claude style -m \$(cat heredoc)" $'git commit -m "$(cat <<\'EOF\'\nfeat(plugin): add hook\n\nbody line\n\nCo-Authored-By: X <x@y>\nEOF\n)"'

@@ -109,6 +109,8 @@ elif a[:2] == ["plugin", "uninstall"]:
     d.setdefault("enabledPlugins", {}).pop(a[2], None)
     reg["installs"] = [e for e in reg["installs"] if not (e["id"] == a[2] and e["projectPath"] == here)]
 elif a[:3] == ["plugin", "marketplace", "remove"]:
+    if os.path.exists("$STATE/claude.fail-mkt-remove-once"):
+        os.unlink("$STATE/claude.fail-mkt-remove-once"); sys.exit(1)
     d.setdefault("extraKnownMarketplaces", {}).pop(a[3], None)
     reg["mkts"] = [m for m in reg["mkts"] if m != a[3]]
     reg["installs"] = [e for e in reg["installs"] if not e["id"].endswith("@" + a[3])]
@@ -656,7 +658,9 @@ has "$(cat "$p/.git/info/exclude")" "# claude-mini (setup/harness)" "old exclude
 run apply --project "$p" --dry-run
 has "$OUT" "would move .claude/claude-mini.json to .claude/mach.json" "dry-run names the config move"
 is "$([ -d "$p/.claude/claude-mini" ] && echo kept)" kept "dry-run moves nothing"
+/bin/mv "$OLD" "$OLD.gone"  # DEPLOY.md moves the clone first: the old marketplace folder is gone
 run apply --project "$p"
+/bin/mv "$OLD.gone" "$OLD"
 is "$RC" 0 "apply moves the project to the new names"
 is "$([ -f "$p/.claude/mach.json" ] && [ ! -e "$p/.claude/claude-mini.json" ] && echo moved)" moved "config file renamed"
 is "$([ -d "$p/.claude/mach" ] && [ ! -e "$p/.claude/claude-mini" ] && echo moved)" moved "run directory renamed"
@@ -667,6 +671,7 @@ is "$(setting "$p" enabledPlugins mach@mach)" True "new plugin id enabled"
 is "$(grep -c '^# mach (setup/harness)' "$p/.git/info/exclude") $(grep -c 'claude-mini' "$p/.git/info/exclude")" "1 0" \
    "exclude: the old setup's block reverted, the new one written"
 has "$OUT" "setup state moved: .claude/claude-mini → .claude/mach" "the report says what moved"
+is "$(grep -c '"backup": ".claude/claude-mini/' "$p/.claude/mach/intent.jsonl")" 0 "backup paths in the log follow the move"
 run apply --project "$p"
 is "$RC" 0 "a second apply after the move exits 0"
 run uninstall --project "$p"
@@ -683,6 +688,40 @@ is "$RC" 0 "uninstall of a project still under the old names exits 0"
 is "$([ -e "$p/.claude/claude-mini" ] || [ -e "$p/.claude/mach" ] || [ -e "$p/.claude/settings.local.json" ] && echo left || echo clean)" \
    clean "it undoes the old setup completely"
 is "$(cksum < "$p/.git/info/exclude")" "$x0" "and restores the exclude file"
+
+p=$(lproject legacyretry)
+run_old apply --project "$p"
+touch "$STATE/claude.fail-mkt-remove-once"
+run apply --project "$p"
+is "$RC" 4 "a failed marketplace removal stops the move with exit 4"
+is "$(setting "$p" enabledPlugins claude-mini@claude-mini)" None "the old plugin was already disabled"
+run apply --project "$p"
+is "$RC" 0 "the next apply finishes the move without a second native uninstall"
+is "$(setting "$p" enabledPlugins mach@mach)" True "and sets up the new plugin"
+run uninstall --project "$p"
+
+p=$(lproject legacyitem)
+run_old apply --project "$p"
+run uninstall --project "$p" --item jq
+is "$RC" 2 "uninstall --item on a project under the old names is refused"
+has "$OUT" "run apply first" "and says what to do"
+run apply --project "$p"; run uninstall --project "$p"
+
+p=$(lproject legacyrundir)
+"$PY" - "$p/.claude/claude-mini.json" <<'PYEOF'
+import json, sys
+d = json.load(open(sys.argv[1])); d["paths"] = {"run_dir": ".claude/claude-mini"}; json.dump(d, open(sys.argv[1], "w"))
+PYEOF
+run_old apply --project "$p"
+run apply --project "$p"
+is "$RC" 0 "a project that set paths.run_dir to the old directory is moved"
+is "$(setting "$p" enabledPlugins claude-mini@claude-mini) $(setting "$p" enabledPlugins mach@mach)" "None True" \
+   "old plugin undone, new one set up"
+is "$([ -e "$p/.claude/claude-mini/.mach-run" ] && [ ! -e "$p/.claude/claude-mini/.claude-mini-run" ] && echo swapped)" swapped \
+   "the run directory stays where the config says, with the new marker"
+has "$OUT" "still names claude-mini" "the report points at the old value left in the config"
+run uninstall --project "$p"
+is "$RC" 0 "and it uninstalls cleanly"
 
 p=$(lproject legacyboth)
 run_old apply --project "$p"
