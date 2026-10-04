@@ -18,7 +18,7 @@ Invoked by `/adr` command or when operator says:
 Before starting, verify:
 
 1. Issue linked (`gh issue view` returns the issue).
-2. Decision is architecturally significant by the project's own criteria (`AGENTS.md` or an ADR trigger doc; otherwise the list in the `plan` skill). If not, say "This is a plan, not a decision" and suggest `claude-mini:plan`.
+2. Decision is architecturally significant by the project's own criteria (`AGENTS.md` or an ADR trigger doc; otherwise the list in the `plan` skill). If not, say "This is a plan, not a decision" and suggest `mach:plan`.
 
 ## The seven-step interview
 

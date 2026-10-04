@@ -16,8 +16,8 @@ mini-health
 ```bash
 cd ~/projects/<project>
 claude
-# внутри Claude, в проекте с включённым плагином claude-mini:
-/claude-mini:backlog-review
+# внутри Claude, в проекте с включённым плагином MACH:
+/mach:backlog-review
 ```
 
 Роль `backlog-groomer` предложит разбор: дубли, приоритеты, устаревшие задачи. Выполняются только те команды, которые ты одобрил.
@@ -26,7 +26,7 @@ claude
 
 В каждом активном репо:
 ```
-/claude-mini:project-health
+/mach:project-health
 ```
 
 Отчёт приходит в чат. Проверь пороги:

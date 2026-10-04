@@ -316,7 +316,7 @@ Host mini
 
 После успешного прохождения всех предыдущих шагов разверни харнесс в нужном проекте по [DEPLOY.md](../../DEPLOY.md):
 ```bash
-cd ~/projects/claude-mini
+cd ~/projects/mach
 setup/harness assess --project ~/projects/<project>
 setup/harness apply --project ~/projects/<project>
 ```

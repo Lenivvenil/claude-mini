@@ -49,8 +49,8 @@ else
 fi
 
 # ---- Sandboxes ----
-NONGIT_DIR=$(mktemp -d /tmp/claude-mini-preflight-nongit-XXXXXX)
-REPO_DIR=$(mktemp -d /tmp/claude-mini-preflight-repo-XXXXXX)
+NONGIT_DIR=$(mktemp -d /tmp/mach-preflight-nongit-XXXXXX)
+REPO_DIR=$(mktemp -d /tmp/mach-preflight-repo-XXXXXX)
 trap 'rm -rf "$NONGIT_DIR" "$REPO_DIR"' EXIT
 
 git -C "$REPO_DIR" init -q
@@ -92,7 +92,7 @@ fi
 # and change the env-check half's exit code for reasons unrelated to gh.
 echo ""
 echo "T4: degradation with unusable gh (offline simulation)"
-SHIM_DIR=$(mktemp -d /tmp/claude-mini-preflight-shim-XXXXXX)
+SHIM_DIR=$(mktemp -d /tmp/mach-preflight-shim-XXXXXX)
 trap 'rm -rf "$NONGIT_DIR" "$REPO_DIR" "$SHIM_DIR"' EXIT
 printf '#!/bin/sh\nexit 1\n' > "$SHIM_DIR/gh"
 chmod +x "$SHIM_DIR/gh"

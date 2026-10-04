@@ -1,4 +1,4 @@
-# Deploy claude-mini into a project
+# Deploy MACH into a project
 
 For an agent asked "deploy my harness for this project". Decision: [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md).
 
@@ -23,3 +23,23 @@ the plugin at user scope; install a system program without the owner naming it; 
 
 Exit codes: 0 ok · 1 invalid config or state · 2 usage · 3 a program needs consent · 4 a step failed
 · 5 verify: not ready.
+
+## Moving from claude-mini
+
+Until October 2026 the harness was called claude-mini ([ADR-0034](docs/decisions/0034-rename-project-to-mach.md)).
+A project set up under that name is moved by `apply`, nothing is edited by hand.
+
+1. Rename the local clone and point it at the new address:
+   `mv ~/projects/claude-mini ~/projects/mach && git -C ~/projects/mach remote set-url origin https://github.com/Lenivvenil/mach.git`
+2. In every project set up before the rename: `<harness>/setup/harness apply --project <project>`.
+   It renames `.claude/claude-mini.json` to `.claude/mach.json`, undoes the old setup (plugin
+   `claude-mini@claude-mini`, its exclude lines), keeps setup's log under `.claude/mach/` and sets up
+   `mach@mach`. `apply --dry-run` shows the move first.
+3. When the last project has moved, the machine-wide marketplace `claude-mini` is gone as well; if the
+   report says it was kept, remove it with `claude plugin marketplace remove claude-mini`.
+
+Until step 2 the project's plugin id `claude-mini@claude-mini` no longer resolves, so the harness,
+its commit check included, is off in that project. Where `mach@mach` is enabled by other means but
+only `.claude/claude-mini.json` exists, the commit check refuses every commit and names this command.
+Claude Code keeps its memory per project path: after step 1, move
+`~/.claude/projects/-Users-<you>-projects-claude-mini/` to the name of the new path.

@@ -3,7 +3,7 @@
 #
 # In an isolated HOME the plugin is installed at --scope local for project A only. A Claude session
 # in project B must then:
-#   1. not list claude-mini in init.plugins, and have no claude-mini skills or agents;
+#   1. not list mach in init.plugins, and have no mach skills or agents;
 #   2. not block a non-Conventional-Commits commit (the plugin hook must not fire), while the same
 #      commit in project A is denied by the hook (the control: otherwise a model that does not run
 #      the command would look like a hook that did not fire);
@@ -18,7 +18,7 @@ iso_require_token
 
 # Temp projects live outside the repository, so its AGENTS.md is not loaded into the sessions.
 BASE="${PORT_RUN_TMP:-${TMPDIR:-/tmp}}"
-T=$(mktemp -d "$BASE/claude-mini-no-plugin.XXXXXX") && [ -d "$T" ] && T=$(cd "$T" && pwd -P) && [ -n "$T" ] \
+T=$(mktemp -d "$BASE/mach-no-plugin.XXXXXX") && [ -d "$T" ] && T=$(cd "$T" && pwd -P) && [ -n "$T" ] \
     || { echo "  FAIL cannot create a temp dir under $BASE"; exit 1; }
 trap 'rm -rf "$T"' EXIT
 d="$T"; while [ "$d" != / ]; do
@@ -41,17 +41,17 @@ COMMIT_PROMPT="Run exactly this shell command and nothing else: git commit -m 'b
 
 # Install the plugin from this working tree for project A only.
 (cd "$T/A" && claude plugin marketplace add --scope local "$REPO" >/dev/null 2>&1 \
-    && claude plugin install claude-mini@claude-mini --scope local >/dev/null 2>&1) \
+    && claude plugin install mach@mach --scope local >/dev/null 2>&1) \
     || { echo "  FAIL could not install the plugin at local scope in project A"; exit 1; }
 
 # Positive control: in A the plugin is loaded and its hook denies the commit B must let through.
 (cd "$T/A" && timeout 300 claude -p "$COMMIT_PROMPT" \
     --output-format stream-json --verbose --permission-mode acceptEdits --permission-prompts none \
     --allowedTools "Bash(git commit:*)" > "$T/a.jsonl" 2>"$T/a.err")
-if iso_init "$T/a.jsonl" | jq -e '[.plugins[]?.source] | any(startswith("claude-mini@"))' >/dev/null; then
-    ok "control: claude-mini loaded in project A"
+if iso_init "$T/a.jsonl" | jq -e '[.plugins[]?.source] | any(startswith("mach@"))' >/dev/null; then
+    ok "control: mach loaded in project A"
 else
-    echo "  FAIL control: claude-mini not loaded in project A — the test would be vacuous"; exit 1
+    echo "  FAIL control: mach not loaded in project A — the test would be vacuous"; exit 1
 fi
 if grep -qF "commit subject is not Conventional Commits" "$T/a.jsonl" \
     && [ "$(git -C "$T/A" rev-list --count HEAD 2>/dev/null || echo 0)" = "0" ]; then
@@ -67,12 +67,12 @@ hash_a=$(tree_hash "$T/A")
 init=$(iso_init "$T/b.jsonl")
 [ -n "$init" ] || { echo "  FAIL no init message; stderr: $(tail -3 "$T/b.err")"; exit 1; }
 
-if printf '%s' "$init" | jq -e '[.plugins[]?.source] | any(startswith("claude-mini@"))' >/dev/null; then
-    fail "claude-mini is loaded in project B"
-else ok "claude-mini not loaded in project B"; fi
-if printf '%s' "$init" | jq -e '[(.skills // [])[], (.agents // [])[]] | any(startswith("claude-mini:"))' >/dev/null; then
-    fail "claude-mini skills or agents visible in project B"
-else ok "no claude-mini skills or agents in project B"; fi
+if printf '%s' "$init" | jq -e '[.plugins[]?.source] | any(startswith("mach@"))' >/dev/null; then
+    fail "mach is loaded in project B"
+else ok "mach not loaded in project B"; fi
+if printf '%s' "$init" | jq -e '[(.skills // [])[], (.agents // [])[]] | any(startswith("mach:"))' >/dev/null; then
+    fail "mach skills or agents visible in project B"
+else ok "no mach skills or agents in project B"; fi
 if [ "$(git -C "$T/B" rev-list --count HEAD 2>/dev/null || echo 0)" = "1" ]; then
     ok "non-CC commit went through in project B (hook did not fire)"
 else fail "commit did not happen in project B (hook fired or the session failed)"; fi

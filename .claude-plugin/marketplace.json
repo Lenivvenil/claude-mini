@@ -1,12 +1,12 @@
 {
-  "name": "claude-mini",
-  "description": "Lenivvenil's claude-mini harness as a Claude Code plugin",
+  "name": "mach",
+  "description": "MACH (Managed AI-Assisted Change): a harness for Claude Code",
   "owner": {
     "name": "Lenivvenil"
   },
   "plugins": [
     {
-      "name": "claude-mini",
+      "name": "mach",
       "source": "./plugin",
       "description": "Conventional Commits check, read-only critics, plan / ADR / Codex review skills. Enable at project or local scope only."
     }

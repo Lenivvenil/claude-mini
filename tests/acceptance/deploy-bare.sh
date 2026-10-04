@@ -22,7 +22,7 @@ case "$MODE" in A) iso_require_token ;; B) ;; *) echo "MODE must be A or B" >&2;
 # Temp projects live outside the repository, so no CLAUDE.md or AGENTS.md above them is loaded.
 # Physical path: Claude Code records the project by it (/private/var on macOS), and the checks compare.
 # Checked before the cleanup trap: an empty T would make the trap remove the current directory.
-T=$(mktemp -d "${TMPDIR:-/tmp}/claude-mini-accept.XXXXXX") && [ -d "$T" ] && T=$(cd "$T" && pwd -P) && [ -n "$T" ] \
+T=$(mktemp -d "${TMPDIR:-/tmp}/mach-accept.XXXXXX") && [ -d "$T" ] && T=$(cd "$T" && pwd -P) && [ -n "$T" ] \
     || { echo "  FAIL cannot create a temp dir under ${TMPDIR:-/tmp}"; exit 1; }
 # A failed run keeps T: in mode B a failed uninstall leaves a registry entry that names it.
 FAIL=0
@@ -106,7 +106,7 @@ session() {  # session <dir> <prompt> <out.jsonl> [extra args]
     (cd "$dir" && timeout 900 claude -p "$prompt" --output-format stream-json --verbose \
         --permission-mode acceptEdits --permission-prompts none "$@" > "$out" 2> "$out.err")
 }
-loaded() { iso_init "$1" | jq -e '[.plugins[]?.source] | any(startswith("claude-mini@"))' >/dev/null; }
+loaded() { iso_init "$1" | jq -e '[.plugins[]?.source] | any(startswith("mach@"))' >/dev/null; }
 
 for p in proj sibling; do
     mkdir -p "$T/$p" && git -C "$T/$p" init -q && git -C "$T/$p" commit -q --allow-empty -m "chore: start"
@@ -126,7 +126,7 @@ echo "  session exit $?; transcript: $T/deploy.jsonl"
 
 echo "(a) plugin loads in the project"
 session "$T/proj" "Reply with: ok" "$T/a.jsonl"
-if loaded "$T/a.jsonl"; then ok "claude-mini loaded"; else fail "claude-mini not loaded"; fi
+if loaded "$T/a.jsonl"; then ok "mach loaded"; else fail "mach not loaded"; fi
 if iso_init "$T/a.jsonl" | jq -e '(.plugin_errors // []) | length == 0' >/dev/null; then ok "no plugin errors"; else fail "plugin errors"; fi
 
 echo "(b) the hook guards commits in the project"
@@ -134,8 +134,8 @@ n=$(commits "$T/proj")
 session "$T/proj" "Run exactly this command and nothing else: git commit --allow-empty -m 'bad subject'" "$T/b1.jsonl" \
     --allowedTools "Bash(git commit:*)${EXTRA_ALLOW:+,$EXTRA_ALLOW}"
 check "bad subject blocked" "bad subject committed" same "$(commits "$T/proj")" "$n"
-check "the hook's own reason is in the session" "no claude-mini denial in the session (refusal or crash?)" \
-    grep -q 'claude-mini: commit subject is not Conventional Commits' "$T/b1.jsonl"
+check "the hook's own reason is in the session" "no mach denial in the session (refusal or crash?)" \
+    grep -q 'mach: commit subject is not Conventional Commits' "$T/b1.jsonl"
 session "$T/proj" "Run exactly this command and nothing else: git commit --allow-empty -m 'chore: good subject'" "$T/b2.jsonl" \
     --allowedTools "Bash(git commit:*)${EXTRA_ALLOW:+,$EXTRA_ALLOW}"
 check "good subject committed" "good subject blocked" same "$(commits "$T/proj")" "$((n + 1))"
@@ -144,7 +144,7 @@ echo "(d) the sibling project does not see the harness"
 n=$(commits "$T/sibling")
 session "$T/sibling" "Run exactly this command and nothing else: git commit --allow-empty -m 'bad subject'" "$T/d.jsonl" \
     --allowedTools "Bash(git commit:*)${EXTRA_ALLOW:+,$EXTRA_ALLOW}"
-if loaded "$T/d.jsonl"; then fail "claude-mini loaded in the sibling"; else ok "not loaded in the sibling"; fi
+if loaded "$T/d.jsonl"; then fail "mach loaded in the sibling"; else ok "not loaded in the sibling"; fi
 check "sibling commit not blocked" "sibling commit blocked" same "$(commits "$T/sibling")" "$((n + 1))"
 
 if [ "$MODE" = A ]; then
@@ -182,7 +182,7 @@ snapshot "$T/sibling" "$T/sibling.after"
 check "sibling files unchanged" "sibling files changed" cmp -s "$T/sibling.before" "$T/sibling.after"
 
 echo "(f) the saved report has nothing Broken"
-r=$(find "$T/proj/.claude/claude-mini/reports" -name '*.md' 2>/dev/null | sort | tail -1)
+r=$(find "$T/proj/.claude/mach/reports" -name '*.md' 2>/dev/null | sort | tail -1)
 if [ -n "$r" ] && python3 - "$r" <<'PYEOF'
 import sys
 text = open(sys.argv[1]).read()

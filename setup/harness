@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""setup/harness — deploy claude-mini into one project, in two layers (ADR-0031 §2; #313, #314).
+"""setup/harness — deploy MACH into one project, in two layers (ADR-0031 §2; #313, #314).
 
 Usage:
   harness assess    [--project DIR] [--layer machine|project|all] [--json]
@@ -16,7 +16,7 @@ uninstall  --item ID removes a package that apply installed itself (never one th
            there). Without --item it changes nothing and lists what apply installed.
 
 The checklist and every value come from config (plugin/config/defaults.json merged with
-<project>/.claude/claude-mini.json). Statuses: ready, missing, wrong-version, not-applicable,
+<project>/.claude/mach.json). Statuses: ready, missing, wrong-version, not-applicable,
 needs-manual. Writes happen only under <project>/<paths.run_dir> (intent log, reports) and, with
 consent, through the system package manager.
 
@@ -149,13 +149,13 @@ def run_pkg(argv):
     return res.returncode, " | ".join((res.stdout + res.stderr).strip().splitlines()[-3:])
 
 
-def reconcile(t):
+def reconcile(t, ids=None):
     """Close package operations interrupted before their end record, by asking the package
     manager what actually happened. Returns (recovered, broken) human lines."""
     recovered, broken = [], []
     for r in t.open_records():
         if r.get("op") == "plugin":
-            status, _ = check_plugin_local({}, {"project": t.project})
+            status, _ = check_plugin_local({}, {"project": t.project, "ids": ids})
             ok = status == "ready"
             t.append({"op": "plugin", "item": r["item"], "path": r["path"],
                       "state": "done" if ok else "failed", "reconciled": True})
@@ -235,6 +235,12 @@ def check_auth(item, ctx=None):
 # --- project layer ---------------------------------------------------------------------------
 HARNESS_ROOT = os.path.realpath(os.path.join(HERE, ".."))
 SETTINGS_LOCAL = os.path.join(".claude", "settings.local.json")  # Claude Code's own file name
+# Names before ADR-0034. A project set up under them is moved to the current names by apply.
+LEGACY_IDS = ("claude-mini", "claude-mini@claude-mini")
+LEGACY_RUN_DIR = os.path.join(".claude", "claude-mini")
+LEGACY_MARKER = ".claude-mini-run"
+LEGACY_CONFIG = os.path.join(".claude", "claude-mini.json")
+CONFIG = os.path.join(".claude", "mach.json")
 
 
 def plugin_ids():
@@ -261,7 +267,7 @@ def read_settings_local(project):
 
 
 def check_plugin_local(item, ctx):
-    mkt, pid = plugin_ids()
+    mkt, pid = ctx.get("ids") or plugin_ids()
     if not shutil.which("claude"):
         return "missing", "claude not found on PATH; install it first"
     data = read_settings_local(ctx["project"])
@@ -418,6 +424,73 @@ def txn_for(project, cfg):
     return txn.Txn(project, cfg["paths"]["run_dir"])
 
 
+# --- move from the names before ADR-0034 -------------------------------------------------------
+def legacy_plan(project):
+    """What migrate_* would move in this project, as human lines (read-only)."""
+    out = []
+    if os.path.isfile(os.path.join(project, LEGACY_CONFIG)):
+        out.append(f"move {LEGACY_CONFIG} to {CONFIG}")
+    if os.path.isdir(os.path.join(project, LEGACY_RUN_DIR)):
+        out.append(f"undo the setup made under the name claude-mini ({LEGACY_RUN_DIR}), keep its log")
+    return out
+
+
+def migrate_config(project):
+    """Rename the project's config file; it must happen before the config is read. Returns
+    (works, notdone) human lines."""
+    old, new = os.path.join(project, LEGACY_CONFIG), os.path.join(project, CONFIG)
+    if not os.path.isfile(old) or os.path.islink(old):
+        return [], []
+    if os.path.lexists(new):
+        return [], [f"{LEGACY_CONFIG} and {CONFIG} both exist; only {CONFIG} is read — "
+                    f"remove {LEGACY_CONFIG} by hand"]
+    os.rename(old, new)
+    return [f"config moved: {LEGACY_CONFIG} → {CONFIG}"], []
+
+
+def migrate_run_dir(project, cfg):
+    """Undo what setup did under the old plugin id, then rename its run directory to the current
+    one, so the log (with any package installs setup owns) carries on. Returns (works, notdone,
+    broken) human lines; on broken nothing is renamed."""
+    old_rel, new_rel = LEGACY_RUN_DIR, os.path.normpath(cfg["paths"]["run_dir"])
+    old_dir = os.path.join(project, old_rel)
+    if not os.path.isdir(old_dir) or os.path.islink(old_dir) or old_rel == new_rel:
+        return [], [], []
+    if os.path.lexists(os.path.join(project, new_rel)):
+        return [], [], [f"{old_rel} and {new_rel} both exist; setup does not merge two run "
+                        f"directories — remove the one you do not need by hand"]
+    old = txn.Txn(project, old_rel, marker=LEGACY_MARKER)
+    works, notdone = [], []
+    with old.locked():
+        works, broken = old.recover()
+        rec2, br2 = reconcile(old, LEGACY_IDS)
+        works, broken = works + rec2, broken + br2
+        if broken:
+            return works, notdone, broken
+        owned = {}
+        for r in old.records():
+            if r.get("op") in ("file", "plugin") and r.get("state") == "done":
+                owned[r["item"]] = r["op"]
+        for item_id, op in owned.items():
+            ok, msg = undo_plugin(old, item_id, LEGACY_IDS) if op == "plugin" else old.revert(item_id)
+            if ok is None:
+                return works, notdone, [f"claude-mini → mach: {msg}"]
+            (works if ok else notdone).append(f"claude-mini → mach: {msg}")
+    os.rename(old_dir, os.path.join(project, new_rel))
+    stale = os.path.join(project, new_rel, LEGACY_MARKER)
+    if os.path.exists(stale):
+        os.unlink(stale)
+    works.append(f"setup state moved: {old_rel} → {new_rel}")
+    return works, notdone, []
+
+
+def migrate(project):
+    """Both moves, in order. Returns (works, notdone, broken)."""
+    works, notdone = migrate_config(project)
+    w2, n2, broken = migrate_run_dir(project, load_config(project))
+    return works + w2, notdone + n2, broken
+
+
 # --- commands ----------------------------------------------------------------------------------
 def cmd_assess(a):
     project = project_dir(a.project)
@@ -441,6 +514,18 @@ def cmd_verify(a):
 
 def cmd_apply(a):
     project = project_dir(a.project)
+    moved = ([], [], [])
+    if a.layer != "machine":
+        if a.dry_run:
+            for line in legacy_plan(project):
+                print(f"would {line}")
+        else:
+            moved = migrate(project)
+            if moved[2]:
+                print(report([], {}, broken=moved[2], extra_works=moved[0], extra_notdone=moved[1]),
+                      end="")
+                return 4
+    a.moved = moved
     cfg, manager, rows = assess(project, a.layer)
     allow = set(a.allow_system)
     known = {r["id"] for r in rows}
@@ -454,7 +539,8 @@ def cmd_apply(a):
         raise Usage("--allow-system names items that setup cannot install on this OS: "
                     f"{', '.join(sorted(no_package))}")
     t = txn_for(project, cfg)
-    work = any((r["installable"] and r["id"] in allow) or r["auto"] for r in rows) or t.open_records()
+    work = any((r["installable"] and r["id"] in allow) or r["auto"] for r in rows) or t.open_records() \
+        or any(moved)
     if a.dry_run or not work:  # read-only path: no recovery, no lock file (no-op rule)
         return apply_rows(a, t, cfg, manager, rows, items, allow, locked=False)
     with t.locked():
@@ -463,12 +549,13 @@ def cmd_apply(a):
 
 def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
     project = t.project
-    recovered, broken = [], []
+    moved = getattr(a, "moved", ([], [], []))
+    recovered, broken = list(moved[0]), []
     if locked:
-        recovered, broken = t.recover()
+        rec1, broken = t.recover()
         rec2, br2 = reconcile(t)
-        recovered, broken = recovered + rec2, broken + br2
-        if recovered:  # recovery may have put a file back: decide the delta on the state now
+        recovered, broken = recovered + rec1 + rec2, broken + br2
+        if rec1 or rec2:  # recovery may have put a file back: decide the delta on the state now
             _, _, rows = assess(project, a.layer)
     refused, failed, installed = [], [], []
     for r in rows:
@@ -529,8 +616,8 @@ def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
     changed = bool(installed or failed or recovered)
     _, _, rows = assess(project, a.layer)  # every item re-checked at report time
     text = report(rows, cfg, broken=failed + broken, extra_works=recovered,
-                  extra_notdone=[f"{i}: install needs consent — rerun with --allow-system {i}"
-                                 for i in refused])
+                  extra_notdone=list(moved[1]) +
+                  [f"{i}: install needs consent — rerun with --allow-system {i}" for i in refused])
     print(text, end="")
     if changed:
         print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
@@ -549,7 +636,7 @@ def apply_project_item(t, item):
         lines = old.decode("utf-8").splitlines()
         add = [p for p in item["patterns"] if p not in lines]
         sep = b"" if not old or old.endswith(b"\n") else b"\n"
-        new = old + sep + ("# claude-mini (setup/harness)\n" + "\n".join(add) + "\n").encode()
+        new = old + sep + ("# mach (setup/harness)\n" + "\n".join(add) + "\n").encode()
 
         def valid(candidate):
             with open(candidate, "rb") as fh:
@@ -649,7 +736,7 @@ def marketplace_in_use(mkt, project):
     return False
 
 
-def restore_settings(t, started):
+def restore_settings(t, started, ids=None):
     """Claude Code leaves empty objects behind and drops the plugin's entry even when it was `false`
     before setup. If nothing but setup's own keys changed since setup, put the original bytes back
     (or remove a file setup's commands created)."""
@@ -661,7 +748,7 @@ def restore_settings(t, started):
     if started.get("backup"):
         with open(t.contain(started["backup"]), encoding="utf-8") as fh:
             orig = json.load(fh)
-    mkt, pid = plugin_ids()
+    mkt, pid = ids or plugin_ids()
     # a marketplace declared before setup is the user's: its current value, edited or not, stays
     owned = [("enabledPlugins", pid)] + ([] if started.get("declared_before") else
                                          [("extraKnownMarketplaces", mkt)])
@@ -682,7 +769,7 @@ def restore_settings(t, started):
             os.unlink(settings)
 
 
-def undo_plugin(t, item_id):
+def undo_plugin(t, item_id, ids=None):
     """Disable the plugin for this project if setup enabled it. Returns (ok, message)."""
     started = done = None
     for r in t.records():
@@ -696,7 +783,7 @@ def undo_plugin(t, item_id):
             done = None
     if done is None:
         return True, f"{item_id}: not enabled by setup"
-    mkt, pid = plugin_ids()
+    mkt, pid = ids or plugin_ids()
     project = t.project
     argv = ["claude", "plugin", "uninstall", pid, "--scope", "local"]
     code, tail = run_claude(argv, project)
@@ -721,7 +808,7 @@ def undo_plugin(t, item_id):
                     ("it was on this machine before setup" if started.get("marketplace_known_before")
                      else "another project uses it" if in_use
                      else "could not check whether other projects use it"))
-    restore_settings(t, started)
+    restore_settings(t, started, ids)
     t.append({"op": "plugin", "item": item_id, "path": SETTINGS_LOCAL, "state": "removed"})
     return True, f"{item_id}: disabled for this project{kept}"
 
@@ -735,7 +822,7 @@ def undeclare_marketplace(t, mkt):
     if not isinstance(known, dict) or mkt not in known:
         return
     del known[mkt]
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=f".{os.path.basename(path)}.claude-mini-")
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=f".{os.path.basename(path)}.mach-")
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)
         fh.write("\n")
@@ -744,6 +831,12 @@ def undeclare_marketplace(t, mkt):
 
 def cmd_uninstall(a):
     project = project_dir(a.project)
+    works, notdone, broken = migrate_run_dir(project, load_config(project))
+    for line in works + notdone:
+        print(line)
+    if broken:
+        print(report([], {}, broken=broken), end="")
+        return 4
     cfg, manager, _ = assess(project, "all")
     t = txn_for(project, cfg)
     if not os.path.isdir(t.run_dir):

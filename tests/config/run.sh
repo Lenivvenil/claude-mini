@@ -20,7 +20,7 @@ expect() {  # expect <rc> <label> <cmd...>
 }
 project() {  # project <name> [override-json]
     mkdir -p "$T/$1/.claude" && git -C "$T/$1" init -q
-    [ -z "${2:-}" ] || printf '%s\n' "$2" > "$T/$1/.claude/claude-mini.json"
+    [ -z "${2:-}" ] || printf '%s\n' "$2" > "$T/$1/.claude/mach.json"
     echo "$T/$1"
 }
 is() {  # is <got> <want> <label>
@@ -35,20 +35,20 @@ hook() {  # hook <cwd> <command> -> allow|deny
 echo "config"
 expect 0 "defaults validate" python3 "$CFG" validate "$REPO/plugin/config/defaults.json"
 p=$(project unknown '{"commit":{"typez":["feat"]}}')
-expect 1 "unknown key rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+expect 1 "unknown key rejected" python3 "$CFG" validate "$p/.claude/mach.json"
 p=$(project wrongtype '{"jev":{"enabled":"yes"}}')
-expect 1 "wrong type rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+expect 1 "wrong type rejected" python3 "$CFG" validate "$p/.claude/mach.json"
 p=$(project version '{"schema_version":2}')
-expect 1 "schema_version mismatch rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+expect 1 "schema_version mismatch rejected" python3 "$CFG" validate "$p/.claude/mach.json"
 p=$(project badenum '{"codex":{"modes":["sometimes"]}}')
-expect 1 "enum value rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+expect 1 "enum value rejected" python3 "$CFG" validate "$p/.claude/mach.json"
 expect 2 "usage error without a command" python3 "$CFG"
 p=$(project emptytypes '{"commit":{"types":[]}}')
-expect 1 "empty commit.types rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+expect 1 "empty commit.types rejected" python3 "$CFG" validate "$p/.claude/mach.json"
 p=$(project regextype '{"commit":{"types":["build.ci"]}}')
-expect 1 "commit type with regex characters rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+expect 1 "commit type with regex characters rejected" python3 "$CFG" validate "$p/.claude/mach.json"
 p=$(project emptytype '{"commit":{"types":["feat",""]}}')
-expect 1 "empty commit type rejected" python3 "$CFG" validate "$p/.claude/claude-mini.json"
+expect 1 "empty commit type rejected" python3 "$CFG" validate "$p/.claude/mach.json"
 
 p=$(project merge '{"commit":{"types":["feat","fix"]}}')
 got=$(python3 "$CFG" get commit.types --project "$p" | paste -sd, -)

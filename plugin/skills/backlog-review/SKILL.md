@@ -7,7 +7,7 @@ description: Groom the project's open issues. Use when asked to review, groom or
 
 ## Steps
 
-1. Run the `claude-mini:backlog-groomer` agent on the current repository. Pass any thresholds or label rules the owner gave.
+1. Run the `mach:backlog-groomer` agent on the current repository. Pass any thresholds or label rules the owner gave.
 2. Show the owner the summary and the proposed commands, grouped by check.
 3. Save the full report only if the owner asks, where the owner says.
 4. The owner approves commands by naming them or a whole group. Run exactly the approved commands and report each result. Leave the rest.

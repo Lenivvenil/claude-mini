@@ -1,4 +1,6 @@
-# claude-mini
+# MACH
+
+**Managed AI-Assisted Change.** Не связан с MACH Alliance (Microservices, API-first, Cloud-native, Headless). До октября 2026 назывался claude-mini ([ADR-0034](docs/decisions/0034-rename-project-to-mach.md)).
 
 > Харнесс для Claude Code: роли по вызову, скиллы цикла задачи, хук формата коммитов.
 > Включается только в том проекте, где его развернули. Разворачивается и убирается одной командой.
@@ -8,12 +10,12 @@
 Инструкция для человека и для агента — [DEPLOY.md](DEPLOY.md), решение — [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md). Можно попросить Claude в проекте: «deploy my harness for this project», указав путь к клону.
 
 ```bash
-git clone https://github.com/Lenivvenil/claude-mini.git ~/claude-mini   # один раз
+git clone https://github.com/Lenivvenil/mach.git ~/mach   # один раз
 cd <твой-проект>
-~/claude-mini/setup/harness assess --project .     # что есть, чего нет; ничего не пишет
-~/claude-mini/setup/harness apply --project .      # только недостающее
-~/claude-mini/setup/harness verify --project .     # всё ли готово
-~/claude-mini/setup/harness uninstall --project .  # вернуть как было
+~/mach/setup/harness assess --project .     # что есть, чего нет; ничего не пишет
+~/mach/setup/harness apply --project .      # только недостающее
+~/mach/setup/harness verify --project .     # всё ли готово
+~/mach/setup/harness uninstall --project .  # вернуть как было
 ```
 
 Два слоя. Слой машины проверяет программы и входы (git, python3, jq, claude, gh, по желанию codex и node). Системную программу он ставит только с явного согласия `--allow-system <id>`. Слой проекта включает плагин в `--scope local` этого проекта и добавляет локальные файлы в `.git/info/exclude`. В других проектах и сессиях плагина нет.
@@ -22,14 +24,14 @@ cd <твой-проект>
 
 | Компонент | Что делает |
 |---|---|
-| `/claude-mini:feature <issue>` | ведёт задачу от issue до PR, в конце передаёт работу; вливает владелец |
-| `/claude-mini:plan <issue>` | пишет `plan.md`: варианты, выбор, тесты, риски; по желанию советник Jev |
-| `/claude-mini:adr-author` | ADR по MADR 4.0 через интервью |
-| `/claude-mini:codex-review [base]` | второе мнение Codex по ветке и незакоммиченному |
-| `/claude-mini:handoff` | журнал, затем снимок `STATE.md`, чтобы продолжить за пять минут |
-| `/claude-mini:domain-discovery` | интервью по Event Storming, черновик пишет `domain-researcher` |
-| `/claude-mini:backlog-review` | разбор бэклога, выполняются только одобренные команды |
-| `/claude-mini:project-health` | время ревью, возраст задач, ADR в ожидании, расходы из CodeBurn |
+| `/mach:feature <issue>` | ведёт задачу от issue до PR, в конце передаёт работу; вливает владелец |
+| `/mach:plan <issue>` | пишет `plan.md`: варианты, выбор, тесты, риски; по желанию советник Jev |
+| `/mach:adr-author` | ADR по MADR 4.0 через интервью |
+| `/mach:codex-review [base]` | второе мнение Codex по ветке и незакоммиченному |
+| `/mach:handoff` | журнал, затем снимок `STATE.md`, чтобы продолжить за пять минут |
+| `/mach:domain-discovery` | интервью по Event Storming, черновик пишет `domain-researcher` |
+| `/mach:backlog-review` | разбор бэклога, выполняются только одобренные команды |
+| `/mach:project-health` | время ревью, возраст задач, ADR в ожидании, расходы из CodeBurn |
 | роли | `adversarial-critic`, `security-reviewer`, `reliability-reviewer`, `docs-reviewer`, `domain-reviewer`, `adr-reviewer`, `backlog-groomer`, `domain-researcher`, `solutions-architect` |
 | хук `PreToolUse` | на `git commit` из Claude проверяет формат Conventional Commits |
 
@@ -37,10 +39,10 @@ cd <твой-проект>
 
 ## Настройка
 
-Значения по умолчанию — `plugin/config/defaults.json`, допустимые ключи — `plugin/config/schema.json`. Проект переопределяет только нужное в `.claude/claude-mini.json`, например `{"schema_version": 1, "commit": {"types": ["feat", "fix", "docs"]}}`. Неизвестный ключ считается ошибкой.
+Значения по умолчанию — `plugin/config/defaults.json`, допустимые ключи — `plugin/config/schema.json`. Проект переопределяет только нужное в `.claude/mach.json`, например `{"schema_version": 1, "commit": {"types": ["feat", "fix", "docs"]}}`. Неизвестный ключ считается ошибкой.
 
 ```bash
-plugin/bin/config validate .claude/claude-mini.json
+plugin/bin/config validate .claude/mach.json
 plugin/bin/config effective
 ```
 

@@ -10,6 +10,8 @@ printf 'bad file msg\n' > "$T/bad.txt"
 mkdir -p "$T/dir with space" && printf 'docs: spaced\n' > "$T/dir with space/m.txt"
 mkdir -p "$T/sub" && printf 'docs: in sub\n' > "$T/sub/m.txt" && printf 'nope in sub\n' > "$T/sub/bad.txt"
 printf 'bad at top\n' > "$T/same.txt" && printf 'docs: good in sub\n' > "$T/sub/same.txt"
+mkdir -p "$T/legacy/.claude" && printf '{}\n' > "$T/legacy/.claude/claude-mini.json"
+mkdir -p "$T/both/.claude" && printf '{}\n' > "$T/both/.claude/claude-mini.json" && printf '{}\n' > "$T/both/.claude/mach.json"
 FAIL=0
 
 check() {  # check <expect: allow|deny> <label> <command>
@@ -42,6 +44,8 @@ check allow "-c reedit message"              'git commit -c HEAD~1'
 check allow "-F quoted path with spaces"     'git commit -F "dir with space/m.txt"'
 check deny  "blank subject after type"       'git commit -m "fix(s):    "'
 # shellcheck disable=SC2016  # literal $PATH: the hook must see the unexpanded text
+check deny  "config only under the old name"  'cd legacy && git commit -m "fix: x"'
+check allow "old and new config: new is read"  'cd both && git commit -m "fix: x"'
 check allow "not a commit: echo \$PATH"       'echo "$PATH"'
 check allow "not a commit: quoted mention"   'echo "git commit -m x"'
 check allow "Claude style -m \$(cat heredoc)" $'git commit -m "$(cat <<\'EOF\'\nfeat(plugin): add hook\n\nbody line\n\nCo-Authored-By: X <x@y>\nEOF\n)"'

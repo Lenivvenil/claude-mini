@@ -2,6 +2,7 @@
   "ignorePatterns": [
     { "pattern": "\\*" },
     { "pattern": "^https://github\\.com/Lenivvenil/claude-mini/" },
+    { "pattern": "^https://github\\.com/Lenivvenil/mach(/|\\.git$|$)" },
     { "pattern": "^https://docs\\.oasis-open\\.org/" }
   ]
 }
