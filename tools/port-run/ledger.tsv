@@ -81,7 +81,7 @@ bootstrap/agents/domain-researcher.md	PORT	on-demand domain research role	plugin
 bootstrap/agents/domain-reviewer.md	PORT	on-demand domain-model review role	plugin/agents/domain-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/agents/reliability-reviewer.md	PORT	on-demand reliability review role	plugin/agents/reliability-reviewer.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
 bootstrap/agents/solutions-architect.md	PORT	on-demand solution design role	plugin/agents/solutions-architect.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p4	
-bootstrap/commands/adr.md	MERGE	ADR draft via interview, then separate adr/ branch and PR with type:adr	plugin/skills/adr-author/SKILL.md	plugin/skills/adr-author/SKILL.md Hand-off; scripts/next_adr_number.sh	p9	
+bootstrap/commands/adr.md	MERGE	ADR draft via interview, then separate adr/ branch and PR with type:adr	plugin/skills/adr-author/SKILL.md	plugin/skills/adr-author/SKILL.md Hand-off; plugin/skills/adr-author/scripts/next_adr_number.sh	p9	
 bootstrap/commands/codex-review.md	MERGE	Codex second opinion over branch and uncommitted work	plugin/skills/codex-review/SKILL.md	plugin/skills/codex-review/SKILL.md	p9	
 bootstrap/commands/feature.md	MODERNISE	one feature cycle: issue to PR, then handoff	plugin/skills/feature/SKILL.md	claude plugin validate plugin --strict; scripts/lint-prompts.sh	p6	
 bootstrap/commands/implement.md	MERGE	implement on a branch, grounded in the plan, tests after each change	plugin/skills/feature/SKILL.md	plugin/skills/feature/SKILL.md step Implement	p9	
@@ -168,7 +168,7 @@ bootstrap/tests/verify/fixtures/radon_violation.py	KEEP-HISTORY				p9	docs/histo
 bootstrap/tests/verify/fixtures/todo_violation.py	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/fixtures/todo_violation.py
 bootstrap/tests/verify/run.sh	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/run.sh
 bootstrap/tests/verify/test-notify.sh	KEEP-HISTORY				p9	docs/history/bootstrap/tests/verify/test-notify.sh
-bootstrap/universal-setup.sh	MERGE	deploy the harness into a machine and a project, reversibly	setup/harness	tests/setup/run.sh; tests/acceptance/deploy-bare.sh (not yet run)	p9	
+bootstrap/universal-setup.sh	MERGE	deploy the harness into a machine and a project, reversibly	setup/harness	tests/setup/run.sh; tests/acceptance/deploy-bare.sh (mode B passed 2026-10-05)	p9	
 docs/PROJECT-PLAN.md	KEEP-HISTORY				p9	docs/history/docs/PROJECT-PLAN.md
 docs/adr-audit/2026-W24.md	KEEP-HISTORY				p9	docs/history/docs/adr-audit/2026-W24.md
 docs/anti-patterns.md	KEEP				p9	

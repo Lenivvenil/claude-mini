@@ -1,3 +1,6 @@
+> **What this is.** An agent's research report, written on 2026-09-26: where Jev, TypeSafe's calibrated judgment model, could take a question in the v1 pipeline, at what threshold and cost. Item 6 and rollout step 1 became the advisory plan check of [PLAN.md](PLAN.md) P8 (`plugin/bin/jev-check`). Thresholds and costs below are its proposals, not measurements.
+> **Who reads it.** Someone extending Jev beyond the plan check or calibrating it. It is kept as written; only this preface and the anchors PLAN links to were added.
+
 I recommend starting with **advisory plan lint, ADR-trigger detection in shadow mode, and Jev-assisted critic grading outside the development path**. These offer bounded questions, reversible outcomes, and useful calibration data.
 
 Read-only research completed; no files were edited or created. I read the [port map](PORT-MAP.md) first, inspected repository mechanisms/history, and read the requested TypeSafe documentation and cookbooks. The `.md` endpoints failed through the web tool; their live HTML equivalents were accessible.
@@ -43,11 +46,11 @@ For the estimates below, one “call” means one HTTP request containing severa
    - **Threshold/fallback — not verified:** `supports` probability ≥0.95 and confidence ≥0.80 permits provisional evidence annotation. Everything else goes to the reasoning reviewer; compound criteria require decomposition. Offline: retain the AC checklist, validate links, mark semantic coverage `unassessed`, and use existing review.
    - **Calls/cost — not verified:** 1–2 × 12k ≈ **$0.000504–0.001008**. Calibrate per-AC evidence judgments separately from implementation correctness.
 
-6. **Plan quality lint — accept narrow semantic checks.**
+6. <a id="plan-quality-lint"></a>**Plan quality lint — accept narrow semantic checks.**
    - **Current:** section/content checks plus per-line keyword/ADR-reference heuristics: [plan-lint.sh:59](https://github.com/Lenivvenil/claude-mini/blob/62a2889/bootstrap/scripts/plan-lint.sh#L59), [:83](https://github.com/Lenivvenil/claude-mini/blob/62a2889/bootstrap/scripts/plan-lint.sh#L83). This is not comprehensive plan-quality assessment.
    - **Question/state:** separate Nouls for unsupported design assertions, claimed ADR support absent from the cited excerpt, and ACs lacking a described verification method. State: issue/ACs, relevant plan sections, referenced decisions, project requirements. Keep section/link validation in code.
    - **Threshold/fallback — not verified:** defect probability ≥0.80 produces an advisory finding; 0.20–0.80 requests reasoning review; below 0.20 adds no finding. Offline: structural lint plus explicit semantic `unassessed`. Jev never silently overrides an authoritative existing block.
-   - **Calls/cost — not verified:** 1 × 6k ≈ **$0.000252**. Calibrate allegations against accepted/rejected planning-review findings. Atomic defect checks follow the SDE verification pattern. [SDE cascade](https://docs.typesafe.ai/cookbooks/sde_cascade)
+   - <a id="plan-quality-lint-cost"></a>**Calls/cost — not verified:** 1 × 6k ≈ **$0.000252**. Calibrate allegations against accepted/rejected planning-review findings. Atomic defect checks follow the SDE verification pattern. [SDE cascade](https://docs.typesafe.ai/cookbooks/sde_cascade)
 
 7. **Hedging lint — accept contextual qualification; reject probabilistic word banning.**
    - **Current:** Semgrep execution and word/conditional rules: [hedging-lint.sh:34](https://github.com/Lenivvenil/claude-mini/blob/62a2889/bootstrap/scripts/hedging-lint.sh#L34), [hedging.yml:6](../../.semgrep/hedging.yml#L6).
@@ -122,7 +125,7 @@ The proposed evaluation procedure—**not verified**—is:
 
 The recommended **rollout order—benefit/risk not verified**—is:
 
-1. **Advisory plan lint:** small evidence packets, existing heuristics to compare, no runtime decision authority.
+1. <a id="rollout-advisory-plan-lint"></a>**Advisory plan lint:** small evidence packets, existing heuristics to compare, no runtime decision authority.
 2. **Critic-grader evaluation alongside it:** reuse the existing causal rubric, add near-misses and real historical cases, and establish trustworthy labels before claiming critic improvements.
 3. **ADR-trigger shadowing:** target the brittle v1 heuristic while preserving the semantic checklist, independent reasoning review and separate ADR approval/merge.
 

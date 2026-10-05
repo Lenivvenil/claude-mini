@@ -42,12 +42,15 @@ check() {  # check <ok message> <fail message> <command...>
 same() { [ "$1" = "$2" ]; }
 echo "mode $MODE; candidate: $REPO @ $(git -C "$REPO" rev-parse --short HEAD)$(git -C "$REPO" diff --quiet HEAD || echo ' +uncommitted')"
 
-snapshot() {  # snapshot <dir> <out>: path<TAB>sha256 of every file (.git excluded)
-    python3 - "$1" > "$2" <<'PYEOF'
+snapshot() {  # snapshot <dir> <out> [dirs]: path<TAB>sha256 of every file (.git excluded); with
+    # "dirs" also path/<TAB>dir for every directory, so one left behind empty fails the compare
+    python3 - "$1" "${3:-}" > "$2" <<'PYEOF'
 import hashlib, os, sys
 root = sys.argv[1]
 for d, dirs, files in os.walk(root):
     dirs[:] = sorted(x for x in dirs if x != ".git")
+    if sys.argv[2] == "dirs" and d != root:
+        print(f"{os.path.relpath(d, root)}/\tdir")
     for f in sorted(files):
         p = os.path.join(d, f)
         h = "link:" + os.readlink(p) if os.path.islink(p) else hashlib.sha256(open(p, "rb").read()).hexdigest()
@@ -112,7 +115,7 @@ for p in proj sibling; do
     mkdir -p "$T/$p" && git -C "$T/$p" init -q && git -C "$T/$p" commit -q --allow-empty -m "chore: start"
 done
 if [ "$MODE" = A ]; then snapshot "$T/home" "$T/home.before"; else watch_state "$T/home.before"; fi
-snapshot "$T/proj" "$T/proj.before"; cp "$T/proj/.git/info/exclude" "$T/exclude.before" 2>/dev/null || : > "$T/exclude.before"
+snapshot "$T/proj" "$T/proj.before" dirs; cp "$T/proj/.git/info/exclude" "$T/exclude.before" 2>/dev/null || : > "$T/exclude.before"
 snapshot "$T/sibling" "$T/sibling.before"
 
 echo "deploy"
@@ -186,7 +189,7 @@ r=$(find "$T/proj/.claude/mach/reports" -name '*.md' 2>/dev/null | sort | tail -
 if [ -n "$r" ] && python3 - "$r" <<'PYEOF'
 import sys
 text = open(sys.argv[1]).read()
-broken = text.split("\n## ", 1)[0]
+broken = text.split("\n## ")[1]  # [0] is the project header
 sys.exit(0 if broken.strip().splitlines()[1:] in ([], ["- nothing"], ["- ничего"]) else 1)
 PYEOF
 then ok "Broken is empty ($r)"; else fail "report missing or Broken not empty"; fi
@@ -195,7 +198,7 @@ echo "(g) uninstall returns the project"
 python3 "$REPO/setup/harness" uninstall --project "$T/proj" > "$T/uninstall.out" 2>&1 || fail "uninstall exit $?"
 # drop the commits from (b), history only: files uninstall left behind stay visible to the snapshot
 git -C "$T/proj" reset -q --soft "$(git -C "$T/proj" rev-list --max-parents=0 HEAD)"
-snapshot "$T/proj" "$T/proj.after"
+snapshot "$T/proj" "$T/proj.after" dirs
 check "project files back to their bytes" "project files differ after uninstall" cmp -s "$T/proj.before" "$T/proj.after"
 check "exclude file restored" "exclude file differs" cmp -s "$T/exclude.before" "$T/proj/.git/info/exclude"
 if [ ! -f "$reg" ] || jq -e --arg p "$T/proj" '[.. | objects | select(has("projectPath")) | .projectPath] | all(. != $p)' "$reg" >/dev/null; then

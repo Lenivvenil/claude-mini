@@ -129,16 +129,42 @@ class Txn:
                     pass
             raise TxnError(f"{self.run_rel} exists and was not created by setup/harness; choose "
                            "another paths.run_dir")
+        created = self.missing_dirs(os.path.dirname(self.run_rel))
         os.makedirs(self.run_dir, exist_ok=True)
         if not os.path.exists(self.marker):
             open(self.marker, "w").close()
+        if created:
+            self.record_dirs("run_dir", created)
+
+    def missing_dirs(self, rel):
+        """Project-relative directories on the way to rel that do not exist yet, outermost first."""
+        out, cur = [], os.path.normpath(rel)
+        while cur not in ("", ".") and not os.path.lexists(self.contain(cur)):
+            out.insert(0, cur)
+            cur = os.path.dirname(cur)
+        return out
+
+    def record_dirs(self, item, created):
+        """Log directories setup made outside its run directory; uninstall removes them if empty."""
+        self.append({"op": "mkdir", "item": item, "path": None, "state": "done", "dirs": created})
 
     def remove_run_dir(self):
-        """Remove the run directory, only if setup's marker is in it."""
+        """Remove the run directory, only if setup's marker is in it, then each directory setup
+        created on the way to it, innermost first, only while it is empty. Returns the removed
+        directories besides the run directory."""
         self.ensure_run_dir()  # adopts a pre-marker directory with a valid log, refuses others
         if not os.path.exists(self.marker):
             raise TxnError(f"{self.run_rel} has no setup marker; not removed")
+        made = [d for r in self.records() if r.get("op") == "mkdir" for d in r.get("dirs", [])]
         shutil.rmtree(self.run_dir)
+        removed = []
+        for rel in sorted(set(made), key=lambda d: d.count(os.sep), reverse=True):
+            try:
+                os.rmdir(self.contain(rel))  # fails on a directory that is not empty: someone's now
+            except (OSError, TxnError):  # TxnError: it became a symlink since; leave it
+                continue
+            removed.append(rel)
+        return removed
 
     def append(self, record):
         self.ensure_run_dir()

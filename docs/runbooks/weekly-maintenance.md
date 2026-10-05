@@ -4,11 +4,17 @@
 
 ### 1. Health check
 
+Команда запускается для каждого проекта, где включён MACH.
 ```bash
-mini-health
+~/projects/mach/setup/harness verify --project ~/projects/<project>
 ```
 
-Должно быть zero failures и меньше трёх warnings. При failures — разбираемся сразу, не откладывая.
+Она проверяет оба слоя. На машине это программы git, python3, jq, claude, gh, codex, node и вход в gh, claude и codex. В проекте это включённый плагин и строки в git exclude. Код выхода 0 значит, что всё готово, а код 5 значит, что не готов обязательный пункт. Причину и способ исправить отчёт пишет в разделах «Broken» и «Not done», которые при `output.language: ru` называются «Сломано» и «Не сделано». Разбираемся сразу, не откладывая.
+
+Службы Mac mini setup не проверяет, поэтому их смотрим отдельно.
+```bash
+launchctl list | grep -iE 'tmux|plex|transmission|caffeinate'
+```
 
 ### 2. Backlog grooming
 
@@ -49,10 +55,14 @@ HIGH/CRITICAL → action той же недели.
 ### 5. Claude Code / Codex updates
 
 ```bash
-# Claude Code
+# версия Claude Code на машине и версия, закреплённая в CI
 claude --version
-# Если есть новее — обнови
+grep -o 'claude-code@[0-9.]*' ~/projects/mach/.github/workflows/ci.yml
+```
 
+Если на машине версия новее закреплённой, прогони в клоне MACH `claude plugin validate plugin --strict` и тесты из `AGENTS.md`. Новая версия Claude Code уже ломала харнесс, когда 2.1.289 запретила имена плагинов на `claude-` (ADR-0034). Если всё зелёное, подними версию в `ci.yml` отдельным PR `chore(ci): pin Claude Code <версия>`. Если красное, заведи issue с выводом проверки. Пока его не закрыли, плагин на этой версии может работать неправильно, и на остальных машинах Claude Code лучше не обновлять.
+
+```bash
 # Codex
 npm outdated -g @openai/codex
 npm update -g @openai/codex 2>/dev/null

@@ -10,7 +10,9 @@
 #     docs/history/ is such an archive and needs no row of its own;
 #   - a row whose path is no longer tracked has capability, entry_point and evidence filled (what
 #     survives, where it lives now, which test or command shows it), or is KEEP-HISTORY and its
-#     archive file is tracked. Evidence is recorded here and run by the phase DoD, not by this check.
+#     archive file is tracked. Every .sh/.md/.json/.py path its evidence names must be tracked. The
+#     evidence itself is not run: it is free text (skill steps, a one-off probe of live Claude Code,
+#     tests that need a subscription key), see docs/port/followups.md.
 # Exit 0 ok · 1 findings.
 set -uo pipefail
 
@@ -19,7 +21,7 @@ LEDGER="$REPO/tools/port-run/ledger.tsv"
 HEADER=$'path\tverdict\tcapability\tentry_point\tevidence\tphase\tarchive_dest'
 
 python3 - "$REPO" "$LEDGER" "$HEADER" <<'PY'
-import subprocess, sys
+import re, subprocess, sys
 repo, ledger, header = sys.argv[1:4]
 VERDICTS = {"KEEP", "PORT", "MODERNISE", "MERGE", "DROP", "KEEP-HISTORY"}
 PHASES = {"-"} | {f"p{i}" for i in range(10)}
@@ -53,6 +55,10 @@ for n, line in enumerate(lines[1:], start=2):
                 problems.append(f"line {n}: {path} left, but its archive file {archive!r} is not tracked")
         elif not (capability and entry and evidence):
             problems.append(f"line {n}: {path} left the tree without capability, entry_point and evidence")
+        else:
+            for ref in re.findall(r"[\w.-]+(?:/[\w.-]+)+\.(?:sh|md|json|py)", evidence):
+                if ref not in tracked:
+                    problems.append(f"line {n}: evidence names {ref}, which is not tracked")
 archived = {cols.split("\t")[6] for cols in lines[1:] if len(cols.split("\t")) == 7
             and cols.split("\t")[1] == "KEEP-HISTORY"}
 for path in sorted(archives - archived):

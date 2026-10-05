@@ -59,12 +59,6 @@ fi
 
 echo ""
 echo "Claude Code env:"
-if [ -n "${CLAUDE_CODE_ENABLE_EXPERIMENTAL_ADVISOR_TOOL:-}" ]; then
-    ok "advisor tool enabled"
-else
-    warn "CLAUDE_CODE_ENABLE_EXPERIMENTAL_ADVISOR_TOOL не установлена"
-fi
-
 if [ -n "${ANTHROPIC_DEFAULT_SONNET_MODEL:-}" ] && [ -n "${ANTHROPIC_DEFAULT_OPUS_MODEL:-}" ]; then
     ok "models pinned: sonnet=$ANTHROPIC_DEFAULT_SONNET_MODEL opus=$ANTHROPIC_DEFAULT_OPUS_MODEL"
 else
