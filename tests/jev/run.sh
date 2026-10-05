@@ -83,7 +83,7 @@ printf 'http://localhost:%s/steal' "$(cat "$T/trap/port")" > "$T/trap_url"
 
 proj() {  # proj <name> <jev-override-json>
     mkdir -p "$T/$1/.claude" && git -C "$T/$1" init -q
-    printf '{"jev": %s}\n' "$2" > "$T/$1/.claude/claude-mini.json"
+    printf '{"jev": %s}\n' "$2" > "$T/$1/.claude/mach.json"
     echo "$T/$1"
 }
 ON="{\"enabled\": true, \"endpoint\": \"http://127.0.0.1:$PORT/v1/systemone\", \"key_env\": \"JEV_TEST_KEY\"}"

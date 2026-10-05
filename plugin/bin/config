@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""claude-mini config (ADR-0031 §4, #312). Python standard library only.
+"""mach config (ADR-0031 §4, #312). Python standard library only.
 
 Usage:
   config validate [FILE]            validate FILE (default: the effective config) against the schema
-  config effective [--project DIR]  print defaults deep-merged with DIR/.claude/claude-mini.json
+  config effective [--project DIR]  print defaults deep-merged with DIR/.claude/mach.json
   config get KEY [--project DIR]    print one value (dotted key); arrays one item per line
 
-Defaults: plugin/config/defaults.json. Override: <project>/.claude/claude-mini.json, where the
+Defaults: plugin/config/defaults.json. Override: <project>/.claude/mach.json, where the
 project is --project, else the git top level of the current directory, else the current directory.
 Merge: objects deep-merge, everything else (arrays included) is replaced by the override.
 Exit: 0 ok · 1 invalid config or unknown key · 2 usage error.
@@ -20,7 +20,7 @@ import sys
 PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA = os.path.join(PLUGIN, "config", "schema.json")
 DEFAULTS = os.path.join(PLUGIN, "config", "defaults.json")
-OVERRIDE = os.path.join(".claude", "claude-mini.json")
+OVERRIDE = os.path.join(".claude", "mach.json")
 
 
 class ConfigError(Exception):

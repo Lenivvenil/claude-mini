@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# commit-msg-check.sh — claude-mini plugin PreToolUse hook (#308)
+# commit-msg-check.sh — mach plugin PreToolUse hook (#308)
 #
 # Wired by hooks/hooks.json with "if": "Bash(git *)" (git global options such as -C sit
 # between git and commit, so a narrower pattern misses them), only in projects where
@@ -46,7 +46,7 @@ IFS= read -r -d '' input || true  # builtin: works even with a broken PATH
 
 for bin in jq python3; do
     command -v "$bin" >/dev/null 2>&1 \
-        || deny "claude-mini: $bin not found — install it to check commit messages (brew install $bin)."
+        || deny "mach: $bin not found — install it to check commit messages (brew install $bin)."
 done
 
 command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null) || command=""
@@ -58,13 +58,13 @@ cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null) || cwd=""
 _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if ! result=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py" 2>/dev/null); then
     err=$(CMD="$command" CWD="${cwd:-.}" python3 "$_self_dir/parse-commit.py" 2>&1 >/dev/null | tail -1)
-    deny "claude-mini: commit message parser failed: ${err:-no error text}"
+    deny "mach: commit message parser failed: ${err:-no error text}"
 fi
 # No commit in the command: nothing to check, and a broken project config must not block it.
 [[ $result == *SUBJECT* || $result == *NOMSG* || $result == *BADDIR* ]] || exit 0
 
 # Commit rules come from config (ADR-0031 §4): plugin defaults merged with the
-# .claude/claude-mini.json of the repository that receives the commit (git top level of the
+# .claude/mach.json of the repository that receives the commit (git top level of the
 # commit's effective directory). The validator keeps types to plain words, so they are
 # literal in the regex; scope_pattern is an ERE by contract and is checked before use.
 cfg="$_self_dir/../bin/config"
@@ -72,21 +72,25 @@ rules_root=""
 load_rules() {  # load_rules <dir>: sets types_alt, scope, skips for that repository
     local root
     # A directory we cannot see is not guessed: defaults would apply the wrong project's rules.
-    [ -d "$1" ] || deny "claude-mini: cannot resolve the commit's directory '$1' — run the commit from the project directory."
+    [ -d "$1" ] || deny "mach: cannot resolve the commit's directory '$1' — run the commit from the project directory."
     root=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) || root="$1"
     [ "$root" = "$rules_root" ] && return 0
+    # A config under the name before ADR-0034 is not read; without this the old rules would be
+    # silently replaced by the defaults.
+    [ -f "$root/.claude/claude-mini.json" ] && [ ! -e "$root/.claude/mach.json" ] \
+        && deny "mach: $root/.claude/claude-mini.json is from before the rename to MACH and is not read — run setup/harness apply to move it to .claude/mach.json."
     local types
     types=$(python3 "$cfg" get commit.types --project "$root" 2>&1) \
-        || deny "claude-mini: project config is invalid — fix $root/.claude/claude-mini.json: $types"
+        || deny "mach: project config is invalid — fix $root/.claude/mach.json: $types"
     scope=$(python3 "$cfg" get commit.scope_pattern --project "$root" 2>&1) \
-        || deny "claude-mini: project config is invalid: $scope"
+        || deny "mach: project config is invalid: $scope"
     skips=$(python3 "$cfg" get commit.skip_prefixes --project "$root" 2>&1) \
-        || deny "claude-mini: project config is invalid: $skips"
+        || deny "mach: project config is invalid: $skips"
     types_alt=$(printf '%s' "$types" | paste -sd'|' -)
-    [ -n "$types_alt" ] || deny "claude-mini: commit.types is empty in $root — no subject can pass."
+    [ -n "$types_alt" ] || deny "mach: commit.types is empty in $root — no subject can pass."
     local rc=0
     printf '' | grep -qE "(${scope})" 2>/dev/null || rc=$?
-    [ "$rc" -le 1 ] || deny "claude-mini: commit.scope_pattern is not a valid ERE in $root: '$scope'"
+    [ "$rc" -le 1 ] || deny "mach: commit.scope_pattern is not a valid ERE in $root: '$scope'"
     rules_root=$root
 }
 
@@ -94,8 +98,8 @@ load_rules() {  # load_rules <dir>: sets types_alt, scope, skips for that reposi
 while IFS= read -r line; do
     case "$line" in
         ""|ALLOW) continue ;;
-        NOMSG) deny "claude-mini: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\"" ;;
-        BADDIR) deny "claude-mini: commit directory contains a tab or newline — cannot resolve its config." ;;
+        NOMSG) deny "mach: git commit without -m / -F would open an editor. Use: git commit -m \"type(scope): subject\"" ;;
+        BADDIR) deny "mach: commit directory contains a tab or newline — cannot resolve its config." ;;
     esac
     rest=${line#SUBJECT$'\t'}
     dir=${rest%%$'\t'*}
@@ -110,8 +114,8 @@ while IFS= read -r line; do
     printf '%s' "$subject" | grep -qE "^(${types_alt})(\\((${scope})\\))?!?:[[:space:]]+[^[:space:]]" || rc=$?
     case "$rc" in
         0) ;;
-        1) deny "claude-mini: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types ${types_alt}. Got: '$subject'" ;;
-        *) deny "claude-mini: subject check failed (grep exit $rc) — commit not allowed." ;;
+        1) deny "mach: commit subject is not Conventional Commits. Expected: type(scope?)!?: subject, types ${types_alt}. Got: '$subject'" ;;
+        *) deny "mach: subject check failed (grep exit $rc) — commit not allowed." ;;
     esac
 done < <(printf '%s\n' "$result")
 exit 0

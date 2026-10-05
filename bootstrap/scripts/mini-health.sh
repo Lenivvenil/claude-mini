@@ -68,7 +68,7 @@ else
     warn "No Claude Code settings file"
 fi
 
-# The commit hook is part of the claude-mini plugin, enabled per project; `setup/harness verify`
+# The commit hook is part of the MACH plugin, enabled per project; `setup/harness verify`
 # checks it there, not here.
 
 # --- gh & codex auth ---

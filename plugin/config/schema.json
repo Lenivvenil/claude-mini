@@ -1,5 +1,5 @@
 {
-  "$comment": "claude-mini config schema (ADR-0031 §4). A deliberately small typed subset, not JSON Schema: node types object|string|int|bool|array|enum; object nodes list 'properties' and 'required'; array nodes give 'items' and optional 'min_items'; string nodes may give 'pattern' (Python regex, whole value); enum nodes give 'values'. Unknown keys are rejected. Validated by plugin/bin/config.",
+  "$comment": "mach config schema (ADR-0031 §4). A deliberately small typed subset, not JSON Schema: node types object|string|int|bool|array|enum; object nodes list 'properties' and 'required'; array nodes give 'items' and optional 'min_items'; string nodes may give 'pattern' (Python regex, whole value); enum nodes give 'values'. Unknown keys are rejected. Validated by plugin/bin/config.",
   "schema_version": 1,
   "root": {
     "type": "object",

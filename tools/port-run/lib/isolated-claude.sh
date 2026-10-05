@@ -4,7 +4,7 @@
 # An isolated CLAUDE_CONFIG_DIR is "Not logged in" (verified 2026-09-26, 2.1.283), so isolated
 # runs authenticate with a long-lived subscription token from `claude setup-token`. The token is
 # read from $CLAUDE_CODE_OAUTH_TOKEN or from the macOS Keychain item named by
-# $CLAUDE_MINI_TOKEN_ITEM (default claude-mini-test-oauth). It is never printed or logged.
+# $MACH_TOKEN_ITEM (default mach-test-oauth). It is never printed or logged.
 #
 # Functions:
 #   iso_require_token   exports CLAUDE_CODE_OAUTH_TOKEN or exits 77 (SKIPPED, never a pass)
@@ -18,7 +18,7 @@ iso_require_token() {
         export CLAUDE_CODE_OAUTH_TOKEN
         return 0
     fi
-    local item="${CLAUDE_MINI_TOKEN_ITEM:-claude-mini-test-oauth}" tok=""
+    local item="${MACH_TOKEN_ITEM:-mach-test-oauth}" tok=""
     if command -v security >/dev/null 2>&1; then
         tok=$(security find-generic-password -s "$item" -w 2>/dev/null) || tok=""
     fi
@@ -36,7 +36,7 @@ iso_home() {
     export CLAUDE_CONFIG_DIR="$1/home/.claude"
     # git identity for commits made inside the sandbox, without touching the real ~/.gitconfig
     export GIT_CONFIG_GLOBAL="$1/home/.gitconfig"
-    git config --global user.name "claude-mini test"
+    git config --global user.name "mach test"
     git config --global user.email "test@example.invalid"
 }
 

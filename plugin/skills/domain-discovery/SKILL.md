@@ -15,8 +15,8 @@ description: Explore a new or unclear bounded context with the owner, DDD and Ev
    - **Ubiquitous language.** Core terms defined in business words, with aliases to avoid.
    - **Context map.** For each neighbouring context, the relationship as a DDD pattern. Explain the patterns briefly if the owner does not know them.
 3. Keep the owner's words. Whatever stays unanswered is a hotspot, not a guess.
-4. Pass the interview notes to the `claude-mini:domain-researcher` agent. It writes the overview where the project keeps domain docs and returns open questions.
-5. Show the owner the path and the open questions. Suggest `claude-mini:domain-reviewer` on the result.
+4. Pass the interview notes to the `mach:domain-researcher` agent. It writes the overview where the project keeps domain docs and returns open questions.
+5. Show the owner the path and the open questions. Suggest `mach:domain-reviewer` on the result.
 
 ## Output
 

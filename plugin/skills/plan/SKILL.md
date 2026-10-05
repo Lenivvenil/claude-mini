@@ -22,7 +22,7 @@ Write `plan.md` in the repo root with exactly these sections:
 5. **Test strategy** — what fails before the change and passes after; which existing tests must stay green.
 6. **Risks and unknowns** — an honest list; "none" is a smell.
 
-If the change is architecturally significant by the project's own rules (a new cross-cutting dependency, a changed public API or contract, a hard-to-reverse constraint, a security or data-model change), say so at the top of plan.md and suggest `/claude-mini:adr-author` before implementation.
+If the change is architecturally significant by the project's own rules (a new cross-cutting dependency, a changed public API or contract, a hard-to-reverse constraint, a security or data-model change), say so at the top of plan.md and suggest `/mach:adr-author` before implementation.
 
 ## Advisory check
 

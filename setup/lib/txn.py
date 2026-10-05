@@ -17,7 +17,7 @@ the new file is removed when there was none); anything else -> reported as broke
 Package installs are logged the same way (op: install / uninstall) by setup/harness, which also
 reconciles interrupted ones against the package manager.
 
-Fault injection for tests: CLAUDE_MINI_SETUP_FAULT=<point> makes the process exit(99) at that
+Fault injection for tests: MACH_SETUP_FAULT=<point> makes the process exit(99) at that
 point without cleanup. Points: after-intent, before-swap, after-swap, after-done.
 """
 import hashlib
@@ -28,7 +28,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 
-FAULT_ENV = "CLAUDE_MINI_SETUP_FAULT"
+FAULT_ENV = "MACH_SETUP_FAULT"
 
 
 class TxnError(Exception):
@@ -66,14 +66,14 @@ def _fsync_dir(path):
 
 
 class Txn:
-    def __init__(self, project, run_dir):
+    def __init__(self, project, run_dir, marker=".mach-run"):
         self.project = os.path.realpath(project)
         self.run_rel = os.path.normpath(run_dir)
         if self.run_rel in (".", "") or self.run_rel.split(os.sep)[0] in (".git",):
             raise TxnError(f"paths.run_dir {run_dir!r} must be a subdirectory of the project, not "
                            "its root or .git")
         self.run_dir = self.contain(self.run_rel)
-        self.marker = os.path.join(self.run_dir, ".claude-mini-run")
+        self.marker = os.path.join(self.run_dir, marker)
         self.log = self.contain(os.path.join(self.run_rel, "intent.jsonl"))
 
     def contain(self, rel):
@@ -186,7 +186,7 @@ class Txn:
         if before == candidate:
             return False  # nothing to do, nothing written
         stamp = f"{os.getpid()}-{int(time.time() * 1000)}"
-        tmp = self.contain(os.path.join(os.path.dirname(rel), f".{os.path.basename(path)}.claude-mini-{stamp}.tmp"))
+        tmp = self.contain(os.path.join(os.path.dirname(rel), f".{os.path.basename(path)}.mach-{stamp}.tmp"))
         backup = None
         if before is not None:
             backup = self.run_path("backups", stamp, rel)
@@ -255,7 +255,7 @@ class Txn:
             if sha_of(backup) != started["sha_before"]:
                 return False, f"{item}: backup of {last['path']} is missing or altered; left as is"
             fd, restore = tempfile.mkstemp(dir=os.path.dirname(path),
-                                           prefix=f".{os.path.basename(path)}.claude-mini-restore-")
+                                           prefix=f".{os.path.basename(path)}.mach-restore-")
             os.close(fd)
             shutil.copy2(backup, restore)
             os.replace(restore, path)
@@ -288,7 +288,7 @@ class Txn:
                                       "altered; restore by hand")
                         continue
                     fd, restore = tempfile.mkstemp(dir=os.path.dirname(path),
-                                                   prefix=f".{os.path.basename(path)}.claude-mini-restore-")
+                                                   prefix=f".{os.path.basename(path)}.mach-restore-")
                     os.close(fd)
                     shutil.copy2(backup, restore)
                     os.replace(restore, path)

@@ -1,6 +1,6 @@
 # 0034. Rename the project, plugin and marketplace to MACH
 
-* Status: proposed
+* Status: accepted (2026-10-04, PR #362 merged)
 * Superseded-by: ~
 * Date: 2026-10-04
 * Deciders: Lenivvenil (operator); draft by Claude
