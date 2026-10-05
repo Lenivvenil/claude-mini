@@ -53,10 +53,10 @@ PROBE_ENV = {"GH_TELEMETRY": "0"}
 LABELS = {
     "en": {"broken": "Broken", "notdone": "Not done", "works": "Works", "na": "Not applicable",
            "fix": "fix", "rollback": "rollback", "check": "check", "reduced": "reduced mode",
-           "none": "nothing"},
+           "none": "nothing", "project": "Project"},
     "ru": {"broken": "Сломано", "notdone": "Не сделано", "works": "Работает", "na": "Не относится",
            "fix": "исправить", "rollback": "откатить", "check": "проверка",
-           "reduced": "урезанный режим", "none": "ничего"},
+           "reduced": "урезанный режим", "none": "ничего", "project": "Проект"},
 }
 
 
@@ -379,10 +379,11 @@ def delta(rows):
 
 
 # --- report ------------------------------------------------------------------------------------
-def report(rows, cfg, broken=(), extra_works=(), extra_notdone=()):
+def report(project, rows, cfg, broken=(), extra_works=(), extra_notdone=()):
     lang = cfg.get("output", {}).get("language", "en")
     L = LABELS.get(lang, LABELS["en"])
-    out = [f"## {L['broken']}"]
+    # --project resolves to the git top level: the header says which project the run acted on
+    out = [f"{L['project']}: {project}\n", f"## {L['broken']}"]
     lines = list(broken)
     out += [f"- {b}" for b in lines] or [f"- {L['none']}"]
     out.append(f"\n## {L['notdone']}")
@@ -542,14 +543,14 @@ def cmd_assess(a):
                           "package_manager": manager, "items": rows, "delta": delta(rows)},
                          indent=2, ensure_ascii=False))
     else:
-        print(report(rows, cfg), end="")
+        print(report(project, rows, cfg), end="")
     return 0
 
 
 def cmd_verify(a):
     project = project_dir(a.project)
     cfg, _, rows = assess(project, a.layer)
-    print(report(rows, cfg), end="")
+    print(report(project, rows, cfg), end="")
     bad = [r["id"] for r in rows if not r["optional"] and r["status"] not in ("ready", "not-applicable")]
     return 5 if bad else 0
 
@@ -582,8 +583,8 @@ def cmd_apply(a):
         w2, n2, broken = migrate_run_dir(project, load_config(project))
         moved = (works + w2, notdone + n2, broken)
         if moved[2]:
-            print(report([], {}, broken=moved[2], extra_works=moved[0], extra_notdone=moved[1]),
-                  end="")
+            print(report(project, [], {}, broken=moved[2], extra_works=moved[0],
+                         extra_notdone=moved[1]), end="")
             return 4
     a.moved = moved
     cfg, manager, rows = assess(project, a.layer)
@@ -661,11 +662,11 @@ def apply_rows(a, t, cfg, manager, rows, items, allow, locked):
     if a.dry_run:
         for i in refused:
             print(f"needs consent: --allow-system {i}")
-        print(report(rows, cfg), end="")
+        print(report(project, rows, cfg), end="")
         return 0
     changed = bool(installed or failed or recovered)
     _, _, rows = assess(project, a.layer)  # every item re-checked at report time
-    text = report(rows, cfg, broken=failed + broken, extra_works=recovered,
+    text = report(project, rows, cfg, broken=failed + broken, extra_works=recovered,
                   extra_notdone=list(moved[1]) +
                   [f"{i}: install needs consent — rerun with --allow-system {i}" for i in refused])
     print(text, end="")
@@ -891,7 +892,7 @@ def cmd_uninstall(a):
     for line in works + notdone:
         print(line)
     if broken:
-        print(report([], {}, broken=broken), end="")
+        print(report(project, [], {}, broken=broken), end="")
         return 4
     cfg, manager, _ = assess(project, "all")
     t = txn_for(project, cfg)
@@ -930,14 +931,14 @@ def uninstall_locked(a, t, cfg, project):
             notdone.append(f"{item}: package {r['package']} installed by setup stays — remove with: "
                            f"harness uninstall --item {item} (runs `{rem}`)")
         _, _, rows = assess(project, "project")
-        text = report(rows, cfg, broken=failed, extra_works=works, extra_notdone=notdone)
+        text = report(project, rows, cfg, broken=failed, extra_works=works, extra_notdone=notdone)
         print(text, end="")
         if notdone or failed:
             print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
             return 4 if failed else 0
         # everything undone: the run directory (log, backups, reports) goes last
-        t.remove_run_dir()
-        print(f"removed {os.path.relpath(t.run_dir, project)}")
+        gone = [os.path.relpath(t.run_dir, project)] + t.remove_run_dir()
+        print(f"removed {', '.join(gone)}")
         return 0
     for line in broken:
         print(f"Broken: {line}")
@@ -955,7 +956,7 @@ def uninstall_locked(a, t, cfg, project):
         return 4
     t.append(dict(base, state="done"))
     _, _, rows = assess(project, "all")
-    text = report(rows, cfg, broken=broken, extra_works=[f"{a.item}: removed with `{rem}`"])
+    text = report(project, rows, cfg, broken=broken, extra_works=[f"{a.item}: removed with `{rem}`"])
     print(text, end="")
     print(f"report saved: {os.path.relpath(save_report(t, text), project)}")
     return 4 if broken else 0

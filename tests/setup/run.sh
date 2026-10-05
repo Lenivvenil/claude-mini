@@ -173,6 +173,11 @@ run apply --project "$p"
 is "$RC" 0 "apply on a ready host exits 0"
 is "$(tree_hash "$p")" "$h0" "assess and apply wrote nothing"
 is "$([ -e "$T/pm.log" ] && echo called || echo none)" none "no package manager call"
+mkdir -p "$p/sub"
+run assess --project "$p/sub"
+is "$(printf '%s\n' "$OUT" | head -1)" "Project: $("$PY" -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$("$GIT" -C "$p" rev-parse --show-toplevel)")" \
+   "a subdirectory resolves to the git top level, and the report header names it"
+rmdir "$p/sub"
 
 echo "T6 assess --json"
 run assess --project "$p" --json
@@ -449,6 +454,24 @@ is "$RC" 0 "verify passes"
 run uninstall --project "$p"
 is "$RC" 0 "uninstall exits 0"
 is "$(full_hash "$p")" "$h0" "T9: after uninstall the project and its exclude file are byte-identical"
+
+# a project with no .claude at all: setup makes it, so uninstall takes it away while it is empty
+p="$T/noclaude"; mkdir -p "$p" && "$GIT" -C "$p" init -q
+h0=$(full_hash "$p")
+run apply --project "$p" --layer project
+is "$([ -d "$p/.claude" ] && echo made)" made "apply in a project without .claude creates it"
+run uninstall --project "$p"
+is "$RC" 0 "uninstall exits 0"
+is "$(full_hash "$p")" "$h0" "uninstall removes the .claude directory setup created"
+has "$OUT" "removed .claude/mach, .claude" "and says so"
+run apply --project "$p" --layer project
+echo '{}' > "$p/.claude/settings.json"
+run uninstall --project "$p"
+is "$(cat "$p/.claude/settings.json" 2>/dev/null)" "{}" "a .claude setup created but the user filled stays"
+rm -rf "$p/.claude"
+mkdir -p "$p/.claude"
+run apply --project "$p" --layer project; run uninstall --project "$p"
+is "$([ -d "$p/.claude" ] && echo kept)" kept "an empty .claude that was there before setup stays"
 
 p=$(pproject keepsettings)
 printf '{\n  "permissions": {"allow": ["Bash(ls)"]}\n}\n' > "$p/.claude/settings.local.json"

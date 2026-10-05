@@ -3,6 +3,8 @@
 For an agent asked "deploy my harness for this project". Decision: [ADR-0031](docs/decisions/0031-project-scoped-plugin-two-layer-deploy.md).
 
 `<harness>` is the path of this repository. The project is the directory the request came from.
+`--project` resolves to the top level of the git repository it lies in: a subdirectory of a
+repository means the whole repository. Every report starts with the project it acted on.
 
 1. `<harness>/setup/harness assess --project .` — read-only. Prints Broken / Not done / Works for the
    machine and the project.
@@ -16,7 +18,8 @@ For an agent asked "deploy my harness for this project". Decision: [ADR-0031](do
    the plugin.
 
 Undo: `<harness>/setup/harness uninstall --project .` returns the project files to their bytes before
-setup, unless someone edited them since (then they are left and listed).
+setup, unless someone edited them since (then they are left and listed). A `.claude/` directory setup
+created goes too, if nothing else is in it.
 
 Never: edit `~/.claude/settings.json`, shell profiles, global git config or other projects; enable
 the plugin at user scope; install a system program without the owner naming it; push.

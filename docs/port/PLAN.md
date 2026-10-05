@@ -7,7 +7,7 @@
 > - **S4** No API money: "we work within subscriptions". No `--max-budget-usd` (it bills API usage, not subscription limits); the limiter is subscription quota, watched with `codeburn quota`. Acceptance mode A runs **locally only**, never in CI. Isolated runs (tests, driver) authenticate with a long-lived subscription token from `claude setup-token` **[verified 2026-09-26: the command exists on 2.1.283; an isolated `CLAUDE_CONFIG_DIR` is otherwise "Not logged in"]**, stored by the owner in the macOS Keychain item `claude-mini-test-oauth` (since ADR-0034, 2026-10-04: `mach-test-oauth`, env `MACH_TOKEN_ITEM`) and passed as `CLAUDE_CODE_OAUTH_TOKEN`; never logged. Without it, isolated tests exit 77 (SKIPPED), which never counts as a pass.
 > - **S5** Jev key: open. Without it P8 is tested on the no-key path only.
 
-- **Inputs:** plan v1, the Codex review ("A"), the Fable review ("F"), the port map (committed verbatim as [PORT-MAP.md](PORT-MAP.md), line numbers preserved), the Jev design (committed verbatim as [JEV-DESIGN.md](JEV-DESIGN.md), line numbers preserved), and the owner's additions. Plan v1 and the two reviews are not in the repository; every finding they raised is carried, with its resolution, in the last section, so this plan does not need them. The repo was read at `~/Projects/claude-mini` `main` 48867dc, 2026-09-26, and was not changed.
+- **Inputs:** plan v1, the Codex review ("A"), the Fable review ("F"), the port map ([PORT-MAP.md](PORT-MAP.md), kept as written under a preface), the Jev design ([JEV-DESIGN.md](JEV-DESIGN.md), kept as written under a preface; cited below by anchor), and the owner's additions. Plan v1 and the two reviews are not in the repository; every finding they raised is carried, with its resolution, in the last section, so this plan does not need them. The repo was read at `~/Projects/claude-mini` `main` 48867dc, 2026-09-26, and was not changed.
 - **Evidence:**
   - `path:line` means checked on disk by me.
   - **[verified 2026-09-26]** means verified by the orchestrating session on this machine.
@@ -139,7 +139,7 @@ Every PR runs `claude plugin validate plugin --strict`, and passes today. From P
   - owner runs mode B once on the real machine before P4 (D-9 kept).
 
 **P4 — Agents.** Six `git mv bootstrap/agents/*.md plugin/agents/` in a pure-move commit, then the edits, then the `critics` config section. ci.yml:36 changes in the same PR. DoD: lint-prompts, validate --strict, `git log --follow` shows history, acceptance green.
-- **As built in P4.** The six roles were rewritten after the move, per PORT-MAP rows 13–18; the commit message lists the cuts per role. Subagents cannot ask the user questions, so `domain-researcher` and `solutions-architect` work from the caller's material and return open questions. The `critics` config section is deferred to P6: nothing reads it before the review skill, and config without a reader has no evidence under the selection rule (§2).
+- **As built in P4.** The six roles were rewritten after the move, per the [PORT-MAP](PORT-MAP.md#component-decisions) rows for the six `B/agents/` files; the commit message lists the cuts per role. Subagents cannot ask the user questions, so `domain-researcher` and `solutions-architect` work from the caller's material and return open questions. The `critics` config section is deferred to P6: nothing reads it before the review skill, and config without a reader has no evidence under the selection rule (§2).
 
 **P5 — Planning skills.** Covers issue, plan, adr-author, domain-discovery and backlog-review, including ticket-audit.sh and plan-lint.sh. The ci.yml lines for moved scripts change in the same PR.
 - **As built in P5.** `backlog-review` and `domain-discovery` moved into the plugin and were rewritten thin. The discovery interview runs in the main session and `domain-researcher` drafts, because subagents cannot ask the user. The `plan` and `adr` commands are MERGE: `plan` and `adr-author` already carry their capability. The `issue` skill is not built: `task-to-issue`, `issue-to-task`, `audit-pass`, `ticket-audit.sh`, `plan-lint.sh` and the fixtures are KEEP-HISTORY under the selection rule (§2). This is a deviation from the line above, recorded in followups for the owner. No ci.yml line changes: none of these scripts moved.
@@ -168,7 +168,7 @@ DoD for P5–P7:
 - **As built in P7.** `project-health` moved into the plugin and reports in chat: review time, issue age, ADRs awaiting decision, and AI spend from CodeBurn when `codeburn.enabled`. The ADR template moved into `adr-author`, which uses the project's own template first. `codeburn.version` defaults to 0.9.25, checked on the npm registry (MIT, Node ≥22.13.0). Project bootstrap, the stack templates, gate-audit, adr-retirement-audit and check-mcp-config are KEEP-HISTORY. No ci.yml line changes: none of those files moved.
 
 **P8 — Jev: one advisory plan check** (was P9; now a deliverable, per A#8 and F-req2)
-- Scope is [JEV-DESIGN.md](JEV-DESIGN.md#L46) item 6 (lines 46–50, "Plan quality lint") and rollout step 1 at line 125, cut 1 only: advisory plan lint. There are three Noul questions:
+- Scope is [JEV-DESIGN.md](JEV-DESIGN.md#plan-quality-lint) item 6 ("Plan quality lint") and [rollout step 1](JEV-DESIGN.md#rollout-advisory-plan-lint), cut 1 only: advisory plan lint. There are three Noul questions:
   - unsupported design assertion,
   - claimed ADR support absent from the cited excerpt,
   - AC without a verification method.
@@ -241,7 +241,7 @@ DoD for P5–P7:
   - `plugin-local` is recovered with `claude plugin uninstall … --scope local`;
   - package installs are recovered with `brew uninstall` or `apt remove`, and only if setup installed the package itself.
 - **No-op rule:** a second apply with an empty delta writes nothing, not even a report file. It prints only.
-- **As built in P3 (#314).** The project layer has two items, both applied without `--allow-system` because they write inside the project: `git-exclude` (Claude Code's local settings file and setup's run directory join `.git/info/exclude`) and `plugin-local` (Claude Code's own `marketplace add` and `install` with `--scope local`). `uninstall` without `--item` disables the plugin, returns `.claude/settings.local.json` and the exclude file to their bytes unless edited since, and removes the run directory last; packages setup installed stay until `uninstall --item`. Handlers `project-file`, `project-json-merge` and `mise-pin` are not built: no item needs them under the selection rule. The optional git hook of ADR-0031 п. 9 is not built yet (default off); see followups.
+- **As built in P3 (#314).** The project layer has two items, both applied without `--allow-system` because they write inside the project: `git-exclude` (Claude Code's local settings file and setup's run directory join `.git/info/exclude`) and `plugin-local` (Claude Code's own `marketplace add` and `install` with `--scope local`). `uninstall` without `--item` disables the plugin, returns `.claude/settings.local.json` and the exclude file to their bytes unless edited since, and removes the run directory last, then any directory setup created on the way to it while it is empty (#356); packages setup installed stay until `uninstall --item`. Handlers `project-file`, `project-json-merge` and `mise-pin` are not built: no item needs them under the selection rule. The optional git hook of ADR-0031 п. 9 is not built yet (default off); see followups.
 - **Where T8 runs.** The machine layer changes no files, only packages. The crash-safe file primitive (`setup/lib/txn.py`) is built and fault-tested in P2, and the project-layer items of P3 use it.
 - **Consequences report** (apply and uninstall save it to `reports/<ts>.md`; assess prints it). Every item is re-checked at report time. It has three sections:
   - **Broken:** what, the evidence (command and output), and one fix command plus one rollback command.
@@ -342,7 +342,7 @@ Removed on 2026-09-26 without a single run: it needs the subscription token for 
 - **Known data points (F):**
   - eval run: $0.254;
   - trivial `-p` call: $0.005;
-  - Jev lint: ≈ $0.0003 per call ([JEV-DESIGN.md](JEV-DESIGN.md#L50)).
+  - Jev lint: ≈ $0.0003 per call ([JEV-DESIGN.md](JEV-DESIGN.md#plan-quality-lint-cost)).
 - **Wall time:** ≈18–28 h of agent time, plus rework and merge latency. Re-estimate after P0 and P1 from CodeBurn per-PR data.
 - **Hard stop:** none by flag: `--max-turns` is not in `--help` on 2.1.283 and `--max-budget-usd` is out per S4. The limit is subscription quota.
 

@@ -1,3 +1,6 @@
+> **What this is.** An agent's static audit of claude-mini v1, written on 2026-09-26 before the port: one verdict per v1 component (keep, port, merge, drop) and its target in the plugin. It is an input to [PLAN.md](PLAN.md), which corrects it in §1; the per-file outcome lives in `tools/port-run/ledger.tsv`.
+> **Who reads it.** Someone asking why a v1 component was ported or dropped. It is kept as written and not updated; where it and PLAN disagree, PLAN holds.
+
 The useful v1 capabilities should survive as project-scoped agents, skills and checks. Most changes concern activation, ownership of state and repeated manual handoffs.
 
 No files changed. This is a static audit; execution, installed CLI compatibility and transitive tool caches are **not verified**. Inventory corrections: `bootstrap/scripts/` contains 32 code files plus README; `bootstrap/templates/` contains **20 files including hidden files**.
@@ -6,7 +9,7 @@ Evidence shorthand: `B/` = `bootstrap/`, `P/` = `plugin/`, `D/` = `docs/`. Targe
 
 Native capabilities below are **not verified on disk**, but checked against official documentation: **N1** [project/local plugin scope](https://code.claude.com/docs/en/discover-plugins); **N2** [skill frontmatter](https://code.claude.com/docs/en/skills) and [subagents](https://code.claude.com/docs/en/sub-agents); **N3** [hook `if`, arguments and events](https://code.claude.com/docs/en/hooks); **N4** [headless execution](https://code.claude.com/docs/en/headless) and [worktrees](https://code.claude.com/docs/en/worktrees); **N5** [native Codex review targets](https://learn.chatgpt.com/docs/developer-commands).
 
-**1. Component decisions**
+<a id="component-decisions"></a>**1. Component decisions**
 
 | Component | Verdict | Target in plugin | Reason | Evidence |
 |---|---|---|---|---|
